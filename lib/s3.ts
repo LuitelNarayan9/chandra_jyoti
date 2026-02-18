@@ -1,6 +1,7 @@
 import {
   S3Client,
   PutObjectCommand,
+  GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -31,7 +32,8 @@ export async function uploadToS3(
     })
   );
 
-  return `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  const encodedKey = key.split("/").map(encodeURIComponent).join("/");
+  return `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${encodedKey}`;
 }
 
 /**
@@ -55,7 +57,7 @@ export async function getSignedFileUrl(
   key: string,
   expiresIn = 3600
 ): Promise<string> {
-  const command = new PutObjectCommand({
+  const command = new GetObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET_NAME!,
     Key: key,
   });
