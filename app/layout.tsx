@@ -35,7 +35,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body
-          className={`${outfit.variable} ${inter.variable} font-[family-name:var(--font-inter)] antialiased`}
+          className={`${outfit.variable} ${inter.variable} font-(family-name:--font-inter) antialiased`}
         >
           <ThemeProvider
             attribute="class"

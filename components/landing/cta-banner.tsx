@@ -8,13 +8,12 @@ import { ArrowRight } from "lucide-react";
 export function CTABanner() {
   return (
     <section className="relative py-0 overflow-hidden transition-colors">
-      {/* The CTA is designed as a full-width editorial panel */}
-      <div className="relative bg-stone-900 dark:bg-stone-950">
+      <div className="relative bg-white dark:bg-stone-900">
         {/* Grid pattern overlay */}
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.04] dark:opacity-[0.04]"
           style={{
-            backgroundImage: `linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)`,
+            backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
             backgroundSize: "60px 60px",
           }}
         />
@@ -34,7 +33,7 @@ export function CTABanner() {
               className="flex items-center gap-3 mb-8"
             >
               <div className="h-px w-8 bg-amber-500" />
-              <span className="text-xs font-bold uppercase tracking-[0.3em] text-amber-400">
+              <span className="text-xs font-bold uppercase tracking-[0.3em] text-amber-600 dark:text-amber-400">
                 Join Us Today
               </span>
               <div className="h-px w-8 bg-amber-500" />
@@ -50,18 +49,18 @@ export function CTABanner() {
                 delay: 0.1,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="font-(family-name:--font-outfit) text-[clamp(3rem,8vw,8rem)] font-black leading-[0.9] tracking-tighter text-stone-50 mb-8"
+              className="font-(family-name:--font-outfit) text-[clamp(3rem,8vw,8rem)] font-black leading-[0.9] tracking-tighter text-stone-900 dark:text-stone-50 mb-8"
             >
               Your village.
               <br />
               <span
                 className="text-transparent"
-                style={{ WebkitTextStroke: "1.5px rgba(251,191,36,0.6)" }}
+                style={{ WebkitTextStroke: "1.5px rgba(180,130,20,0.6)" }}
               >
                 Your story.
               </span>
               <br />
-              <span className="bg-linear-to-r from-amber-300 to-orange-400 bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-amber-500 to-orange-500 dark:from-amber-300 dark:to-orange-400 bg-clip-text text-transparent">
                 Your network.
               </span>
             </motion.h2>
@@ -76,7 +75,7 @@ export function CTABanner() {
                 delay: 0.2,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="text-base md:text-lg text-stone-400 max-w-lg mx-auto leading-relaxed mb-12"
+              className="text-base md:text-lg text-stone-500 dark:text-stone-400 max-w-lg mx-auto leading-relaxed mb-12"
             >
               Create your free account to access the forum, explore your family
               tree, and become part of the Tumin Dhanbari digital community.
@@ -97,14 +96,14 @@ export function CTABanner() {
               <Link href="/sign-up">
                 <Button
                   size="lg"
-                  className="group h-14 rounded-full bg-amber-400 hover:bg-amber-300 px-10 text-base font-bold text-stone-950 shadow-xl shadow-amber-400/20 hover:shadow-amber-400/30 border-0 transition-all duration-300 hover:scale-105"
+                  className="group h-14 rounded-full bg-amber-500 hover:bg-amber-400 dark:bg-amber-400 dark:hover:bg-amber-300 px-10 text-base font-bold text-white dark:text-stone-950 shadow-xl shadow-amber-400/20 hover:shadow-amber-400/30 border-0 transition-all duration-300 hover:scale-105"
                 >
                   Register Now — It's Free
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
-              <Link href="/about">
-                <span className="text-sm font-medium text-stone-400 hover:text-stone-200 underline underline-offset-4 decoration-stone-700 hover:decoration-stone-400 transition-all duration-200 cursor-pointer">
+              <Link href="/about-us">
+                <span className="text-sm font-medium text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 underline underline-offset-4 decoration-stone-300 dark:decoration-stone-700 hover:decoration-stone-500 dark:hover:decoration-stone-400 transition-all duration-200 cursor-pointer">
                   Learn more about us
                 </span>
               </Link>
@@ -116,7 +115,7 @@ export function CTABanner() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7, delay: 0.45 }}
-              className="mt-8 text-xs text-stone-600 font-medium"
+              className="mt-8 text-xs text-stone-400 dark:text-stone-600 font-medium"
             >
               Free to join · No credit card required · Trusted by 500+ members
             </motion.p>

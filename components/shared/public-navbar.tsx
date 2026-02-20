@@ -25,7 +25,7 @@ import { motion } from "framer-motion";
 
 const navLinks = [
   { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
+  { href: "/about-us", label: "About" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -49,7 +49,7 @@ export function PublicNavbar() {
         "fixed top-0 left-0 right-0 z-50 w-full transition-all duration-500",
         scrolled
           ? "border-b border-stone-900/10 dark:border-white/5 bg-stone-50/90 dark:bg-stone-950/90 backdrop-blur-xl shadow-sm shadow-black/5"
-          : "border-transparent bg-transparent hover:text-black hover:border-white"
+          : "border-transparent bg-transparent text-white"
       )}
     >
       <div className="flex h-18 w-full max-w-full items-center px-5 sm:px-8 lg:px-10 gap-8">
@@ -93,7 +93,7 @@ export function PublicNavbar() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 rounded-full px-5 text-sm font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors duration-200"
+                className="h-9 rounded-full px-5 text-sm font-semibold bg-violet-500 hover:bg-violet-600 dark:bg-black dark:hover:bg-stone-500 hover:text-white dark:text-white text-white border-0 shadow-none transition-all duration-200 hover:scale-[1.02]"
               >
                 Log in
               </Button>
@@ -101,7 +101,7 @@ export function PublicNavbar() {
             <SignUpButton>
               <Button
                 size="sm"
-                className="h-9 rounded-full px-5 text-sm font-semibold bg-stone-900 hover:bg-stone-700 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-stone-950 text-white border-0 shadow-none transition-all duration-200 hover:scale-[1.03]"
+                className="h-9 rounded-full px-5 text-sm font-semibold bg-stone-900 hover:bg-stone-700 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-stone-950 text-white border-0 shadow-none transition-all duration-200 hover:scale-[1.02]"
               >
                 Register
               </Button>

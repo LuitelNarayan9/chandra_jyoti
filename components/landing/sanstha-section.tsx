@@ -134,7 +134,7 @@ export function SansthaSection() {
                     className="group relative flex items-start gap-6 py-6 cursor-default"
                   >
                     {/* Number badge */}
-                    <div className="relative z-10 flex h-[4.7rem] w-[4.7rem] shrink-0 items-center justify-center rounded-full border-2 border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950 group-hover:border-amber-400 group-hover:bg-amber-400 transition-all duration-300">
+                    <div className="relative z-10 flex h-[4.7rem] w-[4.7rem] shrink-0 items-center justify-center rounded-full border-2 border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950 group-hover:border-amber-400 dark:group-hover:bg-amber-400 dark:group-hover:border-amber-400 group-hover:bg-amber-400 transition-all duration-300">
                       <span className="font-(family-name:--font-outfit) text-sm font-black text-stone-400 dark:text-stone-500 group-hover:text-stone-950 transition-colors duration-300">
                         {obj.num}
                       </span>

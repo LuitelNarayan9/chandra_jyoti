@@ -69,7 +69,7 @@ const stats = [
 
 export function StatsCounter() {
   return (
-    <section className="relative py-24 md:py-32 bg-stone-900 dark:bg-stone-950 overflow-hidden transition-colors">
+    <section className="relative py-24 md:py-32 bg-white dark:bg-stone-900 overflow-hidden transition-colors">
       {/* Ambient glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-amber-500/5 blur-[120px]" />
@@ -86,20 +86,22 @@ export function StatsCounter() {
         >
           <div className="flex items-center justify-center gap-3 mb-5">
             <div className="h-px w-8 bg-amber-500" />
-            <span className="text-xs font-bold uppercase tracking-[0.3em] text-amber-400">
+            <span className="text-xs font-bold uppercase tracking-[0.3em] text-amber-600 dark:text-amber-400">
               By the Numbers
             </span>
             <div className="h-px w-8 bg-amber-500" />
           </div>
-          <h2 className="font-(family-name:--font-outfit) text-[clamp(2rem,4vw,3.5rem)] font-black tracking-tighter text-stone-50 leading-tight">
+          <h2 className="font-(family-name:--font-outfit) text-[clamp(2rem,4vw,3.5rem)] font-black tracking-tighter text-stone-900 dark:text-stone-50 leading-tight">
             The strength of our community
             <br />
-            <span className="text-stone-500">in plain sight.</span>
+            <span className="text-stone-400 dark:text-stone-500">
+              in plain sight.
+            </span>
           </h2>
         </motion.div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 rounded-2xl border border-stone-800 overflow-hidden">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 rounded-2xl border border-stone-200 dark:border-stone-800 overflow-hidden">
           {stats.map((stat, idx) => (
             <motion.div
               key={idx}
@@ -111,15 +113,17 @@ export function StatsCounter() {
                 delay: idx * 0.1,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className={`group relative flex flex-col items-start justify-end min-w-0 p-6 md:p-8 lg:p-10 bg-stone-900 dark:bg-stone-950 hover:bg-stone-800/50 transition-colors duration-300 ${
-                idx < stats.length - 1 ? "border-r border-stone-800" : ""
-              } ${idx < 2 ? "border-b lg:border-b-0 border-stone-800" : ""}`}
+              className={`group relative flex flex-col items-start justify-end min-w-0 p-6 md:p-8 lg:p-10 bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors duration-300 ${
+                idx < stats.length - 1
+                  ? "border-r border-stone-200 dark:border-stone-800"
+                  : ""
+              } ${idx < 2 ? "border-b lg:border-b-0 border-stone-200 dark:border-stone-800" : ""}`}
             >
               {/* Top accent line on hover */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-amber-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-out origin-left" />
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-amber-500 dark:bg-amber-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-out origin-left" />
 
               {/* Stat number */}
-              <div className="w-full font-(family-name:--font-outfit) text-[clamp(2rem,3.5vw,3.75rem)] font-black leading-none tracking-tighter text-stone-50 mb-3 whitespace-nowrap">
+              <div className="w-full font-(family-name:--font-outfit) text-[clamp(2rem,3.5vw,3.75rem)] font-black leading-none tracking-tighter text-stone-900 dark:text-stone-50 mb-3 whitespace-nowrap">
                 <CountUp
                   end={stat.value}
                   prefix={stat.prefix}
@@ -128,11 +132,11 @@ export function StatsCounter() {
               </div>
 
               {/* Label */}
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400 mb-1">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400 mb-1">
                 {stat.label}
               </p>
               {/* Description */}
-              <p className="text-xs text-stone-600 group-hover:text-stone-500 transition-colors duration-300">
+              <p className="text-xs text-stone-400 dark:text-stone-600 group-hover:text-stone-500 dark:group-hover:text-stone-500 transition-colors duration-300">
                 {stat.description}
               </p>
             </motion.div>

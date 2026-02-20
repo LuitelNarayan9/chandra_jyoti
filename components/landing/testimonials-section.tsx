@@ -44,11 +44,41 @@ const testimonials = [
 
 const DURATION = 6000;
 
-// Matrix characters — katakana + latin + digits
 const MATRIX_CHARS =
   "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-function MatrixRain() {
+// Detects the current dark mode state and keeps it in sync
+function useDarkMode() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Read initial state from the `dark` class Tailwind puts on <html>
+    const check = () =>
+      setIsDark(document.documentElement.classList.contains("dark"));
+
+    check();
+
+    // Watch for class mutations (Tailwind / next-themes toggle)
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    // Also watch OS-level preference as a fallback
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", check);
+
+    return () => {
+      observer.disconnect();
+      mq.removeEventListener("change", check);
+    };
+  }, []);
+
+  return isDark;
+}
+
+function MatrixRain({ isDark }: { isDark: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
 
@@ -66,7 +96,6 @@ function MatrixRain() {
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
       columns = Math.floor(canvas.width / FONT_SIZE);
-      // Stagger initial drop positions so it doesn't all start from top at once
       drops = Array.from({ length: columns }, () =>
         Math.floor(Math.random() * -50)
       );
@@ -77,7 +106,7 @@ function MatrixRain() {
     ro.observe(canvas);
 
     let lastTime = 0;
-    const FPS = 18; // gentle drip pace
+    const FPS = 18;
     const interval = 1000 / FPS;
 
     const draw = (time: number) => {
@@ -85,8 +114,10 @@ function MatrixRain() {
       if (time - lastTime < interval) return;
       lastTime = time;
 
-      // Fade trail — dark semi-transparent fill
-      ctx.fillStyle = "rgba(2, 10, 4, 0.2)";
+      // Trail fade — white in light mode, near-black in dark mode
+      ctx.fillStyle = isDark
+        ? "rgba(2, 10, 4, 0.2)"
+        : "rgba(255, 255, 255, 0.25)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.font = `${FONT_SIZE}px monospace`;
@@ -97,22 +128,23 @@ function MatrixRain() {
         const x = i * FONT_SIZE;
         const y = drops[i] * FONT_SIZE;
 
-        // Brightest character at the head of each column
         if (drops[i] >= 0) {
-          // Head: near-white green
-          ctx.fillStyle = "rgba(200, 255, 210, 0.95)";
+          // Head glyph — bright white-green in dark, vivid green in light
+          ctx.fillStyle = isDark
+            ? "rgba(200, 255, 210, 0.95)"
+            : "rgba(0, 180, 50, 1)";
           ctx.fillText(char, x, y);
 
-          // Slightly behind: pure bright green for the "trail head"
           if (drops[i] > 1) {
-            ctx.fillStyle = "rgba(0, 255, 65, 0.8)";
+            ctx.fillStyle = isDark
+              ? "rgba(0, 255, 65, 0.8)"
+              : "rgba(0, 150, 40, 0.75)";
             const prevChar =
               MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
             ctx.fillText(prevChar, x, (drops[i] - 1) * FONT_SIZE);
           }
         }
 
-        // Reset column when it goes past the bottom
         if (y > canvas.height && Math.random() > 0.975) {
           drops[i] = Math.floor(Math.random() * -20);
         }
@@ -126,7 +158,8 @@ function MatrixRain() {
       cancelAnimationFrame(animRef.current);
       ro.disconnect();
     };
-  }, []);
+    // Re-run when dark mode toggles so the trail color updates immediately
+  }, [isDark]);
 
   return (
     <canvas
@@ -138,6 +171,8 @@ function MatrixRain() {
 }
 
 export function TestimonialsSection() {
+  const isDark = useDarkMode();
+
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -193,6 +228,59 @@ export function TestimonialsSection() {
 
   const t = testimonials[current];
 
+  // ── Theme-aware colour tokens ──────────────────────────────────────────────
+  // Green shades that are readable in both modes
+  const green = {
+    // Matrix accent greens
+    strong: isDark ? "rgba(0,255,65,0.85)" : "rgba(0,150,45,0.9)",
+    mid: isDark ? "rgba(0,255,65,0.55)" : "rgba(0,130,40,0.75)",
+    muted: isDark ? "rgba(0,255,65,0.32)" : "rgba(0,110,35,0.55)",
+    faint: isDark ? "rgba(0,255,65,0.18)" : "rgba(0,110,35,0.2)",
+    xfaint: isDark ? "rgba(0,255,65,0.1)" : "rgba(0,110,35,0.08)",
+    // Decorative giant number
+    giant: isDark ? "rgba(0,255,65,0.045)" : "rgba(0,120,40,0.07)",
+    // Quote mark SVG fill
+    quoteMark: isDark ? "rgba(0,255,65,0.22)" : "rgba(0,130,40,0.25)",
+    // Card border
+    cardBorder: isDark ? "rgba(0,255,65,0.1)" : "rgba(0,120,40,0.15)",
+    // Progress bar
+    progress: isDark ? "rgba(0,255,65,0.7)" : "rgba(0,140,45,0.75)",
+    progressBg: isDark ? "rgba(0,255,65,0.1)" : "rgba(0,120,40,0.12)",
+    progressGlow: isDark ? "rgba(0,255,65,0.6)" : "rgba(0,140,45,0.5)",
+    // Nav arrows
+    arrowBg: isDark ? "rgba(0,20,5,0.5)" : "rgba(240,255,243,0.8)",
+    arrowBgHover: isDark ? "rgba(0,255,65,0.08)" : "rgba(0,200,60,0.08)",
+    // Scan lines
+    scanline: isDark ? "rgba(0,255,65,1)" : "rgba(0,140,45,1)",
+    // Divider gradient
+    divider: isDark
+      ? `linear-gradient(to bottom, transparent, rgba(0,255,65,0.3), ${t.accentColor}55, transparent)`
+      : `linear-gradient(to bottom, transparent, rgba(0,130,40,0.35), ${t.accentColor}55, transparent)`,
+    // Gradient border on card
+    cardGradient: isDark
+      ? `linear-gradient(135deg, rgba(0,255,65,0.18), transparent 45%, ${t.accentColor}22)`
+      : `linear-gradient(135deg, rgba(0,140,45,0.2), transparent 45%, ${t.accentColor}22)`,
+  };
+
+  const bg = {
+    section: isDark ? "#020a04" : "#ffffff",
+    veil: isDark
+      ? "radial-gradient(ellipse 90% 75% at 50% 50%, rgba(2,12,5,0.62) 0%, rgba(2,10,4,0.88) 100%)"
+      : "radial-gradient(ellipse 90% 75% at 50% 50%, rgba(255,255,255,0.5) 0%, rgba(240,255,243,0.72) 100%)",
+    card: isDark ? "rgba(2, 15, 5, 0.78)" : "rgba(255, 255, 255, 0.85)",
+  };
+
+  const text = {
+    heading: isDark ? "text-stone-50" : "text-stone-900",
+    body: isDark ? "text-stone-100" : "text-stone-800",
+    name: isDark ? "text-stone-100" : "text-stone-900",
+    counter: isDark ? "rgba(0,255,65,0.4)" : "rgba(0,120,40,0.5)",
+    counterSep: isDark ? "rgba(0,255,65,0.18)" : "rgba(0,100,35,0.25)",
+    pause: isDark ? "rgba(0,255,65,0.38)" : "rgba(0,120,40,0.45)",
+  };
+
+  // ──────────────────────────────────────────────────────────────────────────
+
   const avatarVariants = {
     enter: { scale: 0.6, opacity: 0, rotate: -15 },
     center: {
@@ -239,27 +327,24 @@ export function TestimonialsSection() {
 
   return (
     <section
-      className="relative py-28 md:py-40 overflow-hidden"
-      style={{ background: "#020a04" }}
+      className="relative py-28 md:py-40 overflow-hidden transition-colors duration-500"
+      style={{ background: bg.section }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
       {/* ── Layer 1: Matrix rain canvas ── */}
-      <MatrixRain />
+      <MatrixRain isDark={isDark} />
 
-      {/* ── Layer 2: Blur pass — softens the matrix so it reads as texture ── */}
+      {/* ── Layer 2: Blur pass ── */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ backdropFilter: "blur(2.5px)" }}
       />
 
-      {/* ── Layer 3: Radial dark veil — keeps center readable ── */}
+      {/* ── Layer 3: Radial veil ── */}
       <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 90% 75% at 50% 50%, rgba(2,12,5,0.62) 0%, rgba(2,10,4,0.88) 100%)",
-        }}
+        className="absolute inset-0 pointer-events-none transition-all duration-500"
+        style={{ background: bg.veil }}
       />
 
       {/* ── Layer 4: Per-testimonial accent glow ── */}
@@ -274,7 +359,7 @@ export function TestimonialsSection() {
         >
           <div
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] rounded-full blur-[180px]"
-            style={{ background: t.accentColor, opacity: 0.1 }}
+            style={{ background: t.accentColor, opacity: isDark ? 0.1 : 0.06 }}
           />
         </motion.div>
       </AnimatePresence>
@@ -289,7 +374,7 @@ export function TestimonialsSection() {
             exit={{ y: -60, opacity: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="font-(family-name:--font-outfit) font-black leading-none tracking-tighter block text-[8rem] md:text-[12rem]"
-            style={{ color: "rgba(0,255,65,0.045)" }}
+            style={{ color: green.giant }}
           >
             {t.index}
           </motion.span>
@@ -307,30 +392,29 @@ export function TestimonialsSection() {
           className="mb-20 md:mb-24"
         >
           <div className="flex items-center gap-3 mb-5">
-            <div
-              className="h-px w-10"
-              style={{ background: "rgba(0,255,65,0.5)" }}
-            />
+            <div className="h-px w-10" style={{ background: green.mid }} />
             <span
               className="text-[10px] font-bold uppercase tracking-[0.4em]"
-              style={{ color: "rgba(0,255,65,0.65)" }}
+              style={{ color: green.mid }}
             >
               Community Voices
             </span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <h2 className="font-(family-name:--font-outfit) text-[clamp(3rem,6vw,5.5rem)] font-black leading-[0.88] tracking-tighter text-stone-50">
+            <h2
+              className={`font-(family-name:--font-outfit) text-[clamp(3rem,6vw,5.5rem)] font-black leading-[0.88] tracking-tighter ${text.heading}`}
+            >
               Heard from
               <br />
-              <span style={{ color: "rgba(0,220,65,0.72)" }}>our people.</span>
+              <span style={{ color: green.strong }}>our people.</span>
             </h2>
 
             {/* Counter + nav arrows */}
             <div className="flex items-center gap-4">
               <span
                 className="text-xs tabular-nums hidden sm:block"
-                style={{ color: "rgba(0,255,65,0.4)" }}
+                style={{ color: text.counter }}
               >
                 <AnimatePresence mode="wait">
                   <motion.span
@@ -344,7 +428,7 @@ export function TestimonialsSection() {
                     {String(current + 1).padStart(2, "0")}
                   </motion.span>
                 </AnimatePresence>
-                <span className="mx-1" style={{ color: "rgba(0,255,65,0.18)" }}>
+                <span className="mx-1" style={{ color: text.counterSep }}>
                   /
                 </span>
                 {String(testimonials.length).padStart(2, "0")}
@@ -361,20 +445,20 @@ export function TestimonialsSection() {
                     aria-label={label}
                     className="group h-11 w-11 rounded-full flex items-center justify-center transition-all duration-200"
                     style={{
-                      border: "1px solid rgba(0,255,65,0.18)",
-                      color: "rgba(0,255,65,0.45)",
-                      background: "rgba(0,20,5,0.5)",
+                      border: `1px solid ${green.faint}`,
+                      color: green.mid,
+                      background: green.arrowBg,
                       backdropFilter: "blur(12px)",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "rgba(0,255,65,0.55)";
-                      e.currentTarget.style.color = "rgba(0,255,65,1)";
-                      e.currentTarget.style.background = "rgba(0,255,65,0.08)";
+                      e.currentTarget.style.borderColor = green.mid;
+                      e.currentTarget.style.color = green.strong;
+                      e.currentTarget.style.background = green.arrowBgHover;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "rgba(0,255,65,0.18)";
-                      e.currentTarget.style.color = "rgba(0,255,65,0.45)";
-                      e.currentTarget.style.background = "rgba(0,20,5,0.5)";
+                      e.currentTarget.style.borderColor = green.faint;
+                      e.currentTarget.style.color = green.mid;
+                      e.currentTarget.style.background = green.arrowBg;
                     }}
                   >
                     <svg
@@ -408,27 +492,24 @@ export function TestimonialsSection() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.7 }}
               className="absolute -inset-px rounded-[2rem] pointer-events-none"
-              style={{
-                background: `linear-gradient(135deg, rgba(0,255,65,0.18), transparent 45%, ${t.accentColor}22)`,
-              }}
+              style={{ background: green.cardGradient }}
             />
           </AnimatePresence>
 
           <div
-            className="rounded-[2rem] p-8 md:p-14 overflow-hidden relative"
+            className="rounded-[2rem] p-8 md:p-14 overflow-hidden relative transition-colors duration-500"
             style={{
-              background: "rgba(2, 15, 5, 0.78)",
+              background: bg.card,
               backdropFilter: "blur(28px)",
-              border: "1px solid rgba(0,255,65,0.1)",
+              border: `1px solid ${green.cardBorder}`,
             }}
           >
-            {/* CRT scanline texture (very subtle) */}
+            {/* CRT scanline texture */}
             <div
               className="absolute inset-0 rounded-[2rem] pointer-events-none"
               style={{
-                backgroundImage:
-                  "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,65,1) 3px, rgba(0,255,65,1) 4px)",
-                opacity: 0.018,
+                backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, ${green.scanline} 3px, ${green.scanline} 4px)`,
+                opacity: isDark ? 0.018 : 0.008,
               }}
             />
 
@@ -468,18 +549,17 @@ export function TestimonialsSection() {
                     animate="center"
                     exit="exit"
                   >
-                    <p className="font-(family-name:--font-outfit) text-[15px] font-bold text-stone-100 leading-tight">
+                    <p
+                      className={`font-(family-name:--font-outfit) text-[15px] font-bold leading-tight ${text.name}`}
+                    >
                       {t.name}
                     </p>
-                    <p
-                      className="text-xs mt-1"
-                      style={{ color: "rgba(0,255,65,0.55)" }}
-                    >
+                    <p className="text-xs mt-1" style={{ color: green.mid }}>
                       {t.role}
                     </p>
                     <p
                       className="text-xs mt-0.5"
-                      style={{ color: "rgba(0,255,65,0.32)" }}
+                      style={{ color: green.muted }}
                     >
                       {t.location}
                     </p>
@@ -517,9 +597,7 @@ export function TestimonialsSection() {
                   exit={{ scaleY: 0, opacity: 0 }}
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="hidden md:block w-px self-stretch origin-top"
-                  style={{
-                    background: `linear-gradient(to bottom, transparent, rgba(0,255,65,0.3), ${t.accentColor}55, transparent)`,
-                  }}
+                  style={{ background: green.divider }}
                 />
               </AnimatePresence>
 
@@ -537,7 +615,7 @@ export function TestimonialsSection() {
                     <svg width="48" height="36" viewBox="0 0 48 36" fill="none">
                       <path
                         d="M0 36V22.2C0 16.44 1.32 11.52 3.96 7.44C6.72 3.36 10.68 0.84 15.84 0L18 4.44C14.52 5.28 11.94 7.08 10.26 9.84C8.58 12.48 7.8 15.36 7.92 18.48H15.84V36H0ZM26.16 36V22.2C26.16 16.44 27.48 11.52 30.12 7.44C32.88 3.36 36.84 0.84 42 0L44.16 4.44C40.68 5.28 38.1 7.08 36.42 9.84C34.74 12.48 33.96 15.36 34.08 18.48H42V36H26.16Z"
-                        fill="rgba(0,255,65,0.22)"
+                        fill={green.quoteMark}
                       />
                     </svg>
                   </motion.div>
@@ -553,7 +631,7 @@ export function TestimonialsSection() {
                     exit="exit"
                     onAnimationStart={() => setIsAnimating(true)}
                     onAnimationComplete={() => setIsAnimating(false)}
-                    className="font-(family-name:--font-outfit) text-xl md:text-[1.65rem] font-medium leading-[1.4] tracking-tight text-stone-100"
+                    className={`font-(family-name:--font-outfit) text-xl md:text-[1.65rem] font-medium leading-[1.4] tracking-tight ${text.body}`}
                   >
                     {t.quote}
                   </motion.blockquote>
@@ -578,12 +656,11 @@ export function TestimonialsSection() {
                   style={{
                     width: current === idx ? "2rem" : "0.5rem",
                     height: "0.5rem",
-                    background:
-                      current === idx
-                        ? "rgba(0,255,65,0.85)"
-                        : "rgba(0,255,65,0.2)",
+                    background: current === idx ? green.strong : green.faint,
                     boxShadow:
-                      current === idx ? "0 0 8px rgba(0,255,65,0.5)" : "none",
+                      current === idx
+                        ? `0 0 8px ${green.progressGlow}`
+                        : "none",
                   }}
                 />
               </button>
@@ -593,15 +670,15 @@ export function TestimonialsSection() {
           {/* Progress bar */}
           <div
             className="flex-1 max-w-48 h-px rounded-full relative overflow-hidden"
-            style={{ background: "rgba(0,255,65,0.1)" }}
+            style={{ background: green.progressBg }}
           >
             <div
               className="absolute inset-y-0 left-0 rounded-full"
               style={{
                 width: `${progress}%`,
-                background: "rgba(0,255,65,0.7)",
+                background: green.progress,
                 opacity: paused ? 0.3 : 1,
-                boxShadow: "0 0 6px rgba(0,255,65,0.6)",
+                boxShadow: `0 0 6px ${green.progressGlow}`,
                 transition: "opacity 0.3s",
               }}
             />
@@ -611,7 +688,7 @@ export function TestimonialsSection() {
           <button
             onClick={() => setPaused((p) => !p)}
             aria-label={paused ? "Resume autoplay" : "Pause autoplay"}
-            style={{ color: "rgba(0,255,65,0.38)" }}
+            style={{ color: text.pause }}
             className="transition-opacity hover:opacity-80"
           >
             {paused ? (
