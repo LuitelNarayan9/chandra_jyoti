@@ -1,7 +1,10 @@
+"use client";
+
 import { SignUp } from "@clerk/nextjs";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 const benefits = [
   "Connect with family members",
@@ -14,10 +17,15 @@ export default function SignUpPage() {
   return (
     <div className="flex min-h-screen w-full bg-background">
       {/* Left Panel - Brand / Visual */}
-      <div className="relative hidden w-1/2 flex-col justify-between bg-zinc-900 p-10 text-white lg:flex xl:w-2/5">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="relative hidden w-1/2 flex-col justify-between bg-zinc-900 p-10 text-white lg:flex xl:w-2/5"
+      >
         {/* Abstract Background Pattern */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -right-[20%] -bottom-[20%] h-[140%] w-[140%] rounded-full bg-gradient-to-tl from-emerald-500/10 via-teal-500/10 to-transparent blur-3xl" />
+          <div className="absolute -right-[20%] -bottom-[20%] h-[140%] w-[140%] rounded-full bg-gradient-to-tl from-emerald-500/10 via-teal-500/10 to-transparent blur-3xl animate-pulse" />
           <svg
             className="absolute inset-0 h-full w-full opacity-[0.03]"
             xmlns="http://www.w3.org/2000/svg"
@@ -57,11 +65,17 @@ export default function SignUpPage() {
           </p>
           
           <div className="space-y-4">
-            {benefits.map((benefit) => (
-              <div key={benefit} className="flex items-center gap-3 text-zinc-300">
+            {benefits.map((benefit, index) => (
+              <motion.div 
+                key={benefit} 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 + (index * 0.1) }}
+                className="flex items-center gap-3 text-zinc-300"
+              >
                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                 <span>{benefit}</span>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -72,10 +86,15 @@ export default function SignUpPage() {
             © {new Date().getFullYear()} Chandra Jyoti Sanstha. All rights reserved.
           </p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Right Panel - Form */}
-      <div className="relative flex w-full flex-col items-center justify-center p-8 lg:w-1/2 xl:w-3/5">
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+        className="relative flex w-full flex-col items-center justify-center p-8 lg:w-1/2 xl:w-3/5"
+      >
         {/* Back Button (Mobile only) */}
         <div className="absolute left-4 top-4 lg:hidden">
           <Button variant="ghost" size="sm" asChild>
@@ -123,7 +142,7 @@ export default function SignUpPage() {
             }}
           />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -1,15 +1,24 @@
+"use client";
+
 import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 export default function SignInPage() {
   return (
     <div className="flex min-h-screen w-full bg-background">
       {/* Left Panel - Brand / Visual */}
-      <div className="relative hidden w-1/2 flex-col justify-between bg-zinc-900 p-10 text-white lg:flex xl:w-2/5">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="relative hidden w-1/2 flex-col justify-between bg-zinc-900 p-10 text-white lg:flex xl:w-2/5"
+      >
         {/* Abstract Background Pattern */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -left-[40%] -top-[40%] h-[180%] w-[180%] rounded-full bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-transparent blur-3xl" />
+          <div className="absolute -left-[40%] -top-[40%] h-[180%] w-[180%] rounded-full bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-transparent blur-3xl animate-pulse" />
           <svg
             className="absolute inset-0 h-full w-full opacity-[0.03]"
             xmlns="http://www.w3.org/2000/svg"
@@ -56,10 +65,15 @@ export default function SignInPage() {
             belonging."
           </blockquote>
         </div>
-      </div>
+      </motion.div>
 
       {/* Right Panel - Form */}
-      <div className="relative flex w-full flex-col items-center justify-center p-8 lg:w-1/2 xl:w-3/5">
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+        className="relative flex w-full flex-col items-center justify-center p-8 lg:w-1/2 xl:w-3/5"
+      >
         {/* Back Button (Mobile only) */}
         <div className="absolute left-4 top-4 lg:hidden">
           <Button variant="ghost" size="sm" asChild>
@@ -106,11 +120,7 @@ export default function SignInPage() {
             }}
           />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
-
-// Simple button component for local use to avoid circular deps if needed, 
-// but we should use the shadcn one usually. Integrating here for cleaner file.
-import { Button } from "@/components/ui/button";
