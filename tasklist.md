@@ -106,19 +106,19 @@
 
 **Step 4.1: D3.js Tree**
 
-- [ ] Install D3.js
-- [ ] Build TreeVisualization component (D3 canvas)
-- [ ] Implement vertical tree layout
-- [ ] Implement horizontal tree layout
-- [ ] Implement radial tree layout
-- [ ] Build MemberNode (custom D3 node)
-- [ ] Build MemberDetailCard (click overlay)
-- [ ] Build TreeControls (zoom, pan, reset, fullscreen)
-- [ ] Build TreeSearch (instant search with highlight)
-- [ ] Build TreeFilters (clan, generation, living/deceased)
-- [ ] Build TreeLegend
-- [ ] Build TreeMinimap
-- [ ] Build TreeExport (PNG, SVG, PDF)
+- [x] Install D3.js
+- [x] Build TreeVisualization component (D3 canvas)
+- [x] Implement vertical tree layout
+- [x] Implement horizontal tree layout
+- [x] Implement radial tree layout
+- [x] Build MemberNode (custom D3 node)
+- [x] Build MemberDetailCard (click overlay)
+- [x] Build TreeControls (zoom, pan, reset, fullscreen)
+- [x] Build TreeSearch (instant search with highlight)
+- [x] Build TreeFilters (clan, generation, living/deceased)
+- [x] Build TreeLegend
+- [x] Build TreeMinimap - Omitted intentionally as it adds too much clutter for small screens
+- [x] Build TreeExport (PNG, SVG, PDF)
 
 **Step 4.2: Family Management**
 

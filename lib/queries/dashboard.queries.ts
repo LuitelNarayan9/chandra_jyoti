@@ -223,7 +223,7 @@ export async function getCommunityActivity(limit = 10): Promise<ActivityItem[]> 
       userAvatar: t.author.avatar,
       userName: `${t.author.firstName} ${t.author.lastName}`,
       createdAt: t.createdAt,
-      link: `/forum/${t.category ? t.categoryId : "general"}/${t.slug}`,
+      link: `/forum/${t.categoryId ?? "general"}/${t.slug}`,
     })),
   ];
 
