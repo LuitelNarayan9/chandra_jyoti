@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { sendTemplateEmail } from "@/lib/mailer";
+import { WelcomeEmail } from "@/components/emails/WelcomeEmail";
 
 const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
@@ -29,8 +31,7 @@ export async function POST(req: Request) {
   }
 
   // 2. Verify webhook signature
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
+  const body = await req.text();
 
   const wh = new Webhook(CLERK_WEBHOOK_SECRET);
   let event: WebhookEvent;
@@ -54,23 +55,42 @@ export async function POST(req: Request) {
     case "user.created": {
       const { id, email_addresses, first_name, last_name, image_url } =
         event.data;
+        
+      const email = email_addresses[0]?.email_address ?? "";
+      const firstName = first_name ?? "";
+      
       await db.user.create({
         data: {
           clerkId: id,
-          email: email_addresses[0]?.email_address ?? "",
-          firstName: first_name ?? "",
+          email: email,
+          firstName: firstName,
           lastName: last_name ?? "",
           avatar: image_url,
           role: "MEMBER",
         },
       });
       console.log(`✅ User created in DB: ${id}`);
+      
+      // ✅ Trigger Welcome Email
+      try {
+        if (email) {
+          console.log(`Sending Welcome Email to: ${email}`);
+          await sendTemplateEmail({
+            to: email,
+            subject: "Welcome to Chandra Jyoti Sanstha! 🎉",
+            template: WelcomeEmail({ firstName }),
+          });
+          console.log(`✅ Welcome Email trigger sent successfully to: ${email}`);
+        }
+      } catch (e) {
+         console.error(`Failed to send Welcome Email to ${email}`, e);
+      }
       break;
     }
 
     case "user.updated": {
-      const { id, email_addresses, first_name, last_name, image_url, banned } =
-        event.data;
+      const data = event.data as any;
+      const { id, email_addresses, first_name, last_name, image_url, banned } = data;
       await db.user.update({
         where: { clerkId: id },
         data: {

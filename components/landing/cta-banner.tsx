@@ -8,7 +8,7 @@ import { ArrowRight } from "lucide-react";
 export function CTABanner() {
   return (
     <section className="relative py-0 overflow-hidden transition-colors">
-      <div className="relative bg-white dark:bg-stone-900">
+      <div className="relative bg-transparent">
         {/* Grid pattern overlay */}
         <div
           className="absolute inset-0 opacity-[0.04] dark:opacity-[0.04]"

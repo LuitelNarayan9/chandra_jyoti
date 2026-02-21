@@ -18,8 +18,15 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useState } from "react";
+
+import { useUser } from "@clerk/nextjs";
 
 const mainNav = [
   { href: "/home", label: "Home", icon: Home },
@@ -32,13 +39,16 @@ const mainNav = [
   { href: "/profile", label: "Profile", icon: User },
 ];
 
-const adminNav = [
-  { href: "/admin", label: "Admin Panel", icon: Shield },
-];
+const adminNav = [{ href: "/admin", label: "Admin Panel", icon: Shield }];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { user } = useUser();
+
+  const isAdmin =
+    user?.publicMetadata?.role === "admin" ||
+    user?.publicMetadata?.role === "ADMIN";
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -51,7 +61,8 @@ export function Sidebar() {
         {/* Nav links */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {mainNav.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            const isActive =
+              pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Tooltip key={item.href}>
                 <TooltipTrigger asChild>
@@ -75,33 +86,37 @@ export function Sidebar() {
             );
           })}
 
-          <Separator className="my-3" />
+          {isAdmin && (
+            <>
+              <Separator className="my-3" />
 
-          {/* Admin section */}
-          {adminNav.map((item) => {
-            const isActive = pathname.startsWith(item.href);
-            return (
-              <Tooltip key={item.href}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              {/* Admin section */}
+              {adminNav.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Tooltip key={item.href}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                          isActive
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        )}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span>{item.label}</span>}
+                      </Link>
+                    </TooltipTrigger>
+                    {collapsed && (
+                      <TooltipContent side="right">{item.label}</TooltipContent>
                     )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span>{item.label}</span>}
-                  </Link>
-                </TooltipTrigger>
-                {collapsed && (
-                  <TooltipContent side="right">{item.label}</TooltipContent>
-                )}
-              </Tooltip>
-            );
-          })}
+                  </Tooltip>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         {/* Collapse toggle */}
@@ -109,7 +124,7 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 w-full"
+            className="h-8 w-8"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (

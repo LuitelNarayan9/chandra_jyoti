@@ -5,12 +5,13 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { Logo } from "@/components/shared/logo";
 
 export default function SignInPage() {
   return (
     <div className="flex min-h-screen w-full bg-background">
       {/* Left Panel - Brand / Visual */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
@@ -39,12 +40,7 @@ export default function SignInPage() {
 
         {/* Brand Header */}
         <div className="relative z-10">
-          <Link href="/" className="flex items-center gap-3 w-fit hover:opacity-90 transition-opacity">
-            <span className="text-3xl">🏛️</span>
-            <span className="text-xl font-bold font-[family-name:var(--font-outfit)] tracking-tight">
-              Chandra Jyoti
-            </span>
-          </Link>
+          <Logo className="w-fit hover:opacity-90 transition-opacity" />
         </div>
 
         {/* Main Content */}
@@ -53,8 +49,8 @@ export default function SignInPage() {
             Welcome back to your community
           </h1>
           <p className="text-lg text-zinc-400 leading-relaxed">
-            Stay connected with the families of Tumin Dhanbari. Access the latest
-            news, events, and preserve our rich heritage together.
+            Stay connected with the families of Tumin Dhanbari. Access the
+            latest news, events, and preserve our rich heritage together.
           </p>
         </div>
 
@@ -68,7 +64,7 @@ export default function SignInPage() {
       </motion.div>
 
       {/* Right Panel - Form */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
@@ -115,7 +111,8 @@ export default function SignInPage() {
                   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
                 socialButtonsBlockButton:
                   "border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                footerActionLink: "text-primary hover:underline underline-offset-4",
+                footerActionLink:
+                  "text-primary hover:underline underline-offset-4",
               },
             }}
           />

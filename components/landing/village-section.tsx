@@ -76,7 +76,7 @@ export function VillageSection() {
   ];
 
   return (
-    <section className="py-24 bg-white dark:bg-slate-950 px-4 transition-colors">
+    <section className="py-24 bg-transparent px-4 transition-colors">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

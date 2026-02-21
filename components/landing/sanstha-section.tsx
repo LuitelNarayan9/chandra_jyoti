@@ -27,7 +27,7 @@ const objectives = [
 
 export function SansthaSection() {
   return (
-    <section className="relative py-28 md:py-36 bg-stone-50 dark:bg-stone-950 px-5 sm:px-8 overflow-hidden transition-colors">
+    <section className="relative py-28 md:py-36 bg-stone-50/40 dark:bg-stone-950/40 px-5 sm:px-8 overflow-hidden transition-colors">
       {/* Decorative large serif quote mark */}
       <div className="absolute -top-8 right-8 font-serif text-[18rem] leading-none text-stone-900/2.5 dark:text-stone-100/3 select-none pointer-events-none">
         ❋

@@ -18,13 +18,13 @@ export function ProtectedNavbar() {
       <div className="flex-1" />
 
       {/* Right actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <ThemeToggle />
         <UserButton
           afterSignOutUrl="/"
           appearance={{
             elements: {
-              avatarBox: "h-8 w-8",
+              avatarBox: "h-14 w-14",
             },
           }}
         />

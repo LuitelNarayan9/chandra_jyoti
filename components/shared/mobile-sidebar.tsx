@@ -2,13 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Home, TreePine, BookOpen, MessageSquare, Newspaper, CreditCard, BarChart3, User, Shield } from "lucide-react";
+import {
+  Menu,
+  Home,
+  TreePine,
+  BookOpen,
+  MessageSquare,
+  Newspaper,
+  CreditCard,
+  BarChart3,
+  User,
+  Shield,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+
+import { useUser } from "@clerk/nextjs";
 
 const mainNav = [
   { href: "/home", label: "Home", icon: Home },
@@ -21,13 +39,16 @@ const mainNav = [
   { href: "/profile", label: "Profile", icon: User },
 ];
 
-const adminNav = [
-  { href: "/admin", label: "Admin Panel", icon: Shield },
-];
+const adminNav = [{ href: "/admin", label: "Admin Panel", icon: Shield }];
 
 export function MobileSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { user } = useUser();
+
+  const isAdmin =
+    user?.publicMetadata?.role === "admin" ||
+    user?.publicMetadata?.role === "ADMIN";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -46,7 +67,8 @@ export function MobileSidebar() {
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
             {mainNav.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isActive =
+                pathname === item.href || pathname.startsWith(item.href + "/");
               return (
                 <Link
                   key={item.href}
@@ -65,27 +87,31 @@ export function MobileSidebar() {
               );
             })}
 
-            <Separator className="my-3" />
+            {isAdmin && (
+              <>
+                <Separator className="my-3" />
 
-            {adminNav.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+                {adminNav.map((item) => {
+                  const isActive = pathname.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </>
+            )}
           </nav>
         </div>
       </SheetContent>

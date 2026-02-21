@@ -65,7 +65,7 @@ export function FeaturesSection() {
   return (
     <section
       id="features"
-      className="relative py-28 md:py-36 bg-stone-50 dark:bg-stone-950 px-5 sm:px-8 overflow-hidden transition-colors"
+      className="relative py-28 md:py-36 bg-stone-50/40 dark:bg-stone-950/40 px-5 sm:px-8 overflow-hidden transition-colors"
     >
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-amber-400/5 dark:bg-amber-400/3 blur-[120px] pointer-events-none" />

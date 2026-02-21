@@ -69,7 +69,7 @@ const stats = [
 
 export function StatsCounter() {
   return (
-    <section className="relative py-24 md:py-32 bg-white dark:bg-stone-900 overflow-hidden transition-colors">
+    <section className="relative py-24 md:py-32 bg-transparent overflow-hidden transition-colors">
       {/* Ambient glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-amber-500/5 blur-[120px]" />

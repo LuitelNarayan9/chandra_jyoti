@@ -18,7 +18,12 @@ export default function DashboardPage() {
         {[
           { label: "Total Members", value: "124", icon: Users, delay: 0.1 },
           { label: "Blog Posts", value: "12", icon: FileText, delay: 0.2 },
-          { label: "Forum Threads", value: "34", icon: MessageSquare, delay: 0.3 },
+          {
+            label: "Forum Threads",
+            value: "34",
+            icon: MessageSquare,
+            delay: 0.3,
+          },
           { label: "Family Members", value: "450", icon: Heart, delay: 0.4 },
         ].map((stat) => (
           <StatsCard
@@ -38,7 +43,7 @@ export default function DashboardPage() {
           transition={{ duration: 0.5, delay: 0.5 }}
           className="rounded-xl border bg-card p-6 shadow-sm"
         >
-          <h2 className="text-xl font-semibold font-[family-name:var(--font-outfit)] mb-4">
+          <h2 className="text-xl font-semibold font-(family-name:--font-outfit) mb-4">
             Recent Activity
           </h2>
           <EmptyState
@@ -55,7 +60,7 @@ export default function DashboardPage() {
           transition={{ duration: 0.5, delay: 0.6 }}
           className="rounded-xl border bg-card p-6 shadow-sm"
         >
-          <h2 className="text-xl font-semibold font-[family-name:var(--font-outfit)] mb-4">
+          <h2 className="text-xl font-semibold font-(family-name:--font-outfit) mb-4">
             Quick Actions
           </h2>
           <div className="grid grid-cols-2 gap-4">

@@ -176,7 +176,8 @@ export function TestimonialsSection() {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const dir = useRef(1);
+  // const dir = useRef(1);
+  const [dir, setDir] = useState<1 | -1>(1);
   const progressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [progress, setProgress] = useState(0);
 
@@ -199,7 +200,7 @@ export function TestimonialsSection() {
   useEffect(() => {
     if (paused) return;
     const id = setInterval(() => {
-      dir.current = 1;
+      setDir(1);
       setCurrent((p) => (p + 1) % testimonials.length);
     }, DURATION);
     return () => clearInterval(id);
@@ -208,7 +209,7 @@ export function TestimonialsSection() {
   const navigate = useCallback(
     (idx: number) => {
       if (isAnimating || idx === current) return;
-      dir.current = idx > current ? 1 : -1;
+      setDir(idx > current ? 1 : -1);
       setCurrent(idx);
     },
     [isAnimating, current]
@@ -216,13 +217,13 @@ export function TestimonialsSection() {
 
   const prev = () => {
     if (isAnimating) return;
-    dir.current = -1;
+    setDir(-1);
     setCurrent((p) => (p - 1 + testimonials.length) % testimonials.length);
   };
 
   const next = () => {
     if (isAnimating) return;
-    dir.current = 1;
+    setDir(1);
     setCurrent((p) => (p + 1) % testimonials.length);
   };
 
@@ -282,7 +283,11 @@ export function TestimonialsSection() {
   // ──────────────────────────────────────────────────────────────────────────
 
   const avatarVariants = {
-    enter: { scale: 0.6, opacity: 0, rotate: -15 },
+    enter: (d: number) => ({
+      scale: 0.6,
+      opacity: 0,
+      rotate: d > 0 ? -15 : 15,
+    }),
     center: {
       scale: 1,
       opacity: 1,
@@ -294,35 +299,62 @@ export function TestimonialsSection() {
         delay: 0.15,
       },
     },
-    exit: { scale: 0.6, opacity: 0, rotate: 15, transition: { duration: 0.2 } },
+    exit: (d: number) => ({
+      scale: 0.6,
+      opacity: 0,
+      rotate: d > 0 ? 15 : -15,
+      transition: { duration: 0.2 },
+    }),
   };
 
   const quoteVariants = {
-    enter: { y: 30, opacity: 0 },
+    enter: (d: number) => ({
+      scale: 0.6,
+      opacity: 0,
+      rotate: d > 0 ? -15 : 15,
+    }),
     center: {
-      y: 0,
+      scale: 1,
       opacity: 1,
+      rotate: 0,
       transition: {
-        duration: 0.6,
-        ease: [0.22, 1, 0.36, 1] as const,
-        delay: 0.1,
+        type: "spring" as const,
+        stiffness: 400,
+        damping: 25,
+        delay: 0.15,
       },
     },
-    exit: { y: -20, opacity: 0, transition: { duration: 0.25 } },
+    exit: (d: number) => ({
+      scale: 0.6,
+      opacity: 0,
+      rotate: d > 0 ? 15 : -15,
+      transition: { duration: 0.2 },
+    }),
   };
 
   const metaVariants = {
-    enter: { y: 16, opacity: 0 },
+    enter: (d: number) => ({
+      scale: 0.6,
+      opacity: 0,
+      rotate: d > 0 ? -15 : 15,
+    }),
     center: {
-      y: 0,
+      scale: 1,
       opacity: 1,
+      rotate: 0,
       transition: {
-        duration: 0.5,
-        ease: [0.22, 1, 0.36, 1] as const,
-        delay: 0.25,
+        type: "spring" as const,
+        stiffness: 400,
+        damping: 25,
+        delay: 0.15,
       },
     },
-    exit: { y: -10, opacity: 0, transition: { duration: 0.2 } },
+    exit: (d: number) => ({
+      scale: 0.6,
+      opacity: 0,
+      rotate: d > 0 ? 15 : -15,
+      transition: { duration: 0.2 },
+    }),
   };
 
   return (
@@ -516,10 +548,10 @@ export function TestimonialsSection() {
             <div className="relative grid md:grid-cols-[auto_1px_1fr] gap-10 md:gap-16">
               {/* Left: avatar + meta */}
               <div className="flex md:flex-col items-center md:items-start gap-6 shrink-0 md:w-44">
-                <AnimatePresence mode="wait" custom={dir.current}>
+                <AnimatePresence mode="wait" custom={dir}>
                   <motion.div
                     key={t.id + "-avatar"}
-                    custom={dir.current}
+                    custom={dir}
                     variants={avatarVariants}
                     initial="enter"
                     animate="center"
@@ -540,10 +572,10 @@ export function TestimonialsSection() {
                   </motion.div>
                 </AnimatePresence>
 
-                <AnimatePresence mode="wait" custom={dir.current}>
+                <AnimatePresence mode="wait" custom={dir}>
                   <motion.div
                     key={t.id + "-meta"}
-                    custom={dir.current}
+                    custom={dir}
                     variants={metaVariants}
                     initial="enter"
                     animate="center"
@@ -621,10 +653,10 @@ export function TestimonialsSection() {
                   </motion.div>
                 </AnimatePresence>
 
-                <AnimatePresence mode="wait" custom={dir.current}>
+                <AnimatePresence mode="wait" custom={dir}>
                   <motion.blockquote
                     key={t.id + "-quote"}
-                    custom={dir.current}
+                    custom={dir}
                     variants={quoteVariants}
                     initial="enter"
                     animate="center"
