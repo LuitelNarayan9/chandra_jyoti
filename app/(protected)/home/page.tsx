@@ -1,77 +1,93 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getCurrentDbUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/auth";
+import {
+  getDashboardStats,
+  getRecentBlogPosts,
+  getActiveForumThreads,
+  getNewsHighlights,
+  getCommunityActivity,
+  getAdminOverview,
+  getSystemHealth,
+} from "@/lib/queries/dashboard.queries";
 
-import { PageHeader } from "@/components/shared/page-header";
-import { StatsCard } from "@/components/shared/stats-card";
-import { EmptyState } from "@/components/shared/empty-state";
-import { Users, FileText, MessageSquare, Heart, Activity } from "lucide-react";
-import { motion } from "framer-motion";
+import { WelcomeBanner } from "@/components/dashboard/welcome-banner";
+import { QuickStats } from "@/components/dashboard/quick-stats";
+import { RecentBlogPosts } from "@/components/dashboard/recent-blog-posts";
+import { ActiveForumThreads } from "@/components/dashboard/active-forum-threads";
+import { NewsHighlights } from "@/components/dashboard/news-highlights";
+import { CommunityActivityFeed } from "@/components/dashboard/community-activity-feed";
+import { QuickActions } from "@/components/dashboard/quick-actions";
+import { AdminOverview } from "@/components/dashboard/admin-overview";
+import { SystemHealth } from "@/components/dashboard/system-health";
 
-export default function DashboardPage() {
+export const metadata = {
+  title: "Dashboard",
+  description: "Your community dashboard — everything at a glance.",
+};
+
+export default async function DashboardPage() {
+  const user = await getCurrentDbUser();
+  if (!user) redirect("/sign-in");
+
+  const isAdmin = hasPermission(user.role, "ADMIN");
+  const isSuperAdmin = hasPermission(user.role, "SUPER_ADMIN");
+
+  // Fetch all data in parallel
+  const [stats, recentPosts, activeThreads, newsArticles, activities] =
+    await Promise.all([
+      getDashboardStats(),
+      getRecentBlogPosts(),
+      getActiveForumThreads(),
+      getNewsHighlights(),
+      getCommunityActivity(),
+    ]);
+
+  // Admin-only data
+  const adminData = isAdmin ? await getAdminOverview() : null;
+
+  // Super Admin-only data
+  const systemData = isSuperAdmin ? await getSystemHealth() : null;
+
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Dashboard"
-        description="Welcome back to your community dashboard."
+    <div className="space-y-6 pb-8">
+      {/* Welcome Banner */}
+      <WelcomeBanner
+        firstName={user.firstName}
+        lastName={user.lastName}
+        avatar={user.avatar}
+        role={user.role}
+        pendingApprovals={adminData?.pendingApprovals}
+        pendingReports={adminData?.pendingReports}
+        pendingFines={adminData?.pendingFines}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Total Members", value: "124", icon: Users, delay: 0.1 },
-          { label: "Blog Posts", value: "12", icon: FileText, delay: 0.2 },
-          {
-            label: "Forum Threads",
-            value: "34",
-            icon: MessageSquare,
-            delay: 0.3,
-          },
-          { label: "Family Members", value: "450", icon: Heart, delay: 0.4 },
-        ].map((stat) => (
-          <StatsCard
-            key={stat.label}
-            title={stat.label}
-            value={stat.value}
-            icon={stat.icon}
-            delay={stat.delay}
-          />
-        ))}
+      {/* Quick Stats */}
+      <QuickStats stats={stats} role={user.role} />
+
+      {/* Admin Overview (ADMIN+ only) */}
+      {isAdmin && adminData && <AdminOverview data={adminData} />}
+
+      {/* System Health (SUPER_ADMIN only) */}
+      {isSuperAdmin && systemData && <SystemHealth data={systemData} />}
+
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left column: Blog Posts + Forum Threads */}
+        <div className="lg:col-span-2 space-y-6">
+          <RecentBlogPosts posts={recentPosts} />
+          <ActiveForumThreads threads={activeThreads} />
+        </div>
+
+        {/* Right column: News + Activity Feed */}
+        <div className="space-y-6">
+          <NewsHighlights articles={newsArticles} />
+          <CommunityActivityFeed activities={activities} />
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 pb-10">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="rounded-xl border bg-card p-6 shadow-sm"
-        >
-          <h2 className="text-xl font-semibold font-(family-name:--font-outfit) mb-4">
-            Recent Activity
-          </h2>
-          <EmptyState
-            icon={Activity}
-            title="No recent activity"
-            description="When members post or interact, you'll see it here."
-            className="border-dashed"
-          />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="rounded-xl border bg-card p-6 shadow-sm"
-        >
-          <h2 className="text-xl font-semibold font-(family-name:--font-outfit) mb-4">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Placeholders for actions */}
-            <div className="h-24 rounded-lg bg-muted/50 animate-pulse" />
-            <div className="h-24 rounded-lg bg-muted/50 animate-pulse" />
-            <div className="h-24 rounded-lg bg-muted/50 animate-pulse" />
-            <div className="h-24 rounded-lg bg-muted/50 animate-pulse" />
-          </div>
-        </motion.div>
-      </div>
+      {/* Quick Actions */}
+      <QuickActions role={user.role} />
     </div>
   );
 }
