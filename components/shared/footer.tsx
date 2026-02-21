@@ -20,7 +20,7 @@ const quickLinks = [
   { href: "/about-us", label: "About Us" },
   { href: "/events", label: "Events" },
   { href: "/blog", label: "Blog" },
-  { href: "/contact", label: "Contact" },
+  { href: "/contact-us", label: "Contact" },
 ];
 
 const legalLinks = [

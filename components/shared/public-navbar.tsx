@@ -26,7 +26,7 @@ import { motion } from "framer-motion";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/about-us", label: "About" },
-  { href: "/contact", label: "Contact" },
+  { href: "/contact-us", label: "Contact" },
 ];
 
 export function PublicNavbar() {
