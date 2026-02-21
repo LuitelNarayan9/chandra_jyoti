@@ -5,8 +5,46 @@ import { render } from "@react-email/render";
 import { ContactNotificationEmail } from "@/components/emails/ContactNotificationEmail";
 import { ContactConfirmationEmail } from "@/components/emails/ContactConfirmationEmail";
 
+/* ── In-memory rate limiter (per IP, 3 requests / 15 min) ── */
+const RATE_LIMIT = 3;
+const RATE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+const hits = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = hits.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    hits.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+
+  entry.count += 1;
+  return entry.count > RATE_LIMIT;
+}
+
+// Cleanup stale entries every 30 minutes to prevent memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of hits) {
+    if (now > entry.resetAt) hits.delete(ip);
+  }
+}, 30 * 60 * 1000).unref?.();
+
 export async function POST(req: Request) {
   try {
+    // Rate limit by client IP
+    const forwarded = req.headers.get("x-forwarded-for");
+    const ip = forwarded?.split(",")[0]?.trim() ?? "unknown";
+
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const { name, email, subject, message, phone } = body;
 

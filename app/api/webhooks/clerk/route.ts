@@ -55,23 +55,31 @@ export async function POST(req: Request) {
     case "user.created": {
       const { id, email_addresses, first_name, last_name, image_url } =
         event.data;
-        
+
       const email = email_addresses[0]?.email_address ?? "";
       const firstName = first_name ?? "";
-      
-      await db.user.create({
-        data: {
-          clerkId: id,
-          email: email,
-          firstName: firstName,
-          lastName: last_name ?? "",
-          avatar: image_url,
-          role: "MEMBER",
-        },
-      });
-      console.log(`✅ User created in DB: ${id}`);
-      
-      // ✅ Trigger Welcome Email
+
+      // Upsert to be idempotent if Clerk retries the webhook
+      try {
+        await db.user.upsert({
+          where: { clerkId: id },
+          create: {
+            clerkId: id,
+            email: email,
+            firstName: firstName,
+            lastName: last_name ?? "",
+            avatar: image_url,
+            role: "MEMBER",
+          },
+          update: {},
+        });
+        console.log(`✅ User created in DB: ${id}`);
+      } catch (err) {
+        console.error(`Failed to create user in DB: ${id}`, err);
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
+
+      // Trigger Welcome Email (non-blocking — failure won't affect DB)
       try {
         if (email) {
           console.log(`Sending Welcome Email to: ${email}`);
@@ -80,10 +88,10 @@ export async function POST(req: Request) {
             subject: "Welcome to Chandra Jyoti Sanstha! 🎉",
             template: WelcomeEmail({ firstName }),
           });
-          console.log(`✅ Welcome Email trigger sent successfully to: ${email}`);
+          console.log(`✅ Welcome Email sent successfully to: ${email}`);
         }
       } catch (e) {
-         console.error(`Failed to send Welcome Email to ${email}`, e);
+        console.error(`Failed to send Welcome Email to ${email}`, e);
       }
       break;
     }
@@ -91,28 +99,39 @@ export async function POST(req: Request) {
     case "user.updated": {
       const data = event.data as any;
       const { id, email_addresses, first_name, last_name, image_url, banned } = data;
-      await db.user.update({
-        where: { clerkId: id },
-        data: {
-          email: email_addresses[0]?.email_address,
-          firstName: first_name ?? undefined,
-          lastName: last_name ?? undefined,
-          avatar: image_url ?? undefined,
-          isActive: !banned,
-        },
-      });
-      console.log(`✅ User updated in DB: ${id}`);
+
+      try {
+        await db.user.update({
+          where: { clerkId: id },
+          data: {
+            email: email_addresses[0]?.email_address,
+            firstName: first_name ?? undefined,
+            lastName: last_name ?? undefined,
+            avatar: image_url ?? undefined,
+            isActive: !banned,
+          },
+        });
+        console.log(`✅ User updated in DB: ${id}`);
+      } catch (err) {
+        console.error(`Failed to update user in DB: ${id}`, err);
+        return NextResponse.json({ received: true }, { status: 200 });
+      }
       break;
     }
 
     case "user.deleted": {
       const { id } = event.data;
       if (id) {
-        await db.user.update({
-          where: { clerkId: id },
-          data: { isActive: false },
-        });
-        console.log(`✅ User soft-deleted in DB: ${id}`);
+        try {
+          await db.user.update({
+            where: { clerkId: id },
+            data: { isActive: false },
+          });
+          console.log(`✅ User soft-deleted in DB: ${id}`);
+        } catch (err) {
+          console.error(`Failed to soft-delete user in DB: ${id}`, err);
+          return NextResponse.json({ received: true }, { status: 200 });
+        }
       }
       break;
     }

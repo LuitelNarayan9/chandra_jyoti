@@ -5,7 +5,16 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import UnderlineExtension from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
-import { Bold, Italic, List, ListOrdered, Link as LinkIcon, SplitSquareHorizontal, Quote, Underline } from "lucide-react";
+import {
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Link as LinkIcon,
+  SplitSquareHorizontal,
+  Quote,
+  Underline,
+} from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Separator } from "@/components/ui/separator";
 
@@ -38,6 +47,7 @@ export function RichTextEditor({
     ],
     content: value,
     editable: !disabled,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
@@ -75,39 +85,47 @@ export function RichTextEditor({
           <Toggle
             size="sm"
             pressed={editor.isActive("underline")}
-            onPressedChange={() => editor.chain().focus().toggleUnderline().run()}
+            onPressedChange={() =>
+              editor.chain().focus().toggleUnderline().run()
+            }
           >
-            <Underline className="h-4 w-4" /> {/* Lucide doesn't export UnderlineIcon directly, check imports */}
-             {/* Wait, I imported `Underline` from extension, not icon. Let me check Lucide imports */}
+            <Underline className="h-4 w-4" />{" "}
+            {/* Lucide doesn't export UnderlineIcon directly, check imports */}
+            {/* Wait, I imported `Underline` from extension, not icon. Let me check Lucide imports */}
           </Toggle>
-          
+
           <Separator orientation="vertical" className="mx-1 h-6" />
 
           <Toggle
             size="sm"
             pressed={editor.isActive("bulletList")}
-            onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+            onPressedChange={() =>
+              editor.chain().focus().toggleBulletList().run()
+            }
           >
             <List className="h-4 w-4" />
           </Toggle>
           <Toggle
             size="sm"
             pressed={editor.isActive("orderedList")}
-            onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+            onPressedChange={() =>
+              editor.chain().focus().toggleOrderedList().run()
+            }
           >
             <ListOrdered className="h-4 w-4" />
           </Toggle>
 
-           <Separator orientation="vertical" className="mx-1 h-6" />
+          <Separator orientation="vertical" className="mx-1 h-6" />
 
           <Toggle
-             size="sm"
-             pressed={editor.isActive("blockquote")}
-             onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
+            size="sm"
+            pressed={editor.isActive("blockquote")}
+            onPressedChange={() =>
+              editor.chain().focus().toggleBlockquote().run()
+            }
           >
-             <Quote className="h-4 w-4" />
+            <Quote className="h-4 w-4" />
           </Toggle>
-
         </div>
       )}
       <EditorContent editor={editor} className="p-2" />

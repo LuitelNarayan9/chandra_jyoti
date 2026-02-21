@@ -24,6 +24,7 @@ export function RichTextViewer({ content }: RichTextViewerProps) {
     ],
     content,
     editable: false,
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class: "prose dark:prose-invert max-w-none text-sm leading-relaxed",
