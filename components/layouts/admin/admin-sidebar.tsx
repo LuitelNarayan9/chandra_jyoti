@@ -67,7 +67,7 @@ export function AdminSidebar() {
                 {section.items.map((item) => {
                   const isActive =
                     pathname === item.href ||
-                    pathname.startsWith(item.href + "/");
+                    (!item.exact && pathname.startsWith(item.href + "/"));
                   return (
                     <Tooltip key={item.href}>
                       <TooltipTrigger asChild>

@@ -1,5 +1,5 @@
 "use client";
-
+import type React from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

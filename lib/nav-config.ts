@@ -25,6 +25,7 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string;
+  exact?: boolean;
 }
 
 export interface NavSection {
@@ -74,7 +75,7 @@ export const adminNavSections: NavSection[] = [
   {
     title: "Administration",
     items: [
-      { href: "/admin", label: "Admin Panel", icon: Shield },
+      { href: "/admin", label: "Admin Panel", icon: Shield, exact: true },
       { href: "/admin/users", label: "Manage Users", icon: Users },
       { href: "/admin/reports", label: "Reports", icon: Flag },
       { href: "/admin/fines", label: "Fines", icon: AlertTriangle },
@@ -96,7 +97,7 @@ export const superAdminNavSections: NavSection[] = [
     items: [
       { href: "/home", label: "Dashboard", icon: Home },
       { href: "/analytics", label: "Analytics", icon: BarChart3 },
-      { href: "/admin", label: "Admin Panel", icon: Shield },
+      { href: "/admin", label: "Admin Panel", icon: Shield, exact: true },
     ],
   },
   {

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   Table,
   TableBody,
@@ -14,7 +15,7 @@ interface DataTableProps<T> {
   columns: {
     header: string;
     accessorKey?: keyof T;
-    cell?: (item: T) => React.ReactNode;
+    cell?: (item: T) => ReactNode;
     className?: string;
   }[];
   data: T[];
@@ -93,7 +94,7 @@ export function DataTable<T>({
                   <TableCell key={j} className={col.className}>
                     {col.cell
                       ? col.cell(item)
-                      : (item[col.accessorKey as keyof T] as React.ReactNode)}
+                      : (item[col.accessorKey as keyof T] as ReactNode)}
                   </TableCell>
                 ))}
               </TableRow>

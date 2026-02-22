@@ -43,6 +43,8 @@ export function WelcomeBanner({
   const [formattedDate, setFormattedDate] = useState("");
   const [greeting, setGreeting] = useState("Welcome");
 
+  const [quote, setQuote] = useState("");
+
   useEffect(() => {
     const now = new Date();
     setFormattedDate(
@@ -57,13 +59,13 @@ export function WelcomeBanner({
     if (hour < 12) setGreeting("Good morning");
     else if (hour < 17) setGreeting("Good afternoon");
     else setGreeting("Good evening");
-  }, []);
 
-  // Deterministic quote based on day of year to avoid SSR mismatch
-  const dayOfYear = Math.floor(
-    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
-  );
-  const quote = COMMUNITY_QUOTES[dayOfYear % COMMUNITY_QUOTES.length];
+    // Deterministic quote based on day of year to avoid SSR mismatch
+    const dayOfYear = Math.floor(
+      (Date.now() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000
+    );
+    setQuote(COMMUNITY_QUOTES[dayOfYear % COMMUNITY_QUOTES.length]);
+  }, []);
   const isAdmin = hasPermission(role, "ADMIN");
   const totalPending = pendingApprovals + pendingReports + pendingFines;
 

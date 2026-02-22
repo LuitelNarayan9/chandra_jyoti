@@ -57,7 +57,7 @@ export function AdminMobileSidebar() {
                   {section.items.map((item) => {
                     const isActive =
                       pathname === item.href ||
-                      pathname.startsWith(item.href + "/");
+                      (!item.exact && pathname.startsWith(item.href + "/"));
                     return (
                       <Link
                         key={item.href}

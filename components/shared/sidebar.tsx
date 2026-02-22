@@ -25,6 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useState } from "react";
+import { hasPermission, Role } from "@/lib/roles";
 
 import { useUser } from "@clerk/nextjs";
 
@@ -46,9 +47,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useUser();
 
-  const isAdmin =
-    user?.publicMetadata?.role === "admin" ||
-    user?.publicMetadata?.role === "ADMIN";
+  const isAdmin = hasPermission(user?.publicMetadata?.role as Role, "ADMIN");
 
   return (
     <TooltipProvider delayDuration={0}>

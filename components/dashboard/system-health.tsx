@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -80,12 +81,17 @@ export function SystemHealth({ data }: SystemHealthProps) {
   ] as const;
   const totalRecords = numericKeys.reduce((sum, key) => sum + data[key], 0);
 
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const today = new Date().getDay();
-  const growthLabels = Array.from({ length: 7 }, (_, i) => {
-    const dayIdx = (today - 6 + i + 7) % 7;
-    return days[dayIdx];
-  });
+  const [growthLabels, setGrowthLabels] = useState<string[]>(Array(7).fill(""));
+
+  useEffect(() => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const today = new Date().getDay();
+    const labels = Array.from({ length: 7 }, (_, i) => {
+      const dayIdx = (today - 6 + i + 7) % 7;
+      return days[dayIdx];
+    });
+    setGrowthLabels(labels);
+  }, []);
 
   const maxGrowth = Math.max(...data.userGrowth, 1);
 

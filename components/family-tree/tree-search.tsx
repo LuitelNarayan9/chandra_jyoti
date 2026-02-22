@@ -30,13 +30,17 @@ export function TreeSearch({ value, onChange, matchCount }: TreeSearchProps) {
   return (
     <div className="relative group">
       <div
-        className={`relative flex items-center transition-all duration-300 ${
+        className={`relative flex items-center transition-all duration-300 ease-out flex-1 sm:flex-none ${
           focused
-            ? "w-72 ring-2 ring-primary/20 shadow-lg shadow-primary/5"
-            : "w-56"
-        } rounded-xl border border-border/50 bg-background/80 backdrop-blur-sm overflow-hidden`}
+            ? "w-full sm:w-[440px] md:w-[500px] ring-[3px] ring-amber-500/20 border-amber-500/60 shadow-xl shadow-amber-500/10 bg-background/95"
+            : "w-full sm:w-[400px] md:w-[450px] border-border/60 hover:border-border bg-background/60 hover:bg-background/80 shadow-sm"
+        } rounded-xl border backdrop-blur-md overflow-hidden group/search`}
       >
-        <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <div className="absolute left-3.5 flex items-center justify-center">
+          <Search
+            className={`h-[1.1rem] w-[1.1rem] transition-colors duration-300 pointer-events-none ${focused ? "text-amber-500" : "text-muted-foreground/70 group-hover/search:text-muted-foreground"}`}
+          />
+        </div>
         <Input
           ref={inputRef}
           type="text"
@@ -45,7 +49,7 @@ export function TreeSearch({ value, onChange, matchCount }: TreeSearchProps) {
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="border-0 bg-transparent pl-9 pr-20 h-10 focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="border-0 bg-transparent pl-11 pr-24 h-11 text-sm md:text-base focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
         />
         <div className="absolute right-2 flex items-center gap-1">
           {value && (
@@ -59,7 +63,7 @@ export function TreeSearch({ value, onChange, matchCount }: TreeSearchProps) {
                 className="h-6 w-6 rounded-lg text-muted-foreground hover:text-foreground"
                 onClick={() => onChange("")}
               >
-                <X className="h-3. w-3.5" />
+                <X className="h-3.5 w-3.5" />
               </Button>
             </>
           )}

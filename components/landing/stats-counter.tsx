@@ -20,14 +20,23 @@ function CountUp({
     if (!isInView) return;
     let startTimestamp: number;
     const duration = 2600;
+    let frameId: number;
     const step = (timestamp: number) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
       const ease = 1 - Math.pow(1 - progress, 4);
       setCount(Math.floor(ease * end));
-      if (progress < 1) window.requestAnimationFrame(step);
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(step);
+      }
     };
-    window.requestAnimationFrame(step);
+    frameId = window.requestAnimationFrame(step);
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
   }, [end, isInView]);
 
   return (

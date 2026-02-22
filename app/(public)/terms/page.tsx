@@ -22,7 +22,7 @@ export default function TermsOfServicePage() {
         </p>
         <p className="mb-4">
           These terms and conditions outline the rules and regulations for the
-          use of Chandra Jyoti Sanstha's Website and Platform.
+          use of Chandra Jyoti Sanstha&apos;s Website and Platform.
         </p>
         <p className="mb-4">
           By accessing this website we assume you accept these terms and
