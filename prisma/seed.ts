@@ -507,53 +507,76 @@ async function main() {
     data: { firstName: "Hari Prasad", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 1, dateOfBirth: new Date("1940-03-15"), dateOfDeath: new Date("2010-08-20"), isAlive: false, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
   const s_g1_f = await prisma.familyMember.create({
-    data: { firstName: "Sita Devi", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 1, dateOfBirth: new Date("1945-07-22"), isAlive: true, isApproved: true, approvedAt: new Date(), spouseId: s_g1_m.id, addedByUserId: addedBy.id },
+    data: { firstName: "Sita Devi", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 1, dateOfBirth: new Date("1945-07-22"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.create({ data: { fromNodeId: s_g1_m.id, toNodeId: s_g1_f.id, type: "SPOUSE", isApproved: true, addedByUserId: addedBy.id } });
 
   // Gen 2: 3 children of Hari & Sita
   const s_g2_c1 = await prisma.familyMember.create({
-    data: { firstName: "Ram Bahadur", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 2, dateOfBirth: new Date("1965-01-10"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g1_m.id, motherId: s_g1_f.id, addedByUserId: addedBy.id },
+    data: { firstName: "Ram Bahadur", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 2, dateOfBirth: new Date("1965-01-10"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g1_m.id, toNodeId: s_g2_c1.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g1_f.id, toNodeId: s_g2_c1.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
+
   const s_g2_c1_spouse = await prisma.familyMember.create({
-    data: { firstName: "Gita", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 2, dateOfBirth: new Date("1968-04-05"), isAlive: true, isApproved: true, approvedAt: new Date(), spouseId: s_g2_c1.id, addedByUserId: addedBy.id },
+    data: { firstName: "Gita", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 2, dateOfBirth: new Date("1968-04-05"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.create({ data: { fromNodeId: s_g2_c1.id, toNodeId: s_g2_c1_spouse.id, type: "SPOUSE", isApproved: true, addedByUserId: addedBy.id } });
+
   const s_g2_c2 = await prisma.familyMember.create({
-    data: { firstName: "Shyam", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 2, dateOfBirth: new Date("1968-11-23"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g1_m.id, motherId: s_g1_f.id, addedByUserId: addedBy.id },
+    data: { firstName: "Shyam", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 2, dateOfBirth: new Date("1968-11-23"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g1_m.id, toNodeId: s_g2_c2.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g1_f.id, toNodeId: s_g2_c2.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
+
   const s_g2_c2_spouse = await prisma.familyMember.create({
-    data: { firstName: "Laxmi", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 2, dateOfBirth: new Date("1970-06-12"), isAlive: true, isApproved: true, approvedAt: new Date(), spouseId: s_g2_c2.id, addedByUserId: addedBy.id },
+    data: { firstName: "Laxmi", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 2, dateOfBirth: new Date("1970-06-12"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.create({ data: { fromNodeId: s_g2_c2.id, toNodeId: s_g2_c2_spouse.id, type: "SPOUSE", isApproved: true, addedByUserId: addedBy.id } });
+
   const s_g2_c3 = await prisma.familyMember.create({
-    data: { firstName: "Durga", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 2, dateOfBirth: new Date("1972-02-28"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g1_m.id, motherId: s_g1_f.id, addedByUserId: addedBy.id },
+    data: { firstName: "Durga", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 2, dateOfBirth: new Date("1972-02-28"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g1_m.id, toNodeId: s_g2_c3.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g1_f.id, toNodeId: s_g2_c3.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
 
   // Gen 3: Children of Gen 2
   const s_g3_c1a = await prisma.familyMember.create({
-    data: { firstName: "Rajesh", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 3, dateOfBirth: new Date("1990-05-14"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g2_c1.id, motherId: s_g2_c1_spouse.id, addedByUserId: addedBy.id },
+    data: { firstName: "Rajesh", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 3, dateOfBirth: new Date("1990-05-14"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g2_c1.id, toNodeId: s_g3_c1a.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g2_c1_spouse.id, toNodeId: s_g3_c1a.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
+
   const s_g3_c1a_spouse = await prisma.familyMember.create({
-    data: { firstName: "Sunita", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 3, dateOfBirth: new Date("1993-08-10"), isAlive: true, isApproved: true, approvedAt: new Date(), spouseId: s_g3_c1a.id, addedByUserId: addedBy.id },
+    data: { firstName: "Sunita", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 3, dateOfBirth: new Date("1993-08-10"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.create({ data: { fromNodeId: s_g3_c1a.id, toNodeId: s_g3_c1a_spouse.id, type: "SPOUSE", isApproved: true, addedByUserId: addedBy.id } });
+
   const s_g3_c1b = await prisma.familyMember.create({
-    data: { firstName: "Bikash", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 3, dateOfBirth: new Date("1993-12-01"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g2_c1.id, motherId: s_g2_c1_spouse.id, addedByUserId: addedBy.id },
+    data: { firstName: "Bikash", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 3, dateOfBirth: new Date("1993-12-01"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g2_c1.id, toNodeId: s_g3_c1b.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g2_c1_spouse.id, toNodeId: s_g3_c1b.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
+
   const s_g3_c2a = await prisma.familyMember.create({
-    data: { firstName: "Anita", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 3, dateOfBirth: new Date("1992-09-17"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g2_c2.id, motherId: s_g2_c2_spouse.id, addedByUserId: addedBy.id },
+    data: { firstName: "Anita", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 3, dateOfBirth: new Date("1992-09-17"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g2_c2.id, toNodeId: s_g3_c2a.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g2_c2_spouse.id, toNodeId: s_g3_c2a.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
+
   const s_g3_c2b = await prisma.familyMember.create({
-    data: { firstName: "Arun", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 3, dateOfBirth: new Date("1995-03-25"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g2_c2.id, motherId: s_g2_c2_spouse.id, addedByUserId: addedBy.id },
+    data: { firstName: "Arun", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 3, dateOfBirth: new Date("1995-03-25"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g2_c2.id, toNodeId: s_g3_c2b.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g2_c2_spouse.id, toNodeId: s_g3_c2b.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
 
   // Gen 4: Children of Rajesh & Sunita
   const s_g4_c1 = await prisma.familyMember.create({
-    data: { firstName: "Aayush", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 4, dateOfBirth: new Date("2015-07-10"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g3_c1a.id, motherId: s_g3_c1a_spouse.id, addedByUserId: addedBy.id },
+    data: { firstName: "Aayush", lastName: "Sharma", familyClan: "Sharma", gender: "MALE", generation: 4, dateOfBirth: new Date("2015-07-10"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g3_c1a.id, toNodeId: s_g4_c1.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g3_c1a_spouse.id, toNodeId: s_g4_c1.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
+
   const s_g4_c2 = await prisma.familyMember.create({
-    data: { firstName: "Aarushi", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 4, dateOfBirth: new Date("2018-11-22"), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: s_g3_c1a.id, motherId: s_g3_c1a_spouse.id, addedByUserId: addedBy.id },
+    data: { firstName: "Aarushi", lastName: "Sharma", familyClan: "Sharma", gender: "FEMALE", generation: 4, dateOfBirth: new Date("2018-11-22"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g3_c1a.id, toNodeId: s_g4_c2.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g3_c1a_spouse.id, toNodeId: s_g4_c2.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
+
   // More Sharma Gen 3-4
   for (let i = 0; i < 4; i++) {
-    await prisma.familyMember.create({
+    const extraChild = await prisma.familyMember.create({
       data: {
         firstName: ["Pratik", "Sneha", "Manish", "Pooja"][i],
         lastName: "Sharma",
@@ -564,10 +587,14 @@ async function main() {
         isAlive: true,
         isApproved: true,
         approvedAt: new Date(),
-        ...(i < 2 ? { fatherId: s_g2_c2.id, motherId: s_g2_c2_spouse.id } : { fatherId: s_g3_c2b?.id }),
         addedByUserId: addedBy.id,
       },
     });
+    if (i < 2) {
+      await prisma.familyEdge.createMany({ data: [{ fromNodeId: s_g2_c2.id, toNodeId: extraChild.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: s_g2_c2_spouse.id, toNodeId: extraChild.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
+    } else {
+      await prisma.familyEdge.create({ data: { fromNodeId: s_g3_c2b.id, toNodeId: extraChild.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id } });
+    }
   }
   console.log(`✅ Sharma clan (20 members) seeded`);
 
@@ -576,8 +603,10 @@ async function main() {
     data: { firstName: "Dhan Bahadur", lastName: "Rai", familyClan: "Rai", gender: "MALE", generation: 1, dateOfBirth: new Date("1948-05-20"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
   const r_g1_f = await prisma.familyMember.create({
-    data: { firstName: "Maya",  lastName: "Rai", familyClan: "Rai", gender: "FEMALE", generation: 1, dateOfBirth: new Date("1952-09-10"), isAlive: true, isApproved: true, approvedAt: new Date(), spouseId: r_g1_m.id, addedByUserId: addedBy.id },
+    data: { firstName: "Maya",  lastName: "Rai", familyClan: "Rai", gender: "FEMALE", generation: 1, dateOfBirth: new Date("1952-09-10"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.create({ data: { fromNodeId: r_g1_m.id, toNodeId: r_g1_f.id, type: "SPOUSE", isApproved: true, addedByUserId: addedBy.id } });
+
   const raiGen2Names = [
     { first: "Suraj", g: "MALE" as const }, { first: "Binod", g: "MALE" as const },
     { first: "Kamala", g: "FEMALE" as const },
@@ -585,25 +614,30 @@ async function main() {
   const raiGen2: { id: string }[] = [];
   for (const n of raiGen2Names) {
     const m = await prisma.familyMember.create({
-      data: { firstName: n.first, lastName: "Rai", familyClan: "Rai", gender: n.g, generation: 2, dateOfBirth: new Date(`${1972 + raiGen2.length * 3}-03-10`), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: r_g1_m.id, motherId: r_g1_f.id, addedByUserId: addedBy.id },
+      data: { firstName: n.first, lastName: "Rai", familyClan: "Rai", gender: n.g, generation: 2, dateOfBirth: new Date(`${1972 + raiGen2.length * 3}-03-10`), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
     });
+    await prisma.familyEdge.createMany({ data: [{ fromNodeId: r_g1_m.id, toNodeId: m.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: r_g1_f.id, toNodeId: m.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
     raiGen2.push(m);
   }
+
   // Spouses
   const raiSpouses: { id: string }[] = [];
   for (let i = 0; i < 2; i++) {
     const sp = await prisma.familyMember.create({
-      data: { firstName: ["Sita", "Anita"][i], lastName: "Rai", familyClan: "Rai", gender: "FEMALE", generation: 2, dateOfBirth: new Date(`${1975 + i * 3}-07-15`), isAlive: true, isApproved: true, approvedAt: new Date(), spouseId: raiGen2[i].id, addedByUserId: addedBy.id },
+      data: { firstName: ["Sita", "Anita"][i], lastName: "Rai", familyClan: "Rai", gender: "FEMALE", generation: 2, dateOfBirth: new Date(`${1975 + i * 3}-07-15`), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
     });
+    await prisma.familyEdge.create({ data: { fromNodeId: raiGen2[i].id, toNodeId: sp.id, type: "SPOUSE", isApproved: true, addedByUserId: addedBy.id } });
     raiSpouses.push(sp);
   }
+
   // Gen 3
   const raiGen3Names = ["Nisha", "Akash", "Deepa", "Roshan", "Puja", "Arjun"];
   for (let i = 0; i < 6; i++) {
     const parentIdx = i < 3 ? 0 : 1;
-    await prisma.familyMember.create({
-      data: { firstName: raiGen3Names[i], lastName: "Rai", familyClan: "Rai", gender: i % 2 === 0 ? "FEMALE" : "MALE", generation: 3, dateOfBirth: new Date(`${1997 + i}-${String(randomInt(1, 12)).padStart(2, "0")}-${String(randomInt(1, 28)).padStart(2, "0")}`), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: raiGen2[parentIdx].id, motherId: raiSpouses[parentIdx].id, addedByUserId: addedBy.id },
+    const extraRaiChild = await prisma.familyMember.create({
+      data: { firstName: raiGen3Names[i], lastName: "Rai", familyClan: "Rai", gender: i % 2 === 0 ? "FEMALE" : "MALE", generation: 3, dateOfBirth: new Date(`${1997 + i}-${String(randomInt(1, 12)).padStart(2, "0")}-${String(randomInt(1, 28)).padStart(2, "0")}`), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
     });
+    await prisma.familyEdge.createMany({ data: [{ fromNodeId: raiGen2[parentIdx].id, toNodeId: extraRaiChild.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: raiSpouses[parentIdx].id, toNodeId: extraRaiChild.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
   }
   console.log(`✅ Rai clan (15 members) seeded`);
 
@@ -612,8 +646,10 @@ async function main() {
     data: { firstName: "Bir Bahadur", lastName: "Tamang", familyClan: "Tamang", gender: "MALE", generation: 1, dateOfBirth: new Date("1950-01-05"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
   const t_g1_f = await prisma.familyMember.create({
-    data: { firstName: "Phul Maya", lastName: "Tamang", familyClan: "Tamang", gender: "FEMALE", generation: 1, dateOfBirth: new Date("1953-04-18"), isAlive: true, isApproved: true, approvedAt: new Date(), spouseId: t_g1_m.id, addedByUserId: addedBy.id },
+    data: { firstName: "Phul Maya", lastName: "Tamang", familyClan: "Tamang", gender: "FEMALE", generation: 1, dateOfBirth: new Date("1953-04-18"), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
   });
+  await prisma.familyEdge.create({ data: { fromNodeId: t_g1_m.id, toNodeId: t_g1_f.id, type: "SPOUSE", isApproved: true, addedByUserId: addedBy.id } });
+
   const tamangGen2Names = [
     { first: "Kumar", g: "MALE" as const }, { first: "Deepak", g: "MALE" as const },
     { first: "Sarita", g: "FEMALE" as const },
@@ -621,23 +657,28 @@ async function main() {
   const tamangGen2: { id: string }[] = [];
   for (const n of tamangGen2Names) {
     const m = await prisma.familyMember.create({
-      data: { firstName: n.first, lastName: "Tamang", familyClan: "Tamang", gender: n.g, generation: 2, dateOfBirth: new Date(`${1974 + tamangGen2.length * 3}-06-20`), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: t_g1_m.id, motherId: t_g1_f.id, addedByUserId: addedBy.id },
+      data: { firstName: n.first, lastName: "Tamang", familyClan: "Tamang", gender: n.g, generation: 2, dateOfBirth: new Date(`${1974 + tamangGen2.length * 3}-06-20`), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
     });
+    await prisma.familyEdge.createMany({ data: [{ fromNodeId: t_g1_m.id, toNodeId: m.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: t_g1_f.id, toNodeId: m.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
     tamangGen2.push(m);
   }
+
   const tamangSpouses: { id: string }[] = [];
   for (let i = 0; i < 2; i++) {
     const sp = await prisma.familyMember.create({
-      data: { firstName: ["Mina", "Rina"][i], lastName: "Tamang", familyClan: "Tamang", gender: "FEMALE", generation: 2, dateOfBirth: new Date(`${1977 + i * 3}-11-10`), isAlive: true, isApproved: true, approvedAt: new Date(), spouseId: tamangGen2[i].id, addedByUserId: addedBy.id },
+      data: { firstName: ["Mina", "Rina"][i], lastName: "Tamang", familyClan: "Tamang", gender: "FEMALE", generation: 2, dateOfBirth: new Date(`${1977 + i * 3}-11-10`), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
     });
+    await prisma.familyEdge.create({ data: { fromNodeId: tamangGen2[i].id, toNodeId: sp.id, type: "SPOUSE", isApproved: true, addedByUserId: addedBy.id } });
     tamangSpouses.push(sp);
   }
+
   const tamangGen3Names = ["Sangita", "Bishal", "Rupa", "Sunil", "Diya", "Anil"];
   for (let i = 0; i < 6; i++) {
     const parentIdx = i < 3 ? 0 : 1;
-    await prisma.familyMember.create({
-      data: { firstName: tamangGen3Names[i], lastName: "Tamang", familyClan: "Tamang", gender: i % 2 === 0 ? "FEMALE" : "MALE", generation: 3, dateOfBirth: new Date(`${1999 + i}-${String(randomInt(1, 12)).padStart(2, "0")}-${String(randomInt(1, 28)).padStart(2, "0")}`), isAlive: true, isApproved: true, approvedAt: new Date(), fatherId: tamangGen2[parentIdx].id, motherId: tamangSpouses[parentIdx].id, addedByUserId: addedBy.id },
+    const extraTamangChild = await prisma.familyMember.create({
+      data: { firstName: tamangGen3Names[i], lastName: "Tamang", familyClan: "Tamang", gender: i % 2 === 0 ? "FEMALE" : "MALE", generation: 3, dateOfBirth: new Date(`${1999 + i}-${String(randomInt(1, 12)).padStart(2, "0")}-${String(randomInt(1, 28)).padStart(2, "0")}`), isAlive: true, isApproved: true, approvedAt: new Date(), addedByUserId: addedBy.id },
     });
+    await prisma.familyEdge.createMany({ data: [{ fromNodeId: tamangGen2[parentIdx].id, toNodeId: extraTamangChild.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }, { fromNodeId: tamangSpouses[parentIdx].id, toNodeId: extraTamangChild.id, type: "PARENT_CHILD", isApproved: true, addedByUserId: addedBy.id }] });
   }
   console.log(`✅ Tamang clan (15 members) seeded`);
 
@@ -683,7 +724,7 @@ async function main() {
         message: i % 3 === 0 ? "For the betterment of our community" : null,
         isAnonymous: i % 7 === 0,
         paymentMethod: randomItem(["UPI", "Bank Transfer", "Cash"]),
-        transactionId: `TXN_SEED_${String(i + 1).padStart(3, "0")}`,
+        transactionId: `TXN-PRJ-${crypto.randomUUID().split('-')[0].toUpperCase()}-${i}`,
         status: i < 16 ? "COMPLETED" : i < 18 ? "PENDING" : "FAILED",
         donorId: donor.id,
         campaignId: i < 8 ? campaign1.id : i < 14 ? campaign2.id : null,

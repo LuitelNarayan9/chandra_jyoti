@@ -1,29 +1,106 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
-import * as d3 from "d3";
-import type { TreeNode, TreeLayout } from "@/types/family-tree";
+import { useRef, useEffect, useCallback, useState, useMemo } from "react";
+import { select, Selection } from "d3-selection";
+import { color } from "d3-color";
+import "d3-transition";
+import { line, curveMonotoneY } from "d3-shape";
+import { zoom, zoomIdentity, ZoomBehavior, ZoomTransform } from "d3-zoom";
+import { easeElasticOut, easeCubicOut, easeCubicInOut } from "d3-ease";
+import { interpolate } from "d3-interpolate";
+import {
+  graphStratify,
+  sugiyama,
+  layeringSimplex,
+  decrossTwoLayer,
+  coordQuad,
+} from "d3-dag";
+import type { TreeNode, TreeLayout, FamilyEdgeData } from "@/types/family-tree";
 import { getNodeColor, getInitials } from "@/lib/family-tree-utils";
+import { calculateKinship } from "@/lib/kinship-calculator";
 import {
   exportTreeToPng,
   exportTreeToSvg,
   exportTreeToPdf,
 } from "@/lib/tree-export-utils";
 
-/* ── Card dimensions (portrait style) ── */
-const NODE_W = 130;
-const NODE_H = 155;
-const AVATAR_SIZE = 72;
-const AVATAR_RX = 6;
-const SPOUSE_GAP = 30;
-const COUPLE_W = NODE_W * 2 + SPOUSE_GAP;
+// Constants for node geometry (Classic Block Style)
+const NODE_W = 160;
+const NODE_H = 220;
 const H_GAP = 60;
-const V_SPACING = 250;
+const V_SPACING = 80;
 const TRANSITION_MS = 600;
 
+// Helper to determine relative relationship title visually
+function getRelationTitle(node: TreeNode, edges: FamilyEdgeData[]) {
+  const hasChildren = edges.some(
+    (e) =>
+      e.fromNodeId === node.id &&
+      (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
+  );
+  const hasParents = edges.some(
+    (e) =>
+      e.toNodeId === node.id &&
+      (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
+  );
+  const hasSpouse = edges.some(
+    (e) =>
+      (e.fromNodeId === node.id || e.toNodeId === node.id) &&
+      (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE")
+  );
+
+  if (hasChildren && !hasParents)
+    return node.gender === "MALE" ? "Grandfather" : "Grandmother";
+  if (hasChildren && hasParents)
+    return node.gender === "MALE" ? "Father" : "Mother";
+  if (!hasChildren && hasParents)
+    return node.gender === "MALE" ? "Son" : "Daughter";
+  if (hasSpouse) return node.gender === "MALE" ? "Husband" : "Wife";
+  return node.gender === "MALE" ? "Member" : "Member";
+}
+
+// Helper to intelligently split long text into up to 2 lines
+function splitTextOptimal(text: string, maxLen: number): string[] {
+  if (!text) return [""];
+  if (text.length <= maxLen) return [text];
+
+  // Try finding a clean word boundary near the middle
+  const words = text.split(" ");
+  if (words.length === 1) {
+    return [
+      text.slice(0, maxLen),
+      text.slice(maxLen, maxLen * 2 - 2) +
+        (text.length > maxLen * 2 ? "…" : ""),
+    ];
+  }
+
+  const lines: string[] = [];
+  let currentLine = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    if (currentLine.length + word.length + 1 <= maxLen) {
+      currentLine += " " + word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  lines.push(currentLine);
+
+  if (lines.length > 2) {
+    return [lines[0], lines[1].slice(0, maxLen - 2) + "…"];
+  }
+
+  if (lines[1] && lines[1].length > maxLen) {
+    lines[1] = lines[1].slice(0, maxLen - 2) + "…";
+  }
+  return lines;
+}
+
 interface TreeCanvasProps {
-  roots: TreeNode[];
   allNodes: TreeNode[];
+  edges: FamilyEdgeData[];
   layout: TreeLayout;
   matchingIds: Set<string>;
   searchMatchIds: Set<string>;
@@ -32,192 +109,14 @@ interface TreeCanvasProps {
     zoomIn: () => void;
     zoomOut: () => void;
     resetZoom: () => void;
+    zoomToNode: (id: string, customScale?: number) => void;
     fitToScreen: () => void;
     exportToPng: () => Promise<void>;
     exportToSvg: () => Promise<void>;
     exportToPdf: () => Promise<void>;
   } | null>;
-}
-
-/* ═══════════════════════════════════════
- *  COUPLE-BASED TREE DATA
- * ═══════════════════════════════════════ */
-
-interface CoupleNode {
-  primary: TreeNode;
-  spouse: TreeNode | null;
-  childCouples: CoupleNode[];
-  x: number;
-  y: number;
-  subtreeWidth: number;
-  depth: number;
-}
-
-function buildCoupleForest(allNodes: TreeNode[]): CoupleNode[] {
-  const nodeMap = new Map(allNodes.map((n) => [n.id, n]));
-  const placed = new Set<string>();
-
-  function findSpouse(person: TreeNode): TreeNode | null {
-    if (
-      person.spouseId &&
-      nodeMap.has(person.spouseId) &&
-      !placed.has(person.spouseId)
-    )
-      return nodeMap.get(person.spouseId)!;
-    for (const n of allNodes) {
-      if (n.spouseId === person.id && !placed.has(n.id)) return n;
-    }
-    return null;
-  }
-
-  function buildCouple(person: TreeNode, depth: number): CoupleNode {
-    placed.add(person.id);
-    const spouse = findSpouse(person);
-    if (spouse) placed.add(spouse.id);
-
-    const children: TreeNode[] = [];
-    allNodes.forEach((n) => {
-      if (placed.has(n.id)) return;
-      const isFatherMatch =
-        n.fatherId === person.id || (spouse && n.fatherId === spouse.id);
-      const isMotherMatch =
-        n.motherId === person.id || (spouse && n.motherId === spouse.id);
-      if (isFatherMatch || isMotherMatch) children.push(n);
-    });
-
-    children.sort((a, b) => {
-      if (a.gender === "MALE" && b.gender !== "MALE") return -1;
-      if (a.gender !== "MALE" && b.gender === "MALE") return 1;
-      return (a.birthYear ?? 9999) - (b.birthYear ?? 9999);
-    });
-
-    const childCouples = children
-      .filter((c) => !placed.has(c.id))
-      .map((c) => buildCouple(c, depth + 1));
-
-    return {
-      primary: person,
-      spouse,
-      childCouples,
-      x: 0,
-      y: 0,
-      subtreeWidth: 0,
-      depth,
-    };
-  }
-
-  const roots = allNodes
-    .filter((n) => !n.fatherId || !nodeMap.has(n.fatherId))
-    .sort((a, b) => {
-      if (a.gender === "MALE" && b.gender !== "MALE") return -1;
-      if (a.gender !== "MALE" && b.gender === "MALE") return 1;
-      return (a.birthYear ?? 9999) - (b.birthYear ?? 9999);
-    });
-
-  const forest: CoupleNode[] = [];
-  for (const root of roots) {
-    if (placed.has(root.id)) continue;
-    forest.push(buildCouple(root, 0));
-  }
-  return forest;
-}
-
-/* ── Layout helpers ── */
-
-function computeSubtreeWidth(couple: CoupleNode): number {
-  const ownWidth = couple.spouse ? COUPLE_W : NODE_W;
-  if (couple.childCouples.length === 0) {
-    couple.subtreeWidth = ownWidth;
-    return ownWidth;
-  }
-  let childrenTotal = 0;
-  couple.childCouples.forEach((c, i) => {
-    childrenTotal += computeSubtreeWidth(c);
-    if (i < couple.childCouples.length - 1) childrenTotal += H_GAP;
-  });
-  couple.subtreeWidth = Math.max(ownWidth, childrenTotal);
-  return couple.subtreeWidth;
-}
-
-/** VERTICAL layout: top → bottom */
-function positionVertical(couple: CoupleNode, centerX: number, y: number) {
-  couple.x = centerX;
-  couple.y = y;
-  if (couple.childCouples.length === 0) return;
-  let totalW = 0;
-  couple.childCouples.forEach((c, i) => {
-    totalW += c.subtreeWidth;
-    if (i < couple.childCouples.length - 1) totalW += H_GAP;
-  });
-  let startX = centerX - totalW / 2;
-  couple.childCouples.forEach((c) => {
-    positionVertical(c, startX + c.subtreeWidth / 2, y + V_SPACING);
-    startX += c.subtreeWidth + H_GAP;
-  });
-}
-
-/** HORIZONTAL layout: left → right (swap X and Y axes) */
-function positionHorizontal(
-  couple: CoupleNode,
-  centerY: number,
-  xLeft: number
-) {
-  couple.x = xLeft;
-  couple.y = centerY;
-  if (couple.childCouples.length === 0) return;
-  let totalH = 0;
-  couple.childCouples.forEach((c, i) => {
-    totalH += c.subtreeWidth; // reuse subtreeWidth as subtreeHeight
-    if (i < couple.childCouples.length - 1) totalH += H_GAP;
-  });
-  let startY = centerY - totalH / 2;
-  couple.childCouples.forEach((c) => {
-    positionHorizontal(c, startY + c.subtreeWidth / 2, xLeft + V_SPACING);
-    startY += c.subtreeWidth + H_GAP;
-  });
-}
-
-/** RADIAL layout: center outward (polar coordinates) */
-function getMaxDepth(couple: CoupleNode): number {
-  if (couple.childCouples.length === 0) return couple.depth;
-  return Math.max(...couple.childCouples.map(getMaxDepth));
-}
-
-function countLeaves(couple: CoupleNode): number {
-  if (couple.childCouples.length === 0) return 1;
-  return couple.childCouples.reduce((sum, c) => sum + countLeaves(c), 0);
-}
-
-function positionRadial(
-  couple: CoupleNode,
-  angleStart: number,
-  angleEnd: number,
-  radius: number
-) {
-  const angleMid = (angleStart + angleEnd) / 2;
-  couple.x = Math.cos(angleMid) * radius;
-  couple.y = Math.sin(angleMid) * radius;
-
-  if (couple.childCouples.length === 0) return;
-
-  const totalLeaves = couple.childCouples.reduce(
-    (s, c) => s + countLeaves(c),
-    0
-  );
-  const angleRange = angleEnd - angleStart;
-  let currAngle = angleStart;
-
-  couple.childCouples.forEach((child) => {
-    const childLeaves = countLeaves(child);
-    const childAngleRange = (childLeaves / totalLeaves) * angleRange;
-    positionRadial(
-      child,
-      currAngle,
-      currAngle + childAngleRange,
-      radius + V_SPACING
-    );
-    currAngle += childAngleRange;
-  });
+  hasHighlightFilter?: boolean;
+  currentUserNode?: any;
 }
 
 /* ═══════════════════════════════════════
@@ -226,19 +125,21 @@ function positionRadial(
 
 export function TreeCanvas({
   allNodes,
+  edges,
   layout,
   matchingIds,
   searchMatchIds,
+  hasHighlightFilter = false,
   onNodeClick,
   zoomRef,
+  currentUserNode,
 }: TreeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement | null>(null);
-  const zoomBehaviorRef = useRef<d3.ZoomBehavior<
-    SVGSVGElement,
-    unknown
-  > | null>(null);
+  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(
+    null
+  );
   const [dimensions, setDimensions] = useState({ width: 1200, height: 700 });
 
   useEffect(() => {
@@ -252,13 +153,13 @@ export function TreeCanvas({
     return () => ro.disconnect();
   }, []);
 
-  const applyZoom = useCallback((transform: d3.ZoomTransform) => {
+  const applyZoom = useCallback((transform: ZoomTransform) => {
     const svg = svgRef.current;
     if (!svg || !zoomBehaviorRef.current) return;
-    d3.select(svg)
+    select(svg)
       .transition()
       .duration(500)
-      .ease(d3.easeCubicInOut)
+      .ease(easeCubicInOut)
       .call(zoomBehaviorRef.current.transform, transform);
   }, []);
 
@@ -267,7 +168,7 @@ export function TreeCanvas({
       zoomIn: () => {
         const svg = svgRef.current;
         if (!svg || !zoomBehaviorRef.current) return;
-        d3.select(svg)
+        select(svg)
           .transition()
           .duration(300)
           .call(zoomBehaviorRef.current.scaleBy, 1.4);
@@ -275,12 +176,33 @@ export function TreeCanvas({
       zoomOut: () => {
         const svg = svgRef.current;
         if (!svg || !zoomBehaviorRef.current) return;
-        d3.select(svg)
+        select(svg)
           .transition()
           .duration(300)
           .call(zoomBehaviorRef.current.scaleBy, 0.7);
       },
-      resetZoom: () => applyZoom(d3.zoomIdentity),
+      resetZoom: () => applyZoom(zoomIdentity),
+      zoomToNode: (id: string, customScale?: number) => {
+        const nodeG = svgRef.current?.querySelector(
+          `[data-node-id="${id}"]`
+        ) as SVGGElement;
+        if (nodeG) {
+          const transform = nodeG.getAttribute("transform");
+          if (transform) {
+            const match = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
+            if (match) {
+              const x = parseFloat(match[1]);
+              const y = parseFloat(match[2]);
+              const svg = svgRef.current;
+              if (!svg || !zoomBehaviorRef.current) return;
+              const scale = customScale ?? 1.2;
+              const tx = dimensions.width / 2 - x * scale;
+              const ty = dimensions.height / 2 - y * scale;
+              applyZoom(zoomIdentity.translate(tx, ty).scale(scale));
+            }
+          }
+        }
+      },
       fitToScreen: () => {
         const g = gRef.current;
         const svg = svgRef.current;
@@ -298,7 +220,7 @@ export function TreeCanvas({
         );
         const tx = width / 2 - (bounds.x + bounds.width / 2) * scale;
         const ty = height / 2 - (bounds.y + bounds.height / 2) * scale;
-        applyZoom(d3.zoomIdentity.translate(tx, ty).scale(scale));
+        applyZoom(zoomIdentity.translate(tx, ty).scale(scale));
       },
       exportToPng: async () => {
         if (!svgRef.current || !gRef.current || !zoomBehaviorRef.current)
@@ -336,8 +258,14 @@ export function TreeCanvas({
   /* ═══════════════════════════════════
    *  MAIN D3 RENDER
    * ═══════════════════════════════════ */
+  const nodesMap = useMemo(() => {
+    const map = new Map<string, TreeNode>();
+    allNodes.forEach((n) => map.set(n.id, n));
+    return map;
+  }, [allNodes]);
+
   useEffect(() => {
-    const svg = d3.select(svgRef.current!);
+    const svg = select(svgRef.current!);
     const { width, height } = dimensions;
     svg.attr("viewBox", `0 0 ${width} ${height}`);
     svg.selectAll("g.tree-root").remove();
@@ -373,190 +301,650 @@ export function TreeCanvas({
       .attr("flood-color", "#f59e0b")
       .attr("flood-opacity", 0.8);
 
-    /* ── Build couple forest ── */
-    const forest = buildCoupleForest(allNodes);
-    if (forest.length === 0) return;
-
-    // Compute subtree widths
-    forest.forEach((tree) => computeSubtreeWidth(tree));
-
-    // Position based on layout
-    if (layout === "horizontal") {
-      let totalH = 0;
-      forest.forEach((tree, i) => {
-        totalH += tree.subtreeWidth;
-        if (i < forest.length - 1) totalH += H_GAP * 2;
-      });
-      let startY = -totalH / 2;
-      forest.forEach((tree) => {
-        positionHorizontal(tree, startY + tree.subtreeWidth / 2, 0);
-        startY += tree.subtreeWidth + H_GAP * 2;
-      });
-    } else if (layout === "radial") {
-      const totalLeaves = forest.reduce((s, t) => s + countLeaves(t), 0);
-      let currAngle = -Math.PI / 2;
-      const fullAngle = Math.PI * 2;
-      forest.forEach((tree) => {
-        const treeLeaves = countLeaves(tree);
-        const treeAngle = (treeLeaves / totalLeaves) * fullAngle;
-        positionRadial(tree, currAngle, currAngle + treeAngle, V_SPACING); // start away from center
-        currAngle += treeAngle;
-      });
-    } else {
-      // vertical (default)
-      let totalW = 0;
-      forest.forEach((tree, i) => {
-        totalW += tree.subtreeWidth;
-        if (i < forest.length - 1) totalW += H_GAP * 2;
-      });
-      let startX = -totalW / 2;
-      forest.forEach((tree) => {
-        positionVertical(tree, startX + tree.subtreeWidth / 2, 0);
-        startX += tree.subtreeWidth + H_GAP * 2;
-      });
+    /* ── Build DAG using Family Units (Spouses locked together) ── */
+    interface FamilyUnit {
+      id: string;
+      nodes: any[];
+      parentIds: string[];
+      width: number;
     }
+
+    // 1. Group nodes into Family Units (Connected Components of SPOUSE edges)
+    const spouseAdj = new Map<string, string[]>();
+    allNodes.forEach((n) => spouseAdj.set(n.id, []));
+
+    edges.forEach((e) => {
+      if (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE") {
+        spouseAdj.get(e.fromNodeId)?.push(e.toNodeId);
+        spouseAdj.get(e.toNodeId)?.push(e.fromNodeId);
+      }
+    });
+
+    const unitVisited = new Set<string>();
+    const units: FamilyUnit[] = [];
+    const nodeToUnit = new Map<string, FamilyUnit>();
+
+    allNodes.forEach((n) => {
+      if (!unitVisited.has(n.id)) {
+        const component: any[] = [];
+        const queue = [n.id];
+        unitVisited.add(n.id);
+
+        while (queue.length > 0) {
+          const curr = queue.shift()!;
+          const found = allNodes.find((an) => an.id === curr);
+          if (found) component.push(found);
+
+          (spouseAdj.get(curr) || []).forEach((neighbor) => {
+            if (!unitVisited.has(neighbor)) {
+              unitVisited.add(neighbor);
+              queue.push(neighbor);
+            }
+          });
+        }
+
+        // Sort component to keep males roughly on the left, females on right
+        component.sort((a, b) => {
+          if (a.gender !== b.gender) return a.gender === "MALE" ? -1 : 1;
+          return 0;
+        });
+
+        const uId =
+          "UNIT_" +
+          component
+            .map((c) => c.id)
+            .sort()
+            .join("_");
+        const newUnit: FamilyUnit = {
+          id: uId,
+          nodes: component,
+          parentIds: [],
+          width: component.length * NODE_W + (component.length - 1) * H_GAP,
+        };
+        units.push(newUnit);
+        component.forEach((c) => nodeToUnit.set(c.id, newUnit));
+      }
+    });
+
+    // 2. Map Parent/Child relationships between Units
+    // Cross-clan edges are excluded from the DAG so different clans render separately
+    interface CrossClanEdge {
+      fromNodeId: string;
+      toNodeId: string;
+      type: string;
+    }
+    const crossClanEdges: CrossClanEdge[] = [];
+
+    edges.forEach((e) => {
+      if (e.type === "PARENT_CHILD" || e.type === "ADOPTION") {
+        const parentNode = allNodes.find((n) => n.id === e.fromNodeId);
+        const childNode = allNodes.find((n) => n.id === e.toNodeId);
+
+        // If parent and child are from different clans, store as cross-clan edge
+        if (
+          parentNode &&
+          childNode &&
+          parentNode.familyClan &&
+          childNode.familyClan &&
+          parentNode.familyClan !== childNode.familyClan
+        ) {
+          crossClanEdges.push({
+            fromNodeId: e.fromNodeId,
+            toNodeId: e.toNodeId,
+            type: e.type,
+          });
+          return; // Skip adding to DAG
+        }
+
+        const pUnit = nodeToUnit.get(e.fromNodeId);
+        const cUnit = nodeToUnit.get(e.toNodeId);
+        if (pUnit && cUnit && pUnit.id !== cUnit.id) {
+          if (!cUnit.parentIds.includes(pUnit.id)) {
+            cUnit.parentIds.push(pUnit.id);
+          }
+        }
+      }
+    });
+
+    // 3. Separate into isolated Clans (Connected Components of UNITS)
+    const unitAdj = new Map<string, string[]>();
+    units.forEach((u) => unitAdj.set(u.id, []));
+    units.forEach((u) => {
+      u.parentIds.forEach((pid) => {
+        unitAdj.get(u.id)!.push(pid);
+        unitAdj.get(pid)!.push(u.id);
+      });
+    });
+
+    const clanVisited = new Set<string>();
+    const clans: FamilyUnit[][] = [];
+
+    units.forEach((u) => {
+      if (!clanVisited.has(u.id)) {
+        const clan: FamilyUnit[] = [];
+        const q = [u.id];
+        clanVisited.add(u.id);
+        while (q.length > 0) {
+          const curr = q.shift()!;
+          const currUnit = units.find((un) => un.id === curr)!;
+          clan.push(currUnit);
+          unitAdj.get(curr)!.forEach((neighbor) => {
+            if (!clanVisited.has(neighbor)) {
+              clanVisited.add(neighbor);
+              q.push(neighbor);
+            }
+          });
+        }
+        clans.push(clan);
+      }
+    });
+
+    const isolatedNodes: any[] = [];
+    const connectedClans: FamilyUnit[][] = [];
+
+    clans.forEach((clan) => {
+      if (
+        clan.length === 1 &&
+        clan[0].nodes.length === 1 &&
+        clan[0].parentIds.length === 0
+      ) {
+        // Just one person, absolutely no edges
+        isolatedNodes.push(clan[0].nodes[0]);
+      } else {
+        connectedClans.push(clan);
+      }
+    });
+
+    const layoutAlg = sugiyama()
+      .layering(layeringSimplex())
+      .nodeSize((node: any) => [node.data.width + H_GAP, NODE_H + V_SPACING])
+      .decross(decrossTwoLayer())
+      .coord(coordQuad());
+
+    const allDagNodes: any[] = [];
+    const allDagLinks: any[] = [];
+    let currentOffsetX = 0;
+    const CLAN_GAP = 200;
+
+    connectedClans.forEach((clanData) => {
+      if (clanData.length === 0) return;
+      try {
+        const clanDag: any = graphStratify()(clanData);
+        layoutAlg(clanDag);
+
+        let minX = Infinity;
+        let maxX = -Infinity;
+        Array.from(clanDag.nodes()).forEach((node: any) => {
+          if (node.x !== undefined) {
+            const w = node.data.width;
+            minX = Math.min(minX, node.x - w / 2);
+            maxX = Math.max(maxX, node.x + w / 2);
+          }
+        });
+
+        if (minX !== Infinity && maxX !== -Infinity) {
+          const shiftX = currentOffsetX - minX;
+          let shiftY = 0;
+
+          // Attempt to align this clan with an already placed connecting clan
+          if (allDagNodes.length > 0) {
+            for (const edge of crossClanEdges) {
+              const fromInClan = Array.from(clanDag.nodes()).find((n: any) =>
+                n.data.nodes.some((nd: any) => nd.id === edge.fromNodeId)
+              ) as any;
+              const toInClan = Array.from(clanDag.nodes()).find((n: any) =>
+                n.data.nodes.some((nd: any) => nd.id === edge.toNodeId)
+              ) as any;
+
+              if (fromInClan && !toInClan) {
+                // current clan has 'from', find 'to' in placed nodes
+                const placedTo = allDagNodes.find((dn: any) =>
+                  dn.data.nodes.some((n: any) => n.id === edge.toNodeId)
+                );
+                if (
+                  placedTo &&
+                  placedTo.y !== undefined &&
+                  fromInClan.y !== undefined
+                ) {
+                  if (
+                    edge.type === "SPOUSE" ||
+                    edge.type === "DIVORCED_SPOUSE"
+                  ) {
+                    shiftY = placedTo.y - fromInClan.y;
+                  } else {
+                    // from is parent, to is child
+                    shiftY = placedTo.y - (NODE_H + V_SPACING) - fromInClan.y;
+                  }
+                  break;
+                }
+              } else if (!fromInClan && toInClan) {
+                // current clan has 'to', find 'from' in placed nodes
+                const placedFrom = allDagNodes.find((dn: any) =>
+                  dn.data.nodes.some((n: any) => n.id === edge.fromNodeId)
+                );
+                if (
+                  placedFrom &&
+                  placedFrom.y !== undefined &&
+                  toInClan.y !== undefined
+                ) {
+                  if (
+                    edge.type === "SPOUSE" ||
+                    edge.type === "DIVORCED_SPOUSE"
+                  ) {
+                    shiftY = placedFrom.y - toInClan.y;
+                  } else {
+                    // from is parent, to is child
+                    shiftY = placedFrom.y + (NODE_H + V_SPACING) - toInClan.y;
+                  }
+                  break;
+                }
+              }
+            }
+          }
+
+          Array.from(clanDag.nodes()).forEach((node: any) => {
+            node.x += shiftX;
+            if (node.y !== undefined) {
+              node.y += shiftY;
+            }
+            allDagNodes.push(node);
+          });
+
+          Array.from(clanDag.links()).forEach((link: any) => {
+            if (link.points) {
+              link.points.forEach((p: any) => {
+                p.x += shiftX;
+                if (p.y !== undefined) {
+                  p.y += shiftY;
+                }
+              });
+            }
+            allDagLinks.push(link);
+          });
+
+          currentOffsetX += maxX - minX + CLAN_GAP;
+        }
+      } catch (err) {
+        console.warn("Clan DAG failed:", err);
+      }
+    });
+
+    // Grid layout for isolated nodes below the main DAG
+    // But first: separate cross-clan connected nodes — they go to the LEFT side
+    const crossClanConnectedNodeIds = new Set<string>();
+    crossClanEdges.forEach((e) => {
+      crossClanConnectedNodeIds.add(e.fromNodeId);
+      crossClanConnectedNodeIds.add(e.toNodeId);
+    });
+
+    const crossClanIsolated: any[] = [];
+    const trulyIsolated: any[] = [];
+    isolatedNodes.forEach((node) => {
+      if (crossClanConnectedNodeIds.has(node.id)) {
+        crossClanIsolated.push(node);
+      } else {
+        trulyIsolated.push(node);
+      }
+    });
+
+    // Position cross-clan isolated nodes to the RIGHT of the main tree
+    // Aligned vertically with the node they connect to
+    if (crossClanIsolated.length > 0) {
+      const CROSS_CLAN_GAP = 150; // gap between main tree and cross-clan nodes
+      let crossClanOffsetX = currentOffsetX + CROSS_CLAN_GAP;
+
+      const unplaced = [...crossClanIsolated];
+      // Reset coordinates to be safe
+      unplaced.forEach((n) => {
+        n.x = undefined;
+        n.y = undefined;
+      });
+
+      while (unplaced.length > 0) {
+        let placedAny = false;
+
+        for (let i = unplaced.length - 1; i >= 0; i--) {
+          const node = unplaced[i];
+          const ccEdge = crossClanEdges.find(
+            (e) => e.fromNodeId === node.id || e.toNodeId === node.id
+          );
+
+          if (ccEdge) {
+            const connectedId =
+              ccEdge.fromNodeId === node.id
+                ? ccEdge.toNodeId
+                : ccEdge.fromNodeId;
+            const connectedDagNode = allDagNodes.find((dn: any) =>
+              dn.data.nodes.some((n: any) => n.id === connectedId)
+            );
+
+            if (connectedDagNode) {
+              const isParent = ccEdge.fromNodeId === node.id;
+              node.x = crossClanOffsetX;
+              node.y = isParent
+                ? connectedDagNode.y - (NODE_H + V_SPACING)
+                : connectedDagNode.y + (NODE_H + V_SPACING);
+              unplaced.splice(i, 1);
+              crossClanOffsetX += NODE_W + H_GAP;
+              placedAny = true;
+              continue;
+            }
+
+            // Check if connected node is another isolated node that was ALREADY placed
+            const connectedIso = crossClanIsolated.find(
+              (n) => n.id === connectedId && n.y !== undefined
+            );
+            if (connectedIso) {
+              const isParent = ccEdge.fromNodeId === node.id;
+              // Inherit the exact same X to ensure a perfectly straight vertical line
+              node.x = connectedIso.x;
+              node.y = isParent
+                ? connectedIso.y - (NODE_H + V_SPACING)
+                : connectedIso.y + (NODE_H + V_SPACING);
+              unplaced.splice(i, 1);
+              placedAny = true;
+              // Do not increment offset here, they are stacked vertically
+              continue;
+            }
+          } else {
+            // Node has no cross clan edge? Just place it at 0.
+            node.x = crossClanOffsetX;
+            node.y = 0;
+            unplaced.splice(i, 1);
+            crossClanOffsetX += NODE_W + H_GAP;
+            placedAny = true;
+            continue;
+          }
+        }
+
+        // If we looped through all unplaced nodes and couldn't place ANY of them relative to existing ones,
+        // it means we have a completely disconnected cross-clan isolated cluster (like a single Parent-Child pair
+        // where neither is part of the main Structural tree).
+        // We forcibly root the first one at y=0, and the next iteration will seamlessly attach the rest to it.
+        if (!placedAny && unplaced.length > 0) {
+          const firstUnplaced = unplaced[0];
+          firstUnplaced.x = crossClanOffsetX;
+          firstUnplaced.y = 0;
+          unplaced.splice(0, 1);
+          crossClanOffsetX += NODE_W + H_GAP;
+        }
+      }
+    }
+
+    // Grid layout for truly isolated nodes below the main DAG
+    let isolatedStartY = 0;
+    if (allDagNodes.length > 0) {
+      let maxY = 0;
+      allDagNodes.forEach((node: any) => {
+        if (node.y !== undefined) maxY = Math.max(maxY, node.y);
+      });
+      isolatedStartY = Math.max(0, maxY + NODE_H + 150);
+    }
+
+    const columns = 10;
+    trulyIsolated.forEach((node, idx) => {
+      const row = Math.floor(idx / columns);
+      const col = idx % columns;
+      node.x = col * (NODE_W + H_GAP);
+      node.y = isolatedStartY + row * (NODE_H + V_SPACING);
+    });
 
     const g = svg.append("g").attr("class", "tree-root");
     gRef.current = g.node();
 
+    // Add placeholder SVGs to defs
+    const svgDefs = svg.select("defs");
+
+    svgDefs
+      .append("clipPath")
+      .attr("id", "avatar-clip")
+      .append("circle")
+      .attr("cx", 0)
+      .attr("cy", -25)
+      .attr("r", 40);
+
+    const maleFallback = svgDefs.append("g").attr("id", "fallback-male");
+    maleFallback
+      .append("circle")
+      .attr("cx", 0)
+      .attr("cy", -25)
+      .attr("r", 40)
+      .attr("fill", "#e2e8f0");
+    maleFallback
+      .append("circle")
+      .attr("cx", 0)
+      .attr("cy", -35)
+      .attr("r", 14)
+      .attr("fill", "#94a3b8");
+    maleFallback // Broad shoulders
+      .append("path")
+      .attr(
+        "d",
+        "M -22 15 L -22 -2 Q -22 -12 -12 -12 L 12 -12 Q 22 -12 22 -2 L 22 15 Z"
+      )
+      .attr("fill", "#94a3b8");
+
+    const femaleFallback = svgDefs.append("g").attr("id", "fallback-female");
+    femaleFallback
+      .append("circle")
+      .attr("cx", 0)
+      .attr("cy", -25)
+      .attr("r", 40)
+      .attr("fill", "#e2e8f0");
+    femaleFallback
+      .append("circle")
+      .attr("cx", 0)
+      .attr("cy", -36)
+      .attr("r", 12)
+      .attr("fill", "#94a3b8");
+    femaleFallback // A-line dress for distinct female silhouette
+      .append("path")
+      .attr("d", "M -10 -18 Q 0 -22 10 -18 L 26 15 L -26 15 Z")
+      .attr("fill", "#94a3b8");
+
+    // ───────────────────────────────────────────────────────────── */
     /* ───── Draw a portrait card ───── */
     function drawCard(
-      parentG: d3.Selection<SVGGElement, unknown, null, undefined>,
-      node: TreeNode,
+      parentG: Selection<SVGGElement, unknown, null, undefined>,
+      nodeData: any,
       x: number,
       y: number,
       index: number
     ) {
-      const colors = getNodeColor(node.gender, node.isAlive);
-      const isSearchHL =
-        searchMatchIds.size < allNodes.length && searchMatchIds.has(node.id);
-      const isFilterMatch = matchingIds.has(node.id);
+      if (nodeData.isUnion) return;
+
+      const node = allNodes.find((n) => n.id === nodeData.id);
+      if (!node) return;
+
+      // Only show relationship labels from the logged-in tree member's perspective
+      let relationTitle = "";
+      if (currentUserNode?.id) {
+        relationTitle = calculateKinship(
+          currentUserNode.id,
+          node.id,
+          nodesMap,
+          edges
+        );
+      }
+
       const isSearchMatch = searchMatchIds.has(node.id);
+      const isFilterMatch = matchingIds.has(node.id);
+      const isSearchHL =
+        searchMatchIds.size > 0 &&
+        searchMatchIds.size < allNodes.length &&
+        isSearchMatch;
 
       let nodeOpacity = 1;
-      if (!isFilterMatch) nodeOpacity = 0.1;
-      else if (searchMatchIds.size < allNodes.length && !isSearchMatch)
+      const hasSearch =
+        searchMatchIds.size > 0 && searchMatchIds.size < allNodes.length;
+
+      // Search matching logic: dull out nodes that don't match the current search
+      if (hasSearch && !isSearchMatch) {
         nodeOpacity = 0.2;
+      } else if (hasHighlightFilter && !isFilterMatch) {
+        // Feature filters (generation, gender, etc) dim nodes that don't match
+        nodeOpacity = 0.2;
+      }
 
       const cardG = parentG
         .append("g")
         .attr("class", "tree-node")
-        .attr("transform", `translate(${x}, ${y})`)
+        .attr("data-node-id", node.id)
+        .attr("transform", `translate(${x}, ${y - 10})`)
         .style("cursor", "pointer")
         .attr("opacity", 0);
 
       cardG
         .transition()
         .duration(TRANSITION_MS)
-        .delay(100 + index * 15)
+        .delay(100 + index * 10)
+        .ease(easeElasticOut)
+        .attr("transform", `translate(${x}, ${y})`)
         .attr("opacity", nodeOpacity);
 
+      let cardFill = "#ffffff";
+      let cardStroke = "#e2e8f0";
+
+      if (node.isAlive === false) {
+        cardFill = "#D3D3D3"; // slate-100 for deceased
+      }
+
+      if (node.gender === "MALE") {
+        cardStroke = "#3b82f6"; // blue-500
+      } else if (node.gender === "FEMALE") {
+        cardStroke = "#f472b6"; // pink-400
+      } else {
+        cardStroke = "#8b5cf6"; // violet-500
+      }
+
+      if (isSearchHL) {
+        cardFill = "#f8fafc";
+      }
+
+      // Main Card Background
       cardG
         .append("rect")
         .attr("x", -NODE_W / 2)
         .attr("y", -NODE_H / 2)
         .attr("width", NODE_W)
         .attr("height", NODE_H)
-        .attr("rx", 8)
-        .attr("fill", "white")
-        .attr("stroke", colors.fill)
-        .attr("stroke-width", 2.5)
+        .attr("rx", 16)
+        .attr("fill", cardFill)
+        .attr("stroke", cardStroke)
+        .attr("stroke-width", 2)
         .attr("filter", isSearchHL ? "url(#search-glow)" : "url(#card-shadow)");
 
-      const bgTint =
-        node.gender === "MALE"
-          ? "rgba(219,234,254,0.5)"
-          : node.gender === "FEMALE"
-            ? "rgba(252,231,243,0.5)"
-            : "rgba(237,233,254,0.5)";
-      cardG
-        .append("rect")
-        .attr("x", -NODE_W / 2 + 5)
-        .attr("y", -NODE_H / 2 + 5)
-        .attr("width", NODE_W - 10)
-        .attr("height", AVATAR_SIZE + 6)
-        .attr("rx", 5)
-        .attr("fill", bgTint);
+      // Avatar
+      const hasPhoto = !!node.photo;
+      if (hasPhoto) {
+        cardG
+          .append("image")
+          .attr("x", -40)
+          .attr("y", -65)
+          .attr("width", 80)
+          .attr("height", 80)
+          .attr("href", node.photo)
+          .attr("clip-path", "url(#avatar-clip)")
+          .attr("preserveAspectRatio", "xMidYMid slice");
+      } else {
+        cardG
+          .append("use")
+          .attr(
+            "href",
+            node.gender === "FEMALE" ? "#fallback-female" : "#fallback-male"
+          );
+      }
 
-      cardG
-        .append("rect")
-        .attr("x", -AVATAR_SIZE / 2)
-        .attr("y", -NODE_H / 2 + 9)
-        .attr("width", AVATAR_SIZE)
-        .attr("height", AVATAR_SIZE)
-        .attr("rx", AVATAR_RX)
-        .attr("fill", colors.fill)
-        .attr("stroke", "white")
-        .attr("stroke-width", 3);
-
-      cardG
+      // Name Text
+      const nameLines = splitTextOptimal(node.name || "", 20);
+      const nameText = cardG
         .append("text")
         .attr("x", 0)
-        .attr("y", -NODE_H / 2 + 9 + AVATAR_SIZE / 2 + 1)
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "central")
-        .attr("fill", "white")
-        .attr("font-size", 24)
-        .attr("font-weight", "800")
-        .attr("letter-spacing", "1px")
-        .attr("font-family", "Inter, system-ui, sans-serif")
-        .text(getInitials(node.firstName, node.lastName));
-
-      cardG
-        .append("text")
-        .attr("x", 0)
-        .attr("y", -NODE_H / 2 + AVATAR_SIZE + 24)
         .attr("text-anchor", "middle")
         .attr("fill", "#0f172a")
         .attr("font-size", 13)
-        .attr("font-weight", "700")
-        .attr("font-family", "Inter, system-ui, sans-serif")
-        .text(() => {
-          const n = node.name;
-          return n.length > 14 ? n.slice(0, 13) + "…" : n;
-        });
+        .attr("font-weight", 700)
+        .attr("font-family", "Inter, system-ui, sans-serif");
+
+      const BaseNameY = nameLines.length > 1 ? 28 : 35;
+      nameLines.forEach((line, i) => {
+        nameText
+          .append("tspan")
+          .attr("x", 0)
+          .attr("y", BaseNameY + i * 14)
+          .attr("dominant-baseline", "central")
+          .text(line);
+      });
+
+      // Relationship Text (e.g., Mother, Father, etc.)
+      const relLines = splitTextOptimal(relationTitle, 24);
+      const BaseRelY = nameLines.length > 1 ? 55 : 55; // Pushed nicely down regardless
+
+      const relText = cardG
+        .append("text")
+        .attr("x", 0)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#475569") // slate-600
+        .attr("font-size", 11)
+        .attr("font-weight", 500)
+        .attr("font-family", "Inter, system-ui, sans-serif");
+
+      relLines.forEach((line, i) => {
+        relText
+          .append("tspan")
+          .attr("x", 0)
+          .attr("y", BaseRelY + i * 13)
+          .attr("dominant-baseline", "central")
+          .text(line);
+      });
+
+      // Lifespan Dates
+      const bYear = node.birthYear ? node.birthYear : "?";
+      const dYear = node.isAlive
+        ? "Present"
+        : node.deathYear
+          ? node.deathYear
+          : "?";
+
+      const lifeSpanY = BaseRelY + (relLines.length > 1 ? 24 : 18);
 
       cardG
         .append("text")
         .attr("x", 0)
-        .attr("y", -NODE_H / 2 + AVATAR_SIZE + 42)
+        .attr("y", lifeSpanY)
         .attr("text-anchor", "middle")
-        .attr("fill", "#64748b")
-        .attr("font-size", 12)
+        .attr("dominant-baseline", "central")
+        .attr("fill", "#64748b") // slate-500
+        .attr("font-size", 10)
+        .attr("font-weight", 400)
+        .attr("dy", "0.5em")
         .attr("font-family", "Inter, system-ui, sans-serif")
-        .attr("font-style", "italic")
-        .text(() => {
-          const b = node.birthYear ?? "";
-          const d = node.deathYear ? `${node.deathYear}` : "";
-          if (b && d) return `${b} - ${d}`;
-          if (b) return `${b} -`;
-          return "";
-        });
+        .text(`${bYear} - ${dYear}`);
 
       cardG
         .on("mouseenter", function () {
-          d3.select(this).raise();
-          d3.select(this)
+          select(this).raise();
+          select(this)
             .transition()
             .duration(200)
-            .attr("transform", `translate(${x}, ${y}) scale(1.08)`);
-          d3.select(this)
-            .select("rect:first-of-type")
+            .attr("transform", `translate(${x}, ${y}) scale(1.05)`);
+          select(this)
+            .select("rect")
             .transition()
             .duration(200)
-            .attr("stroke-width", 4)
+            .attr("stroke-width", 3)
             .attr("filter", "url(#search-glow)");
         })
         .on("mouseleave", function () {
-          d3.select(this)
+          select(this)
             .transition()
             .duration(200)
             .attr("transform", `translate(${x}, ${y})`);
-          d3.select(this)
-            .select("rect:first-of-type")
+          select(this)
+            .select("rect")
             .transition()
             .duration(200)
-            .attr("stroke-width", 2.5)
+            .attr("stroke-width", 2)
             .attr(
               "filter",
               isSearchHL ? "url(#search-glow)" : "url(#card-shadow)"
@@ -565,187 +953,218 @@ export function TreeCanvas({
         .on("click", () => onNodeClick(node));
     }
 
-    /* ───── Helper: draw a line with animation ───── */
-    function drawLine(
-      layer: d3.Selection<SVGGElement, unknown, null, undefined>,
-      d: string,
-      color = "#475569",
-      strokeW = 3.5,
-      dash?: string
-    ) {
-      const p = layer
-        .append("path")
-        .attr("d", d)
-        .attr("fill", "none")
-        .attr("stroke", color)
-        .attr("stroke-width", strokeW)
-        .attr("stroke-opacity", 0);
-      if (dash) p.attr("stroke-dasharray", dash);
-      p.transition().duration(TRANSITION_MS).attr("stroke-opacity", 0.9);
-    }
-
-    /* ───── Recursive draw ───── */
+    /* ───── Draw ───── */
     const linksG = g.append("g").attr("class", "links-layer");
     const nodesG = g.append("g").attr("class", "nodes-layer");
-    let cardIdx = 0;
+    const crossClanLinksG = g
+      .append("g")
+      .attr("class", "cross-clan-links-layer");
 
-    function drawCoupleTree(couple: CoupleNode) {
-      const { primary, spouse, x, y, childCouples } = couple;
+    // Track node positions for cross-clan edge drawing
+    const nodePositions = new Map<string, { x: number; y: number }>();
 
-      if (layout === "horizontal") {
-        // ─── HORIZONTAL: couples stacked vertically, tree grows left→right ───
-        const cardX = x + NODE_W / 2;
-        const primaryY = spouse ? y - (NODE_H + SPOUSE_GAP / 2) / 2 : y;
-        const spouseY = y + (NODE_H + SPOUSE_GAP / 2) / 2;
+    for (const link of allDagLinks) {
+      const parentUnitNodes = link.source.data.nodes;
+      const childUnitNodes = link.target.data.nodes;
 
-        drawCard(nodesG, primary, cardX, primaryY, cardIdx++);
+      let sourceX = link.source.x;
+      let targetX = link.target.x;
 
-        if (spouse) {
-          drawCard(nodesG, spouse, cardX, spouseY, cardIdx++);
-          // Vertical dashed pink spouse connector
-          const connY1 = primaryY + NODE_H / 2;
-          const connY2 = spouseY - NODE_H / 2;
-          if (connY2 > connY1) {
-            drawLine(
-              linksG,
-              `M ${cardX},${connY1} V ${connY2}`,
-              "#f43f5e",
-              3,
-              "6,4"
-            );
+      let specificChildIndex = -1;
+      let linkType = "PARENT_CHILD";
+
+      for (let i = 0; i < childUnitNodes.length; i++) {
+        const cNode = childUnitNodes[i];
+        for (let j = 0; j < parentUnitNodes.length; j++) {
+          const pNode = parentUnitNodes[j];
+          const childEdge = edges.find(
+            (e) =>
+              (e.type === "PARENT_CHILD" || e.type === "ADOPTION") &&
+              e.toNodeId === cNode.id &&
+              e.fromNodeId === pNode.id
+          );
+          if (childEdge) {
+            specificChildIndex = i;
+            linkType = childEdge.type;
+            break;
           }
         }
-
-        if (childCouples.length > 0) {
-          const parentRight = cardX + NODE_W / 2;
-          const bridgeX = parentRight + 25;
-
-          if (spouse) {
-            drawLine(linksG, `M ${parentRight},${primaryY} H ${bridgeX}`);
-            drawLine(linksG, `M ${parentRight},${spouseY} H ${bridgeX}`);
-            drawLine(linksG, `M ${bridgeX},${primaryY} V ${spouseY}`);
-          }
-
-          const dropY = y;
-          const dropStartX = spouse ? bridgeX : parentRight;
-          const childLeftX = childCouples[0].x + NODE_W / 2 - NODE_W / 2;
-          const busX = (dropStartX + childLeftX) / 2;
-
-          drawLine(linksG, `M ${dropStartX},${dropY} H ${busX}`);
-
-          if (childCouples.length > 1) {
-            const childYs = childCouples.map((c) => c.y);
-            const minCY = Math.min(...childYs);
-            const maxCY = Math.max(...childYs);
-            drawLine(linksG, `M ${busX},${minCY} V ${maxCY}`);
-          }
-
-          childCouples.forEach((child) => {
-            drawLine(
-              linksG,
-              `M ${busX},${child.y} H ${child.x + NODE_W / 2 - NODE_W / 2}`
-            );
-          });
-        }
-      } else if (layout === "radial") {
-        // ─── RADIAL: couples side-by-side, branches radiate from center ───
-        const primaryX = spouse ? x - (NODE_W + SPOUSE_GAP) / 2 : x;
-        const spouseX = x + (NODE_W + SPOUSE_GAP) / 2;
-        const cardY = y;
-
-        drawCard(nodesG, primary, primaryX, cardY, cardIdx++);
-
-        if (spouse) {
-          drawCard(nodesG, spouse, spouseX, cardY, cardIdx++);
-          const connX1 = primaryX + NODE_W / 2;
-          const connX2 = spouseX - NODE_W / 2;
-          if (connX2 > connX1) {
-            drawLine(
-              linksG,
-              `M ${connX1},${cardY} L ${connX2},${cardY}`,
-              "#f43f5e",
-              3,
-              "6,4"
-            );
-          }
-        }
-
-        // Radial links: straight lines from parent center to child center
-        childCouples.forEach((child) => {
-          drawLine(linksG, `M ${x},${y} L ${child.x},${child.y}`);
-        });
-      } else {
-        // ─── VERTICAL (default) ───
-        const primaryX = spouse ? x - (NODE_W + SPOUSE_GAP) / 2 : x;
-        const spouseX = x + (NODE_W + SPOUSE_GAP) / 2;
-        const cardY = y + NODE_H / 2;
-
-        drawCard(nodesG, primary, primaryX, cardY, cardIdx++);
-
-        if (spouse) {
-          drawCard(nodesG, spouse, spouseX, cardY, cardIdx++);
-          const connX1 = primaryX + NODE_W / 2;
-          const connX2 = spouseX - NODE_W / 2;
-          if (connX2 > connX1) {
-            drawLine(
-              linksG,
-              `M ${connX1},${cardY} L ${connX2},${cardY}`,
-              "#f43f5e",
-              3,
-              "6,4"
-            );
-          }
-        }
-
-        if (childCouples.length > 0) {
-          const parentBottom = cardY + NODE_H / 2;
-          const bridgeY = parentBottom + 25;
-
-          if (spouse) {
-            drawLine(linksG, `M ${primaryX},${parentBottom} V ${bridgeY}`);
-            drawLine(linksG, `M ${spouseX},${parentBottom} V ${bridgeY}`);
-            drawLine(linksG, `M ${primaryX},${bridgeY} H ${spouseX}`);
-          }
-
-          const dropX = x;
-          const dropStartY = spouse ? bridgeY : parentBottom;
-          const childTopY = childCouples[0].y + NODE_H / 2 - NODE_H / 2;
-          const busY = (dropStartY + childTopY) / 2;
-
-          drawLine(linksG, `M ${dropX},${dropStartY} V ${busY}`);
-
-          if (childCouples.length > 1) {
-            const childXs = childCouples.map((c) => c.x);
-            drawLine(
-              linksG,
-              `M ${Math.min(...childXs)},${busY} H ${Math.max(...childXs)}`
-            );
-          }
-
-          childCouples.forEach((child) => {
-            const childCardTop = child.y + NODE_H / 2 - NODE_H / 2;
-            drawLine(linksG, `M ${child.x},${busY} V ${childCardTop}`);
-          });
-        }
+        if (specificChildIndex !== -1) break;
       }
 
-      childCouples.forEach((child) => drawCoupleTree(child));
+      // 1. Line ALWAYS drops from the geometric center of the Parents' Marriage Unit
+      sourceX = link.source.x;
+
+      // 2. Line ALWAYS targets the specific blood child in the Child's Unit
+      if (specificChildIndex !== -1) {
+        const cUnitW = link.target.data.width;
+        targetX =
+          link.target.x -
+          cUnitW / 2 +
+          NODE_W / 2 +
+          specificChildIndex * (NODE_W + H_GAP);
+      }
+
+      // The horizontal spouse line is drawn precisely at cy = link.source.y
+      const sourceY = link.source.y;
+
+      const targetY = link.target.y - NODE_H / 2;
+      const midY = (link.source.y + NODE_H / 2 + targetY) / 2;
+
+      const pathD = `M ${sourceX} ${sourceY} L ${sourceX} ${midY} L ${targetX} ${midY} L ${targetX} ${targetY}`;
+
+      let strokeColor = "#94a3b8"; // dark slate for parent_child
+      let strokeWidth = 3.5;
+
+      if (linkType === "ADOPTION") {
+        strokeColor = "#7dd3fc";
+        strokeWidth = 2.5;
+      }
+
+      const path = linksG
+        .append("path")
+        .attr("d", pathD)
+        .attr("fill", "none")
+        .attr("stroke", strokeColor)
+        .attr("stroke-width", strokeWidth);
+
+      const totalLength = (path.node() as SVGPathElement).getTotalLength();
+      path
+        .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(TRANSITION_MS * 1.5)
+        .ease(easeCubicOut)
+        .attr("stroke-dashoffset", 0);
     }
 
-    forest.forEach((tree) => drawCoupleTree(tree));
+    let cardIdx = 0;
+    for (const unitDagNode of allDagNodes) {
+      const unit = unitDagNode.data;
+      const cx = unitDagNode.x;
+      const cy = unitDagNode.y;
+      const totalW = unit.width;
+      let startX = cx - totalW / 2 + NODE_W / 2;
+
+      for (let i = 0; i < unit.nodes.length; i++) {
+        const person = unit.nodes[i];
+        drawCard(nodesG, person, startX, cy, cardIdx++);
+        // Record position for cross-clan edges
+        nodePositions.set(person.id, { x: startX, y: cy });
+
+        // Draw horizontal spouse line between sequential members of a unit
+        if (i < unit.nodes.length - 1) {
+          const nextPerson = unit.nodes[i + 1];
+          let spouseType = "SPOUSE";
+          const spouseEdge = edges.find(
+            (e) =>
+              (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE") &&
+              ((e.fromNodeId === person.id && e.toNodeId === nextPerson.id) ||
+                (e.fromNodeId === nextPerson.id && e.toNodeId === person.id))
+          );
+          if (spouseEdge) spouseType = spouseEdge.type;
+
+          const strokeColor =
+            spouseType === "DIVORCED_SPOUSE" ? "#d6d3d1" : "#f472b6";
+          const nextX = startX + NODE_W + H_GAP;
+          const pathD = `M ${startX + NODE_W / 2} ${cy} L ${nextX - NODE_W / 2} ${cy}`;
+
+          linksG
+            .append("path")
+            .attr("d", pathD)
+            .attr("fill", "none")
+            .attr("stroke", strokeColor)
+            .attr("stroke-width", 2.0)
+            .attr("stroke-dasharray", "5,3");
+        }
+
+        startX += NODE_W + H_GAP;
+      }
+    }
+
+    // Draw cross-clan connected nodes (positioned to the left)
+    let isoIdx = cardIdx;
+    crossClanIsolated.forEach((node: any) => {
+      drawCard(nodesG, node, node.x, node.y, isoIdx++);
+      nodePositions.set(node.id, { x: node.x, y: node.y });
+    });
+
+    // Draw truly isolated grid nodes
+    trulyIsolated.forEach((node: any) => {
+      drawCard(nodesG, node, node.x, node.y, isoIdx++);
+      nodePositions.set(node.id, { x: node.x, y: node.y });
+    });
+
+    // ───── Draw Cross-Clan Edges ─────
+    // Parent-child edges between different clans, same style as regular edges
+    // The line drops from the CENTER of the parent's spouse unit (like regular edges)
+    for (const ccEdge of crossClanEdges) {
+      const fromPos = nodePositions.get(ccEdge.fromNodeId);
+      const toPos = nodePositions.get(ccEdge.toNodeId);
+      if (!fromPos || !toPos) continue;
+
+      // Find the center of the parent's spouse unit
+      const parentUnit = nodeToUnit.get(ccEdge.fromNodeId);
+      let sourceX = fromPos.x;
+      if (parentUnit && parentUnit.nodes.length > 1) {
+        // Calculate geometric center X of all nodes in the unit
+        let sumX = 0;
+        let count = 0;
+        for (const unitNode of parentUnit.nodes) {
+          const pos = nodePositions.get(unitNode.id);
+          if (pos) {
+            sumX += pos.x;
+            count++;
+          }
+        }
+        if (count > 0) sourceX = sumX / count;
+      }
+
+      const sourceY = fromPos.y; // center of card = where spouse line is drawn
+      const targetY = toPos.y - NODE_H / 2;
+
+      // Standard edges route through the exact middle.
+      // To avoid overlapping with standard horizontal sibling lines (which use the exact middle),
+      // we'll shift the cross-clan horizontal routing line slightly lower.
+      const standardMidY = (fromPos.y + NODE_H / 2 + targetY) / 2;
+      const midY = standardMidY + V_SPACING * 0.25; // Push the horizontal line down by 25% of spacing
+
+      const pathD = `M ${sourceX} ${sourceY} L ${sourceX} ${midY} L ${toPos.x} ${midY} L ${toPos.x} ${targetY}`;
+
+      const path = crossClanLinksG
+        .append("path")
+        .attr("d", pathD)
+        .attr("fill", "none")
+        .attr("stroke", "#94a3b8")
+        .attr("stroke-width", 3.5);
+
+      const totalLength = (path.node() as SVGPathElement).getTotalLength();
+      path
+        .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(TRANSITION_MS * 1.5)
+        .ease(easeCubicOut)
+        .attr("stroke-dashoffset", 0);
+    }
 
     /* ───── Zoom ───── */
-    const zoom = d3
-      .zoom<SVGSVGElement, unknown>()
+    const zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.05, 5])
       .on("zoom", (event) => {
         g.attr("transform", event.transform.toString());
       });
-    svg.call(zoom);
-    zoomBehaviorRef.current = zoom;
+    svg.call(zoomBehavior);
+    zoomBehaviorRef.current = zoomBehavior;
 
     requestAnimationFrame(() => {
-      setTimeout(() => zoomRef.current?.fitToScreen(), TRANSITION_MS + 200);
+      setTimeout(() => {
+        if (currentUserNode?.id) {
+          zoomRef.current?.zoomToNode(currentUserNode.id, 0.8);
+        } else {
+          zoomRef.current?.fitToScreen();
+        }
+      }, TRANSITION_MS + 200);
     });
 
     return () => {
@@ -754,6 +1173,7 @@ export function TreeCanvas({
     };
   }, [
     allNodes,
+    edges,
     layout,
     matchingIds,
     searchMatchIds,
@@ -761,6 +1181,8 @@ export function TreeCanvas({
     onNodeClick,
     applyZoom,
     zoomRef,
+    nodesMap,
+    currentUserNode,
   ]);
 
   return (

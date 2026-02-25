@@ -152,15 +152,6 @@ export function TreeFilters({
       {hasActiveFilter && (
         <>
           <div className="h-5 w-px bg-border/40 mx-1" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-            onClick={resetFilters}
-          >
-            <RotateCcw className="h-3 w-3" />
-            Reset
-          </Button>
           <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {matchCount} / {totalCount}
           </span>

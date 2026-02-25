@@ -1,15 +1,22 @@
 "use client";
 
 import { useMemo, useEffect, useRef, useState, useCallback } from "react";
-import { X } from "lucide-react";
-import type { TreeNode } from "@/types/family-tree";
+import { X, UserPlus, Pencil } from "lucide-react";
+import type { TreeNode, FamilyEdgeData } from "@/types/family-tree";
+import { MemberDetailCard } from "./member-detail-card";
 import { getNodeColor, getInitials } from "@/lib/family-tree-utils";
 
 interface MemberProfileViewProps {
   member: TreeNode;
   allNodes: TreeNode[];
+  edges: FamilyEdgeData[];
   onClose: () => void;
   onNavigateToMember: (id: string) => void;
+  canModify?: boolean;
+  isAdmin?: boolean;
+  currentUserClan?: string | null;
+  onAddRelative?: (node: TreeNode) => void;
+  onEditMember?: (node: TreeNode) => void;
 }
 
 /* ── Couple = person + optional spouse ── */
@@ -25,45 +32,74 @@ interface Couple {
  * ══════════════════════════════════════════ */
 function derive3LevelTree(
   member: TreeNode,
-  allNodes: TreeNode[]
+  allNodes: TreeNode[],
+  edges: FamilyEdgeData[]
 ): { upper: Couple[]; middle: Couple[]; lower: Couple[] } {
   const map = new Map(allNodes.map((n) => [n.id, n]));
 
   // ── Helpers ──
-  function findSpouse(person: TreeNode): TreeNode | null {
-    if (person.spouseId && map.has(person.spouseId))
-      return map.get(person.spouseId)!;
-    for (const n of allNodes) {
-      if (n.spouseId === person.id) return n;
-    }
-    return null;
+  function findSpouses(personId: string): TreeNode[] {
+    const spouseIds = new Set<string>();
+    edges.forEach((e) => {
+      if (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE") {
+        if (e.fromNodeId === personId) spouseIds.add(e.toNodeId);
+        if (e.toNodeId === personId) spouseIds.add(e.fromNodeId);
+      }
+    });
+    return Array.from(spouseIds)
+      .map((id) => map.get(id))
+      .filter((n): n is TreeNode => Boolean(n));
   }
 
-  function getSiblings(person: TreeNode): TreeNode[] {
-    return allNodes.filter(
-      (n) =>
-        n.id !== person.id &&
-        ((person.fatherId && n.fatherId === person.fatherId) ||
-          (person.motherId && n.motherId === person.motherId))
-    );
+  function getParents(personId: string): TreeNode[] {
+    return edges
+      .filter(
+        (e) =>
+          e.toNodeId === personId &&
+          (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
+      )
+      .map((e) => map.get(e.fromNodeId))
+      .filter((n): n is TreeNode => Boolean(n));
+  }
+
+  function getSiblings(personId: string): TreeNode[] {
+    const myParents = getParents(personId);
+    if (myParents.length === 0) return [];
+
+    const siblingIds = new Set<string>();
+    myParents.forEach((parent) => {
+      edges
+        .filter(
+          (e) =>
+            e.fromNodeId === parent.id &&
+            (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
+        )
+        .forEach((e) => {
+          if (e.toNodeId !== personId) siblingIds.add(e.toNodeId);
+        });
+    });
+    return Array.from(siblingIds)
+      .map((id) => map.get(id))
+      .filter((n): n is TreeNode => Boolean(n));
   }
 
   // ── Data extraction ──
-  const father = member.fatherId ? map.get(member.fatherId) : undefined;
-  const mother = member.motherId ? map.get(member.motherId) : undefined;
+  const parents = getParents(member.id);
+  const father = parents.find((p) => p.gender === "MALE");
+  const mother = parents.find((p) => p.gender === "FEMALE");
 
   // ── UPPER LEVEL ──
   const upper: Couple[] = [];
 
   // Paternal uncles & aunts (father's siblings) with spouses
   if (father) {
-    const fatherSiblings = getSiblings(father);
+    const fatherSiblings = getSiblings(father.id);
 
     // Paternal uncles (father's brothers)
     fatherSiblings
       .filter((s) => s.gender === "MALE")
       .forEach((uncle) => {
-        const sp = findSpouse(uncle);
+        const sp = findSpouses(uncle.id)[0] || null;
         upper.push({
           primary: uncle,
           primaryLabel: "Paternal Uncle",
@@ -84,7 +120,7 @@ function derive3LevelTree(
     fatherSiblings
       .filter((s) => s.gender === "FEMALE")
       .forEach((aunt) => {
-        const sp = findSpouse(aunt);
+        const sp = findSpouses(aunt.id)[0] || null;
         upper.push({
           primary: aunt,
           primaryLabel: "Paternal Aunt",
@@ -104,12 +140,12 @@ function derive3LevelTree(
 
   // Maternal uncles & aunts (mother's siblings) with spouses
   if (mother) {
-    const motherSiblings = getSiblings(mother);
+    const motherSiblings = getSiblings(mother.id);
 
     motherSiblings
       .filter((s) => s.gender === "MALE")
       .forEach((uncle) => {
-        const sp = findSpouse(uncle);
+        const sp = findSpouses(uncle.id)[0] || null;
         upper.push({
           primary: uncle,
           primaryLabel: "Maternal Uncle",
@@ -121,7 +157,7 @@ function derive3LevelTree(
     motherSiblings
       .filter((s) => s.gender === "FEMALE")
       .forEach((aunt) => {
-        const sp = findSpouse(aunt);
+        const sp = findSpouses(aunt.id)[0] || null;
         upper.push({
           primary: aunt,
           primaryLabel: "Maternal Aunt",
@@ -139,19 +175,14 @@ function derive3LevelTree(
   // ── MIDDLE LEVEL: Sisters + Me + Spouse + Brothers ──
   const middle: Couple[] = [];
 
-  // Siblings (same father or mother)
-  const siblings = allNodes.filter(
-    (n) =>
-      n.id !== member.id &&
-      ((member.fatherId && n.fatherId === member.fatherId) ||
-        (member.motherId && n.motherId === member.motherId))
-  );
+  // Siblings
+  const siblings = getSiblings(member.id);
   const sisters = siblings.filter((s) => s.gender === "FEMALE");
   const brothers = siblings.filter((s) => s.gender === "MALE");
 
   // Sisters first (with spouses)
   sisters.forEach((sis) => {
-    const sp = findSpouse(sis);
+    const sp = findSpouses(sis.id)[0] || null;
     middle.push({
       primary: sis,
       primaryLabel: "Sister",
@@ -161,23 +192,24 @@ function derive3LevelTree(
   });
 
   // Me + Spouse
-  const mySpouse = findSpouse(member);
+  const mySpouses = findSpouses(member.id);
+  const primarySpouse = mySpouses[0] || null;
   const spouseLabel =
-    mySpouse?.gender === "MALE"
+    primarySpouse?.gender === "MALE"
       ? "Husband"
-      : mySpouse?.gender === "FEMALE"
+      : primarySpouse?.gender === "FEMALE"
         ? "Wife"
         : "Spouse";
   middle.push({
     primary: member,
     primaryLabel: "Me",
-    spouse: mySpouse,
-    spouseLabel: mySpouse ? spouseLabel : "",
+    spouse: primarySpouse,
+    spouseLabel: primarySpouse ? spouseLabel : "",
   });
 
   // Brothers after (with spouses)
   brothers.forEach((bro) => {
-    const sp = findSpouse(bro);
+    const sp = findSpouses(bro.id)[0] || null;
     middle.push({
       primary: bro,
       primaryLabel: "Brother",
@@ -188,12 +220,32 @@ function derive3LevelTree(
 
   // ── LOWER LEVEL: Children + their spouses ──
   const lower: Couple[] = [];
-  const children = allNodes.filter(
-    (n) =>
-      n.fatherId === member.id ||
-      n.motherId === member.id ||
-      (mySpouse && (n.fatherId === mySpouse.id || n.motherId === mySpouse.id))
-  );
+
+  const childIds = new Set<string>();
+  edges.forEach((e) => {
+    if (
+      (e.type === "PARENT_CHILD" || e.type === "ADOPTION") &&
+      e.fromNodeId === member.id
+    ) {
+      childIds.add(e.toNodeId);
+    }
+  });
+
+  // also check if any spouse is their primary edge
+  mySpouses.forEach((sp) => {
+    edges.forEach((e) => {
+      if (
+        (e.type === "PARENT_CHILD" || e.type === "ADOPTION") &&
+        e.fromNodeId === sp.id
+      ) {
+        childIds.add(e.toNodeId);
+      }
+    });
+  });
+
+  const children = Array.from(childIds)
+    .map((id) => map.get(id))
+    .filter((n): n is TreeNode => Boolean(n));
 
   // Sons first, then daughters, sorted by birth year
   const sorted = [...children].sort((a, b) => {
@@ -203,7 +255,7 @@ function derive3LevelTree(
   });
 
   sorted.forEach((child) => {
-    const childSpouse = findSpouse(child);
+    const childSpouse = findSpouses(child.id)[0] || null;
     const childLabel = child.gender === "MALE" ? "Son" : "Daughter";
     const csLabel = childSpouse
       ? child.gender === "MALE"
@@ -228,12 +280,18 @@ function derive3LevelTree(
 export function MemberProfileView({
   member,
   allNodes,
+  edges,
   onClose,
   onNavigateToMember,
+  canModify,
+  isAdmin,
+  currentUserClan,
+  onAddRelative,
+  onEditMember,
 }: MemberProfileViewProps) {
   const { upper, middle, lower } = useMemo(
-    () => derive3LevelTree(member, allNodes),
-    [member, allNodes]
+    () => derive3LevelTree(member, allNodes, edges),
+    [member, allNodes, edges]
   );
 
   // Close on Escape key
@@ -246,99 +304,43 @@ export function MemberProfileView({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-12 animate-in fade-in duration-200">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm cursor-pointer"
         onClick={onClose}
       />
-
-      <div className="relative w-full max-w-5xl max-h-[92vh] rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in slide-in-from-bottom-4 duration-300 flex flex-col border border-zinc-200 dark:border-zinc-700">
-        {/* ─── Hero Banner ─── */}
-        <div className="relative shrink-0 overflow-hidden">
-          <div
-            className="h-60 sm:h-64 w-full"
-            style={{
-              background: `linear-gradient(135deg, ${getNodeColor(member.gender, member.isAlive).fill} 0%, ${getNodeColor(member.gender, member.isAlive).stroke} 60%, #1e3a5f 100%)`,
-            }}
-          />
-          <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 -translate-y-10 translate-x-10" />
-          <div className="absolute bottom-0 left-10 w-24 h-24 rounded-full bg-white/5 translate-y-6" />
-
-          {/* Badges + Close */}
-          <div className="absolute top-3 left-4 right-4 flex items-start justify-between">
-            <div className="flex gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-white">
-                {member.gender === "MALE"
-                  ? "♂ Male"
-                  : member.gender === "FEMALE"
-                    ? "♀ Female"
-                    : "Other"}
-              </span>
-              {member.generation !== undefined &&
-                member.generation !== null && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-white">
-                    Gen {member.generation}
-                  </span>
-                )}
-              {!member.isAlive && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-black/30 backdrop-blur-sm px-2.5 py-1 text-[11px] font-semibold text-white/80">
-                  Deceased
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-              className="relative z-10 h-10 w-10 rounded-full flex items-center justify-center bg-white/25 backdrop-blur-md text-white hover:bg-white/40 hover:scale-110 transition-all shadow-lg"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Avatar + Info */}
-          <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 pt-12">
-            <div
-              className="h-[72px] w-[72px] shrink-0 rounded-full flex items-center justify-center text-white text-2xl font-extrabold shadow-lg ring-4 ring-white/30"
-              style={{
-                background: `linear-gradient(145deg, ${getNodeColor(member.gender, member.isAlive).fill}, ${getNodeColor(member.gender, member.isAlive).stroke})`,
-              }}
-            >
-              {getInitials(member.firstName, member.lastName)}
-            </div>
-            <h2 className="mt-2.5 text-lg font-bold text-white tracking-tight">
-              {member.name}
-            </h2>
-            {member.birthYear && (
-              <p className="text-[13px] text-white/70 mt-0.5 flex items-center gap-1.5">
-                <span>📅</span>
-                <span>
-                  Born {member.birthYear}
-                  {member.deathYear
-                    ? ` · Died ${member.deathYear}`
-                    : ` · ${new Date().getFullYear() - member.birthYear} yrs`}
-                </span>
-              </p>
-            )}
-            {member.familyClan && (
-              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur-sm px-3 py-1 text-[12px] font-semibold text-white">
-                🏔️ Clan: {member.familyClan}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* ─── 3-Level Mini Tree (Zoomable + Pannable) ─── */}
-        <MiniTreeBody
-          upper={upper}
-          middle={middle}
-          lower={lower}
-          memberId={member.id}
+      <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-zinc-200/50 dark:border-zinc-800/50 max-h-[90vh]">
+        <MemberDetailCard
+          member={member}
+          allNodes={allNodes}
+          edges={edges}
+          onClose={onClose}
           onNavigateToMember={onNavigateToMember}
         />
+
+        {/* Action buttons — only for same-clan users or admins */}
+        {canModify &&
+          (isAdmin ||
+            (currentUserClan &&
+              member.familyClan &&
+              currentUserClan === member.familyClan)) && (
+            <div className="flex items-center gap-2 p-3 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
+              <button
+                onClick={() => onAddRelative?.(member)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+              >
+                <UserPlus className="h-4 w-4" />
+                Add Relative
+              </button>
+              <button
+                onClick={() => onEditMember?.(member)}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Details
+              </button>
+            </div>
+          )}
       </div>
     </div>
   );

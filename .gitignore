@@ -44,5 +44,5 @@ next-env.d.ts
 # custom
 /docs
 tasklist.md
-
+/scripts
 /lib/generated/prisma

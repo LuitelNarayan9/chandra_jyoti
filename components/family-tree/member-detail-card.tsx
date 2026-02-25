@@ -2,25 +2,20 @@
 
 import { useMemo } from "react";
 import {
-  X,
-  Heart,
-  TreePine,
-  Calendar,
-  UserRound,
-  Sparkles,
-  ChevronRight,
-  Crown,
-  Baby,
+  HeartPulse,
+  HeartOff,
+  ExternalLink,
+  CircleUser,
+  Layers,
+  Shield,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import type { TreeNode } from "@/types/family-tree";
+import type { TreeNode, FamilyEdgeData } from "@/types/family-tree";
 import { getNodeColor, getInitials } from "@/lib/family-tree-utils";
 
 interface MemberDetailCardProps {
   member: TreeNode;
   allNodes: TreeNode[];
+  edges: FamilyEdgeData[];
   onClose: () => void;
   onNavigateToMember: (id: string) => void;
 }
@@ -28,6 +23,7 @@ interface MemberDetailCardProps {
 export function MemberDetailCard({
   member,
   allNodes,
+  edges,
   onClose,
   onNavigateToMember,
 }: MemberDetailCardProps) {
@@ -37,41 +33,93 @@ export function MemberDetailCard({
   const relations = useMemo(() => {
     const nodeMap = new Map(allNodes.map((n) => [n.id, n]));
 
-    // Parents: father(s) and mother(s) — gather from direct IDs
-    const fathers: TreeNode[] = [];
-    const mothers: TreeNode[] = [];
-    if (member.fatherId && nodeMap.has(member.fatherId))
-      fathers.push(nodeMap.get(member.fatherId)!);
-    if (member.motherId && nodeMap.has(member.motherId))
-      mothers.push(nodeMap.get(member.motherId)!);
+    const getParents = (id: string) =>
+      edges
+        .filter(
+          (e) =>
+            e.toNodeId === id &&
+            (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
+        )
+        .map((e) => nodeMap.get(e.fromNodeId))
+        .filter((n): n is TreeNode => Boolean(n));
 
-    // Spouses: anyone whose spouseId points to this member, OR this member's spouseId
+    // Parents
+    const myParents = getParents(member.id);
+    const fathers = myParents.filter((p) => p.gender === "MALE");
+    const mothers = myParents.filter((p) => p.gender === "FEMALE");
+
+    // Spouses
     const spouseSet = new Set<string>();
-    if (member.spouseId) spouseSet.add(member.spouseId);
-    allNodes.forEach((n) => {
-      if (n.spouseId === member.id) spouseSet.add(n.id);
+    edges.forEach((e) => {
+      if (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE") {
+        if (e.fromNodeId === member.id) spouseSet.add(e.toNodeId);
+        if (e.toNodeId === member.id) spouseSet.add(e.fromNodeId);
+      }
     });
     const spouses = Array.from(spouseSet)
       .map((id) => nodeMap.get(id))
-      .filter(Boolean) as TreeNode[];
+      .filter((n): n is TreeNode => Boolean(n));
 
-    // Children: anyone whose fatherId or motherId is this member
-    const children = allNodes.filter(
-      (n) => n.fatherId === member.id || n.motherId === member.id
-    );
+    // Children — include both direct children AND spouse's children
+    const childSet = new Set<string>();
+    edges.forEach((e) => {
+      if (
+        (e.type === "PARENT_CHILD" || e.type === "ADOPTION") &&
+        e.fromNodeId === member.id
+      ) {
+        childSet.add(e.toNodeId);
+      }
+    });
+    // Also count children through spouses
+    spouses.forEach((sp) => {
+      edges.forEach((e) => {
+        if (
+          (e.type === "PARENT_CHILD" || e.type === "ADOPTION") &&
+          e.fromNodeId === sp.id
+        ) {
+          childSet.add(e.toNodeId);
+        }
+      });
+    });
+    const children = Array.from(childSet)
+      .map((id) => nodeMap.get(id))
+      .filter((n): n is TreeNode => Boolean(n));
+
     const sons = children.filter((c) => c.gender === "MALE");
     const daughters = children.filter((c) => c.gender === "FEMALE");
     const otherChildren = children.filter(
       (c) => c.gender !== "MALE" && c.gender !== "FEMALE"
     );
 
-    // Siblings: share the same father or mother
-    const siblings = allNodes.filter(
-      (n) =>
-        n.id !== member.id &&
-        ((member.fatherId && n.fatherId === member.fatherId) ||
-          (member.motherId && n.motherId === member.motherId))
-    );
+    // Siblings — also include children of parents' spouses
+    const siblingSet = new Set<string>();
+
+    // First, expand parents to include their spouses
+    const parentAndSpouseIds = new Set<string>(myParents.map((p) => p.id));
+    myParents.forEach((parent) => {
+      edges.forEach((e) => {
+        if (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE") {
+          if (e.fromNodeId === parent.id) parentAndSpouseIds.add(e.toNodeId);
+          if (e.toNodeId === parent.id) parentAndSpouseIds.add(e.fromNodeId);
+        }
+      });
+    });
+
+    // Find all children of parent + parent's spouses
+    parentAndSpouseIds.forEach((parentId) => {
+      edges
+        .filter(
+          (e) =>
+            e.fromNodeId === parentId &&
+            (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
+        )
+        .forEach((e) => {
+          if (e.toNodeId !== member.id) siblingSet.add(e.toNodeId);
+        });
+    });
+    const siblings = Array.from(siblingSet)
+      .map((id) => nodeMap.get(id))
+      .filter((n): n is TreeNode => Boolean(n));
 
     return {
       fathers,
@@ -80,9 +128,10 @@ export function MemberDetailCard({
       sons,
       daughters,
       otherChildren,
+      children,
       siblings,
     };
-  }, [member, allNodes]);
+  }, [member, allNodes, edges]);
 
   const age = (() => {
     if (!member.birthYear) return null;
@@ -90,355 +139,323 @@ export function MemberDetailCard({
     return new Date().getFullYear() - member.birthYear;
   })();
 
+  /* ── Build subtitle line ── */
+  const subtitle = (() => {
+    const parts: string[] = [];
+    if (member.profession) parts.push(member.profession);
+    if (member.familyClan) parts.push(`${member.familyClan} Clan`);
+    if (parts.length > 0) return parts.join(" · ");
+    // fallback
+    if (member.bio) return member.bio;
+    if (member.birthYear) {
+      if (member.isAlive)
+        return `Born ${member.birthYear}${age ? ` · ${age} yrs` : ""}`;
+      return `${member.birthYear} — ${member.deathYear ?? "?"}${age ? ` · Lived ${age} yrs` : ""}`;
+    }
+    return member.gender === "MALE"
+      ? "Male"
+      : member.gender === "FEMALE"
+        ? "Female"
+        : "Member";
+  })();
+
+  /* ── Stat counts ── */
+  const childCount = relations.children.length;
+  const siblingCount = relations.siblings.length;
+  const spouseCount = relations.spouses.length;
+
+  /* ── Gender-specific gradient colors ── */
+  const headerGradient = `linear-gradient(135deg, ${colors.fill}, ${colors.stroke})`;
+
+  /* ── Accent glow color for the avatar ring ── */
+  const glowColor = colors.fill;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <>
+      {/* ─── Header with mesh-style gradient ─── */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-md animate-in fade-in duration-200"
-        onClick={onClose}
-      />
-
-      {/* Card */}
-      <div className="relative w-full max-w-[420px] max-h-[85vh] rounded-3xl bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in slide-in-from-bottom-4 duration-300 flex flex-col">
-        {/* ─ Hero Banner ─ */}
+        className="relative shrink-0 overflow-hidden"
+        style={{ height: 140 }}
+      >
+        {/* Primary gradient */}
         <div
-          className="relative h-32 shrink-0"
+          className="absolute inset-0"
+          style={{ background: headerGradient }}
+        />
+
+        {/* Decorative mesh / aurora blobs */}
+        <div
+          className="absolute -top-10 -left-10 w-40 h-40 rounded-full opacity-30 blur-2xl"
+          style={{ background: colors.stroke }}
+        />
+        <div
+          className="absolute -top-6 right-0 w-48 h-48 rounded-full opacity-20 blur-3xl"
+          style={{ background: `${colors.fill}cc` }}
+        />
+        <div
+          className="absolute bottom-2 left-1/3 w-32 h-32 rounded-full opacity-15 blur-2xl"
+          style={{ background: "#fff" }}
+        />
+
+        {/* Subtle dot grid pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.08]"
           style={{
-            background: `linear-gradient(135deg, ${colors.fill}, ${colors.stroke})`,
+            backgroundImage:
+              "radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)",
+            backgroundSize: "16px 16px",
           }}
+        />
+
+        {/* Smooth curve bottom edge */}
+        <svg
+          className="absolute -bottom-[1px] left-0 w-full"
+          viewBox="0 0 400 50"
+          preserveAspectRatio="none"
+          style={{ height: 50 }}
         >
-          {/* Decorative shapes */}
-          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10" />
-          <div className="absolute top-4 left-12 w-16 h-16 rounded-full bg-white/5" />
-          <div className="absolute -bottom-12 -left-12 w-36 h-36 rounded-full bg-white/[0.07]" />
+          <path
+            d="M0,30 C100,50 200,10 300,35 C350,47 380,25 400,30 L400,50 L0,50 Z"
+            className="fill-white dark:fill-zinc-900"
+          />
+        </svg>
 
-          {/* Status badges */}
-          <div className="absolute top-3.5 left-4 flex items-center gap-1.5">
-            <Badge className="bg-white/20 text-white border-white/30 text-[10px] font-semibold backdrop-blur-sm px-2 py-0.5">
-              {member.gender === "MALE"
-                ? "♂ Male"
-                : member.gender === "FEMALE"
-                  ? "♀ Female"
-                  : "⚧ Other"}
-            </Badge>
-            {!member.isAlive && (
-              <Badge className="bg-black/25 text-white border-white/15 text-[10px] backdrop-blur-sm px-2 py-0.5">
-                Deceased
-              </Badge>
-            )}
+        {/* Profile link button (top-right) — glass morphism */}
+        <button
+          onClick={() => {
+            window.location.href = `/profile/${member.id}`;
+          }}
+          className="absolute top-3.5 right-3.5 h-9 w-9 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 shadow-lg shadow-black/10 hover:scale-105 border border-white/20"
+          title="View full profile"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </button>
+
+        {/* Top-left Badges */}
+        <div className="absolute top-3.5 left-3.5 flex flex-wrap items-center gap-2 max-w-[calc(100%-3rem)] z-10">
+          {/* Clan & Generation Badge */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 backdrop-blur-md text-white text-[10px] font-bold tracking-wider uppercase border border-emerald-400/30 shadow-sm">
+            <span>{member.familyClan || "Unknown"}</span>
             {member.generation !== null && (
-              <Badge className="bg-white/15 text-white border-white/20 text-[10px] backdrop-blur-sm px-2 py-0.5">
-                Gen {member.generation}
-              </Badge>
-            )}
-          </div>
-
-          {/* Close */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-2.5 right-2.5 h-8 w-8 rounded-full text-white/70 hover:text-white hover:bg-white/20"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-
-          {/* Avatar */}
-          <div className="absolute -bottom-11 left-1/2 -translate-x-1/2">
-            <div
-              className="w-[88px] h-[88px] rounded-[22px] flex items-center justify-center text-2xl font-bold text-white shadow-xl border-[5px] border-white dark:border-zinc-900"
-              style={{
-                background: `linear-gradient(135deg, ${colors.fill}, ${colors.stroke})`,
-              }}
-            >
-              {getInitials(member.firstName, member.lastName)}
-            </div>
-          </div>
-        </div>
-
-        {/* ─ Scrollable body ─ */}
-        <div className="overflow-y-auto flex-1 custom-scrollbar">
-          <div className="pt-14 pb-6 px-5">
-            {/* Name & age */}
-            <div className="text-center mb-4">
-              <h3 className="text-xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">
-                {member.name}
-              </h3>
-              <div className="flex items-center justify-center gap-1.5 mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-                {member.birthYear && (
-                  <>
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>
-                      {member.isAlive
-                        ? `Born ${member.birthYear}`
-                        : `${member.birthYear} — ${member.deathYear}`}
-                    </span>
-                  </>
-                )}
-                {age !== null && (
-                  <span className="text-zinc-400 dark:text-zinc-500">
-                    · {member.isAlive ? `${age} yrs` : `Lived ${age} yrs`}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Info pills row */}
-            {member.familyClan && (
-              <div className="flex justify-center mb-5">
-                <InfoPill
-                  icon={TreePine}
-                  text={`Clan: ${member.familyClan}`}
-                  color={colors.fill}
-                />
-              </div>
-            )}
-
-            {/* ═══ Relations Sections ═══ */}
-            <div className="space-y-1">
-              {/* Parents */}
-              {(relations.fathers.length > 0 ||
-                relations.mothers.length > 0) && (
-                <RelationSection
-                  title="Parents"
-                  icon={Crown}
-                  accentColor="#6366f1"
-                >
-                  {relations.fathers.map((f) => (
-                    <PersonRow
-                      key={f.id}
-                      node={f}
-                      tag="Father"
-                      onClick={() => onNavigateToMember(f.id)}
-                    />
-                  ))}
-                  {relations.mothers.map((m) => (
-                    <PersonRow
-                      key={m.id}
-                      node={m}
-                      tag="Mother"
-                      onClick={() => onNavigateToMember(m.id)}
-                    />
-                  ))}
-                </RelationSection>
-              )}
-
-              {/* Spouse(s) */}
-              {relations.spouses.length > 0 && (
-                <RelationSection
-                  title={relations.spouses.length > 1 ? "Spouses" : "Spouse"}
-                  icon={Heart}
-                  accentColor="#ec4899"
-                >
-                  {relations.spouses.map((s) => (
-                    <PersonRow
-                      key={s.id}
-                      node={s}
-                      tag={s.isAlive ? "" : "Deceased"}
-                      onClick={() => onNavigateToMember(s.id)}
-                    />
-                  ))}
-                </RelationSection>
-              )}
-
-              {/* Sons */}
-              {relations.sons.length > 0 && (
-                <RelationSection
-                  title={`Sons (${relations.sons.length})`}
-                  icon={Baby}
-                  accentColor="#3b82f6"
-                >
-                  {relations.sons.map((c) => (
-                    <PersonRow
-                      key={c.id}
-                      node={c}
-                      tag={c.isAlive ? "" : "Deceased"}
-                      onClick={() => onNavigateToMember(c.id)}
-                    />
-                  ))}
-                </RelationSection>
-              )}
-
-              {/* Daughters */}
-              {relations.daughters.length > 0 && (
-                <RelationSection
-                  title={`Daughters (${relations.daughters.length})`}
-                  icon={Baby}
-                  accentColor="#ec4899"
-                >
-                  {relations.daughters.map((c) => (
-                    <PersonRow
-                      key={c.id}
-                      node={c}
-                      tag={c.isAlive ? "" : "Deceased"}
-                      onClick={() => onNavigateToMember(c.id)}
-                    />
-                  ))}
-                </RelationSection>
-              )}
-
-              {/* Other children */}
-              {relations.otherChildren.length > 0 && (
-                <RelationSection
-                  title={`Other Children (${relations.otherChildren.length})`}
-                  icon={Baby}
-                  accentColor="#8b5cf6"
-                >
-                  {relations.otherChildren.map((c) => (
-                    <PersonRow
-                      key={c.id}
-                      node={c}
-                      tag=""
-                      onClick={() => onNavigateToMember(c.id)}
-                    />
-                  ))}
-                </RelationSection>
-              )}
-
-              {/* Siblings */}
-              {relations.siblings.length > 0 && (
-                <RelationSection
-                  title={`Siblings (${relations.siblings.length})`}
-                  icon={Sparkles}
-                  accentColor="#f59e0b"
-                >
-                  {relations.siblings.map((s) => (
-                    <PersonRow
-                      key={s.id}
-                      node={s}
-                      tag={
-                        s.gender === "MALE"
-                          ? "Brother"
-                          : s.gender === "FEMALE"
-                            ? "Sister"
-                            : ""
-                      }
-                      onClick={() => onNavigateToMember(s.id)}
-                    />
-                  ))}
-                </RelationSection>
-              )}
-            </div>
-
-            {/* Bio */}
-            {member.bio && (
               <>
-                <Separator className="my-4" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1.5">
-                    About
-                  </p>
-                  <p className="text-[13px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                    {member.bio}
-                  </p>
-                </div>
+                <span className="opacity-50 font-black">
+                  &ensp; &gt; &ensp;
+                </span>
+                <span>Gen {member.generation}</span>
               </>
             )}
           </div>
+
+          {/* Status badge */}
+          {!member.isAlive && (
+            <div className="px-3 py-1.5 rounded-lg bg-black/20 backdrop-blur-md text-white text-[10px] font-bold tracking-wider uppercase border border-white/10 shadow-sm">
+              Deceased
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* ─── Circular Avatar with glow ring ─── */}
+      <div className="relative flex justify-center" style={{ marginTop: -48 }}>
+        {/* Glow ring behind avatar */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[104px] h-[104px] rounded-full blur-lg opacity-40"
+          style={{ background: glowColor }}
+        />
+        <div
+          className="relative h-[96px] w-[96px] rounded-full flex items-center justify-center text-2xl font-bold text-white border-[4px] border-white dark:border-zinc-900 overflow-hidden"
+          style={{
+            background: headerGradient,
+            boxShadow: `0 8px 32px ${glowColor}40, 0 2px 8px rgba(0,0,0,0.1)`,
+          }}
+        >
+          {member.photo ? (
+            <img
+              src={member.photo}
+              alt={member.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="drop-shadow-sm">
+              {getInitials(member.firstName, member.lastName)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ─── Name & Subtitle ─── */}
+      <div className="text-center px-6 mt-4">
+        <h3 className="text-xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight leading-tight">
+          {member.name}
+        </h3>
+        <p className="text-[13px] text-zinc-500 dark:text-zinc-400 mt-1.5 leading-relaxed font-medium">
+          {subtitle}
+        </p>
+        {age !== null && (
+          <div
+            className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[12px] font-semibold"
+            style={{ background: `${colors.bg}`, color: colors.text }}
+          >
+            <span>Age</span>
+            <span
+              className="w-1 h-1 rounded-full"
+              style={{ background: colors.fill }}
+            />
+            <span>{age}</span>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Stats Row — glassmorphism cards ─── */}
+      <div className="flex items-center justify-center gap-3 mt-5 px-6">
+        <StatCard
+          value={childCount}
+          label="Children"
+          color={colors.fill}
+          bg={colors.bg}
+        />
+        <StatCard
+          value={siblingCount}
+          label="Siblings"
+          color={colors.fill}
+          bg={colors.bg}
+        />
+        <StatCard
+          value={spouseCount}
+          label={spouseCount === 1 ? "Spouse" : "Spouses"}
+          color={colors.fill}
+          bg={colors.bg}
+        />
+      </div>
+
+      {/* ─── Bio ─── */}
+      {member.bio && (
+        <div className="px-6 mt-5 mb-1">
+          <div className="relative px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800">
+            {/* Decorative quote mark */}
+            <span
+              className="absolute -top-2 left-3 text-3xl font-serif leading-none opacity-20"
+              style={{ color: colors.fill }}
+            >
+              &ldquo;
+            </span>
+            <p className="text-[13px] text-zinc-600 dark:text-zinc-400 leading-relaxed text-center italic pl-2">
+              {member.bio}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Bottom Info Row — pill badges ─── */}
+      <div className="flex items-center justify-evenly py-4 mt-2 border-t border-zinc-100 dark:border-zinc-800 shrink-0 w-full">
+        <BottomPill
+          label={
+            member.gender === "MALE"
+              ? "Male"
+              : member.gender === "FEMALE"
+                ? "Female"
+                : "Other"
+          }
+          color={colors.fill}
+          bg={colors.bg}
+        >
+          <CircleUser className="h-4 w-4" />
+        </BottomPill>
+
+        <BottomPill
+          label={member.isAlive ? "Living" : "Deceased"}
+          color={member.isAlive ? "#22c55e" : "#6b7280"}
+          bg={member.isAlive ? "#dcfce7" : "#f3f4f6"}
+        >
+          {member.isAlive ? (
+            <HeartPulse className="h-4 w-4" />
+          ) : (
+            <HeartOff className="h-4 w-4" />
+          )}
+        </BottomPill>
+
+        {member.generation !== null && member.generation !== undefined && (
+          <BottomPill
+            label={`Gen ${member.generation}`}
+            color="#f59e0b"
+            bg="#fef3c7"
+          >
+            <Layers className="h-4 w-4" />
+          </BottomPill>
+        )}
+
+        {member.familyClan && (
+          <BottomPill label={member.familyClan} color="#8b5cf6" bg="#ede9fe">
+            <Shield className="h-4 w-4" />
+          </BottomPill>
+        )}
+      </div>
+    </>
   );
 }
 
 /* ── Sub-components ── */
 
-function InfoPill({
-  icon: Icon,
-  text,
+function StatCard({
+  value,
+  label,
   color,
+  bg,
 }: {
-  icon: React.ElementType;
-  text: string;
+  value: number;
+  label: string;
   color: string;
+  bg: string;
 }) {
   return (
     <div
-      className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold"
+      className="flex-1 flex flex-col items-center py-3 px-2 rounded-xl border border-zinc-100 dark:border-zinc-800 transition-all duration-300 hover:scale-[1.04] hover:shadow-md cursor-default"
       style={{
-        backgroundColor: `${color}12`,
-        color: color,
-        border: `1px solid ${color}22`,
+        background: `linear-gradient(135deg, ${bg}60, ${bg}30)`,
       }}
     >
-      <Icon className="h-3.5 w-3.5" />
-      {text}
-    </div>
-  );
-}
-
-function RelationSection({
-  title,
-  icon: Icon,
-  accentColor,
-  children,
-}: {
-  title: string;
-  icon: React.ElementType;
-  accentColor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-zinc-100 dark:border-zinc-800 overflow-hidden">
-      {/* Section header */}
-      <div
-        className="flex items-center gap-2 px-3.5 py-2"
-        style={{ backgroundColor: `${accentColor}08` }}
+      <span
+        className="text-2xl font-black tabular-nums leading-none"
+        style={{ color }}
       >
-        <div
-          className="h-6 w-6 rounded-lg flex items-center justify-center"
-          style={{ backgroundColor: `${accentColor}15` }}
-        >
-          <Icon className="h-3.5 w-3.5" style={{ color: accentColor }} />
-        </div>
-        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 tracking-tight">
-          {title}
-        </span>
-      </div>
-      {/* Items */}
-      <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
-        {children}
-      </div>
+        {value}
+      </span>
+      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold mt-1.5 uppercase tracking-wider">
+        {label}
+      </span>
     </div>
   );
 }
 
-function PersonRow({
-  node,
-  tag,
-  onClick,
+function BottomPill({
+  children,
+  label,
+  color,
+  bg,
 }: {
-  node: TreeNode;
-  tag: string;
-  onClick: () => void;
+  children: React.ReactNode;
+  label: string;
+  color: string;
+  bg: string;
 }) {
-  const c = getNodeColor(node.gender, node.isAlive);
   return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 group"
-    >
-      {/* Mini avatar */}
+    <div className="flex flex-col items-center gap-1.5 group">
       <div
-        className="h-8 w-8 rounded-xl flex items-center justify-center text-white text-[11px] font-bold shrink-0 shadow-sm"
+        className="h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-md"
         style={{
-          background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})`,
+          background: `${bg}`,
+          color: color,
+          boxShadow: `0 2px 8px ${color}15`,
         }}
       >
-        {getInitials(node.firstName, node.lastName)}
+        {children}
       </div>
-      {/* Info */}
-      <div className="flex-1 min-w-0 text-left">
-        <p className="text-[13px] font-semibold text-zinc-800 dark:text-zinc-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-          {node.name}
-        </p>
-        <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
-          {node.birthYear ? `b. ${node.birthYear}` : ""}
-          {tag ? ` · ${tag}` : ""}
-          {node.familyClan ? ` · ${node.familyClan}` : ""}
-        </p>
-      </div>
-      <ChevronRight className="h-3.5 w-3.5 text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 transition-colors shrink-0" />
-    </button>
+      <span
+        className="text-[10px] font-bold uppercase tracking-wider"
+        style={{ color }}
+      >
+        {label}
+      </span>
+    </div>
   );
 }

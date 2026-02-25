@@ -15,20 +15,21 @@ datasource db {
 // =============================================
 
 model User {
-  id          String    @id @default(cuid())
-  clerkId     String    @unique
-  email       String    @unique
-  firstName   String
-  lastName    String
-  username    String?   @unique
-  avatar      String?
-  bio         String?   @db.Text
-  phone       String?
-  role        Role      @default(MEMBER)
-  isActive    Boolean   @default(true)
-  lastLoginAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                        String    @id @default(cuid())
+  clerkId                   String    @unique
+  email                     String    @unique
+  firstName                 String
+  lastName                  String
+  username                  String?   @unique
+  avatar                    String?
+  bio                       String?   @db.Text
+  phone                     String?
+  role                      Role      @default(MEMBER)
+  isActive                  Boolean   @default(true)
+  lastLoginAt               DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  isResidentOfTuminDhanbari Boolean   @default(false)
 
   // Relations
   blogPosts       BlogPost[]
@@ -46,6 +47,7 @@ model User {
   likes           Like[]
   forumVotes      ForumVote[]
   pollVotes       PollVote[]
+  familyEdges     FamilyEdge[]     @relation("AddedByEdgeUser")
 
   @@index([clerkId])
   @@index([email])
@@ -65,37 +67,34 @@ enum Role {
 // =============================================
 
 model FamilyMember {
-  id         String    @id @default(cuid())
-  firstName  String
-  lastName   String
+  id          String    @id @default(cuid())
+  firstName   String
+  lastName    String
   dateOfBirth DateTime?
   dateOfDeath DateTime?
-  gender     Gender
-  photo      String?
-  bio        String?   @db.Text
-  familyClan String?
-  generation Int?
-  isAlive    Boolean   @default(true)
-  isApproved Boolean   @default(false)
-  approvedAt DateTime?
-  approvedBy String?
+  gender      Gender
+  photo       String?
+  bio         String?   @db.Text
+  familyClan  String?
+  generation  Int?
+  isAlive     Boolean   @default(true)
+  isApproved  Boolean   @default(false)
+  approvedAt  DateTime?
+  approvedBy  String?
 
-  // Self-referential relations
-  fatherId       String?
-  father         FamilyMember?  @relation("FatherChildren", fields: [fatherId], references: [id])
-  fatherChildren FamilyMember[] @relation("FatherChildren")
+  // Future-proofing fields for DAG implementation
+  linkedUserId  String?       @unique
+  maritalStatus MaritalStatus @default(SINGLE)
+  bloodGroup    String?
+  profession    String?
 
-  motherId       String?
-  mother         FamilyMember?  @relation("MotherChildren", fields: [motherId], references: [id])
-  motherChildren FamilyMember[] @relation("MotherChildren")
-
-  spouseId String?
-  spouse   FamilyMember?  @relation("SpouseRelation", fields: [spouseId], references: [id])
-  spouseOf FamilyMember[] @relation("SpouseRelation")
+  // DAG Relations (Edges)
+  edgesAsFrom FamilyEdge[] @relation("FromNode")
+  edgesAsTo   FamilyEdge[] @relation("ToNode")
 
   // Who added this member
   addedByUserId String
-  addedByUser   User @relation("AddedByUser", fields: [addedByUserId], references: [id])
+  addedByUser   User   @relation("AddedByUser", fields: [addedByUserId], references: [id])
 
   // Life events
   lifeEvents LifeEvent[]
@@ -106,6 +105,42 @@ model FamilyMember {
   @@index([familyClan])
   @@index([isApproved])
   @@index([addedByUserId])
+  @@index([linkedUserId])
+}
+
+model FamilyEdge {
+  id String @id @default(cuid())
+
+  // DAG Connections
+  fromNodeId String
+  toNodeId   String
+  type       EdgeType
+
+  // Admin Approval Queue
+  isApproved Boolean @default(false)
+
+  // Future-proofing Edge Fields
+  order     Int?
+  startDate DateTime? // exact date of marriage, adoption, etc.
+  endDate   DateTime? // exact date of divorce, etc.
+  notes     String?   @db.Text
+
+  // Relations
+  fromNode FamilyMember @relation("FromNode", fields: [fromNodeId], references: [id])
+  toNode   FamilyMember @relation("ToNode", fields: [toNodeId], references: [id])
+
+  // Audit trail
+  addedByUserId String
+  addedByUser   User   @relation("AddedByEdgeUser", fields: [addedByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Prevent duplicate edge submissions
+  @@unique([fromNodeId, toNodeId, type])
+  @@index([fromNodeId])
+  @@index([toNodeId])
+  @@index([isApproved])
 }
 
 model LifeEvent {
@@ -123,6 +158,20 @@ enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+enum EdgeType {
+  PARENT_CHILD
+  SPOUSE
+  ADOPTION
+  DIVORCED_SPOUSE
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
 }
 
 enum LifeEventType {
@@ -452,17 +501,17 @@ enum NewsCategory {
 // =============================================
 
 model Donation {
-  id              String         @id @default(cuid())
-  amount          Decimal        @db.Decimal(10, 2)
-  currency        String         @default("INR")
-  message         String?        @db.Text
-  isAnonymous     Boolean        @default(false)
-  isRecurring     Boolean        @default(false)
+  id              String        @id @default(cuid())
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("INR")
+  message         String?       @db.Text
+  isAnonymous     Boolean       @default(false)
+  isRecurring     Boolean       @default(false)
   recurringFreq   String? // "monthly" | "yearly"
   paymentMethod   String?
-  transactionId   String?        @unique
-  razorpayOrderId String?        @unique
-  status          PaymentStatus  @default(PENDING)
+  transactionId   String?       @unique
+  razorpayOrderId String?       @unique
+  status          PaymentStatus @default(PENDING)
   receiptUrl      String?
 
   donorId String
@@ -480,20 +529,20 @@ model Donation {
 }
 
 model DonationCampaign {
-  id           String         @id @default(cuid())
+  id           String           @id @default(cuid())
   title        String
-  slug         String         @unique
-  description  String         @db.Text
+  slug         String           @unique
+  description  String           @db.Text
   coverImage   String?
-  targetAmount Decimal        @db.Decimal(10, 2)
-  raisedAmount Decimal        @db.Decimal(10, 2) @default(0)
-  donorCount   Int            @default(0)
-  status       CampaignStatus @default(ACTIVE)
+  targetAmount Decimal          @db.Decimal(10, 2)
+  raisedAmount Decimal          @default(0) @db.Decimal(10, 2)
+  donorCount   Int              @default(0)
+  status       CampaignStatus   @default(ACTIVE)
   deadline     DateTime?
   updates      CampaignUpdate[]
   donations    Donation[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@index([status])
 }
@@ -559,7 +608,7 @@ enum PaymentStatus {
 // =============================================
 
 model AnalyticsEvent {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   eventType  String
   pageUrl    String?
   metadata   Json?

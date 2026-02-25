@@ -5,11 +5,6 @@ import type { FamilyTreeMember, TreeNode, TreeFilter } from "@/types/family-tree
  */
 export function membersToTreeNodes(members: FamilyTreeMember[]): TreeNode[] {
   return members.map((m) => {
-    // Collect children from both father and mother relations
-    const childrenSet = new Set<string>();
-    m.fatherChildren?.forEach((c) => childrenSet.add(c.id));
-    m.motherChildren?.forEach((c) => childrenSet.add(c.id));
-
     return {
       id: m.id,
       name: `${m.firstName} ${m.lastName}`,
@@ -19,56 +14,21 @@ export function membersToTreeNodes(members: FamilyTreeMember[]): TreeNode[] {
       photo: m.photo,
       birthYear: m.dateOfBirth ? new Date(m.dateOfBirth).getFullYear() : null,
       deathYear: m.dateOfDeath ? new Date(m.dateOfDeath).getFullYear() : null,
+      dateOfBirth: m.dateOfBirth,
+      dateOfDeath: m.dateOfDeath,
       isAlive: m.isAlive,
       familyClan: m.familyClan,
       generation: m.generation,
       bio: m.bio,
-      fatherId: m.fatherId,
-      motherId: m.motherId,
-      spouseId: m.spouseId,
-      spouseName: m.spouse
-        ? `${m.spouse.firstName} ${m.spouse.lastName}`
-        : null,
-      fatherName: m.father
-        ? `${m.father.firstName} ${m.father.lastName}`
-        : null,
-      motherName: m.mother
-        ? `${m.mother.firstName} ${m.mother.lastName}`
-        : null,
-      childrenIds: Array.from(childrenSet),
+      maritalStatus: m.maritalStatus,
+      profession: m.profession,
+      bloodGroup: m.bloodGroup,
     };
   });
 }
 
 /**
  * Build D3-compatible hierarchy roots from flat node list.
- * Root nodes = members whose fatherId is null (patrilineal default).
- * Each root becomes a tree with its descendants.
- */
-export function buildHierarchyRoots(nodes: TreeNode[]): TreeNode[] {
-  const nodeMap = new Map<string, TreeNode>();
-  nodes.forEach((n) => nodeMap.set(n.id, { ...n, children: [] }));
-
-  const roots: TreeNode[] = [];
-
-  nodeMap.forEach((node) => {
-    // Use father as primary parent link for tree hierarchy
-    if (node.fatherId && nodeMap.has(node.fatherId)) {
-      const parent = nodeMap.get(node.fatherId)!;
-      if (!parent.children) parent.children = [];
-      parent.children.push(node);
-    } else if (!node.fatherId) {
-      // Root node (no father) — could be a patriarch or standalone
-      roots.push(node);
-    } else {
-      // Father not in approved set — treat as root
-      roots.push(node);
-    }
-  });
-
-  return roots;
-}
-
 /**
  * Filter nodes by active filters; returns IDs that MATCH the filter criteria.
  */

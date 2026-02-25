@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import { FamilyTreeView } from "@/components/family-tree/family-tree-view";
 import {
-  getAllApprovedMembers,
+  getGlobalFamilyTree,
   getUniqueFamilyClans,
   getGenerationRange,
 } from "@/lib/queries/family-tree.queries";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { FamilyTreeMember } from "@/types/family-tree";
+import { auth } from "@clerk/nextjs/server";
+import { db } from "@/lib/db";
 
 export const metadata = {
   title: "Family Tree — Chandra Jyoti Sanstha",
@@ -15,17 +16,51 @@ export const metadata = {
 };
 
 async function FamilyTreeContent() {
-  const [members, clans, generationRange] = await Promise.all([
-    getAllApprovedMembers(),
+  const { userId } = await auth();
+
+  // Resolve Clerk ID → internal user, then find their tree node
+  let currentUserNode: any = null;
+  let userState = {
+    isResident: false,
+    isInTree: false,
+    isAdmin: false,
+    internalUserId: null as string | null,
+  };
+
+  if (userId) {
+    const internalUser = await db.user.findUnique({
+      where: { clerkId: userId },
+      select: { id: true, role: true, isResidentOfTuminDhanbari: true },
+    });
+
+    if (internalUser) {
+      userState.internalUserId = internalUser.id;
+      userState.isResident = internalUser.isResidentOfTuminDhanbari;
+      userState.isAdmin =
+        internalUser.role === "ADMIN" || internalUser.role === "SUPER_ADMIN";
+
+      currentUserNode = await db.familyMember.findFirst({
+        where: { linkedUserId: internalUser.id, isApproved: true },
+      });
+
+      userState.isInTree = !!currentUserNode;
+    }
+  }
+
+  const [{ nodes, edges }, clans, generationRange] = await Promise.all([
+    getGlobalFamilyTree(),
     getUniqueFamilyClans(),
     getGenerationRange(),
   ]);
 
   return (
     <FamilyTreeView
-      members={members as FamilyTreeMember[]}
+      nodes={nodes as any[]}
+      edges={edges as any[]}
       clans={clans}
       generationRange={generationRange}
+      currentUserNode={currentUserNode}
+      userState={userState}
     />
   );
 }
@@ -65,7 +100,7 @@ function FamilyTreeSkeleton() {
   );
 }
 
-export default function FamilyTreePage() {
+export default async function FamilyTreePage() {
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
       <Suspense fallback={<FamilyTreeSkeleton />}>

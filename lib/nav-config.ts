@@ -17,6 +17,7 @@ import {
   Database,
   Bell,
   Heart,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -76,6 +77,7 @@ export const adminNavSections: NavSection[] = [
     title: "Administration",
     items: [
       { href: "/admin", label: "Admin Panel", icon: Shield, exact: true },
+      { href: "/admin/family-tree", label: "Approve Families", icon: UserCheck },
       { href: "/admin/users", label: "Manage Users", icon: Users },
       { href: "/admin/reports", label: "Reports", icon: Flag },
       { href: "/admin/fines", label: "Fines", icon: AlertTriangle },
@@ -113,6 +115,7 @@ export const superAdminNavSections: NavSection[] = [
     title: "Administration",
     items: [
       { href: "/admin/users", label: "Users", icon: Users },
+      { href: "/admin/family-tree", label: "Approve Families", icon: UserCheck },
       { href: "/admin/reports", label: "Reports", icon: Flag },
       { href: "/admin/fines", label: "Fines", icon: AlertTriangle },
       { href: "/admin/testimonials", label: "Testimonials", icon: Heart },

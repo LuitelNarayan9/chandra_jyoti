@@ -9,7 +9,6 @@ import type {
 import { defaultTreeFilter } from "@/types/family-tree";
 import {
   membersToTreeNodes,
-  buildHierarchyRoots,
   getMatchingNodeIds,
   searchNodeIds,
 } from "@/lib/family-tree-utils";
@@ -19,50 +18,125 @@ import { TreeSearch } from "./tree-search";
 import { TreeFilters } from "./tree-filters";
 import { TreeLegend } from "./tree-legend";
 import { MemberProfileView } from "./member-profile-view";
+import { JoinTreeForm } from "./join-tree-form";
+import { AddRelativeForm } from "./add-relative-form";
+import { EditMemberForm } from "./edit-member-form";
 import type { TreeNode } from "@/types/family-tree";
 import { TreePine, Users } from "lucide-react";
+import type { FamilyEdgeData } from "@/types/family-tree";
+
+interface UserState {
+  isResident: boolean;
+  isInTree: boolean;
+  isAdmin: boolean;
+  internalUserId: string | null;
+}
 
 interface FamilyTreeViewProps {
-  members: FamilyTreeMember[];
+  nodes: FamilyTreeMember[];
+  edges: FamilyEdgeData[];
   clans: string[];
   generationRange: { min: number; max: number };
+  currentUserNode?: any;
+  userState?: UserState;
 }
 
 export function FamilyTreeView({
-  members,
+  nodes,
+  edges,
   clans,
   generationRange,
+  currentUserNode,
+  userState,
 }: FamilyTreeViewProps) {
   const [layout, setLayout] = useState<TreeLayout>("vertical");
-  const [filter, setFilter] = useState<TreeFilter>(defaultTreeFilter);
+  const [filter, setFilter] = useState<TreeFilter>({
+    ...defaultTreeFilter,
+    clan: currentUserNode?.familyClan || "",
+  });
   const [selectedMember, setSelectedMember] = useState<TreeNode | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Form dialog states
+  const [addRelativeTarget, setAddRelativeTarget] = useState<TreeNode | null>(
+    null
+  );
+  const [editMemberTarget, setEditMemberTarget] = useState<TreeNode | null>(
+    null
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<{
     zoomIn: () => void;
     zoomOut: () => void;
     resetZoom: () => void;
+    zoomToNode: (id: string, customScale?: number) => void;
     fitToScreen: () => void;
     exportToPng: () => Promise<void>;
     exportToSvg: () => Promise<void>;
     exportToPdf: () => Promise<void>;
   } | null>(null);
 
-  const allNodes = useMemo(() => membersToTreeNodes(members), [members]);
-  const roots = useMemo(() => buildHierarchyRoots(allNodes), [allNodes]);
+  // Map raw DB members to TreeNodes combining names and birth years
+  const allNodes = useMemo(() => membersToTreeNodes(nodes), [nodes]);
 
   const matchingIds = useMemo(
     () => getMatchingNodeIds(allNodes, filter),
     [allNodes, filter]
   );
+
+  // Only render nodes that structurally belong to the active Clan (hides other clans entirely)
+  // We DO NOT filter this structurally by Generation or Gender, because doing so deletes
+  // relationship edges between parents & children, completely breaking the tree topology.
+  const filteredNodes = useMemo(() => {
+    // Start with nodes that match the structural clan filter
+    const clanMatchIds = new Set(
+      allNodes
+        .filter((n) => !filter.clan || n.familyClan === filter.clan)
+        .map((n) => n.id)
+    );
+
+    // Expand to include connected cross-clan members (one-hop through edges)
+    // This ensures e.g. Uma Devi's father from Siwakoti clan shows up in Luitel tree
+    if (filter.clan) {
+      const connectedIds = new Set<string>();
+      for (const edge of edges) {
+        if (
+          clanMatchIds.has(edge.fromNodeId) &&
+          !clanMatchIds.has(edge.toNodeId)
+        ) {
+          connectedIds.add(edge.toNodeId);
+        }
+        if (
+          clanMatchIds.has(edge.toNodeId) &&
+          !clanMatchIds.has(edge.fromNodeId)
+        ) {
+          connectedIds.add(edge.fromNodeId);
+        }
+      }
+      // Add connected cross-clan nodes to the set
+      connectedIds.forEach((id) => clanMatchIds.add(id));
+    }
+
+    return allNodes.filter((n) => clanMatchIds.has(n.id));
+  }, [allNodes, edges, filter.clan]);
+
+  // Only keep edges where both endpoints are in the filtered set
+  const filteredEdges = useMemo(() => {
+    const nodeIds = new Set(filteredNodes.map((n) => n.id));
+    return edges.filter(
+      (e) => nodeIds.has(e.fromNodeId) && nodeIds.has(e.toNodeId)
+    );
+  }, [filteredNodes, edges]);
+
   const searchMatchIds = useMemo(
-    () => searchNodeIds(allNodes, filter.searchQuery),
-    [allNodes, filter.searchQuery]
+    () => searchNodeIds(filteredNodes, filter.searchQuery),
+    [filteredNodes, filter.searchQuery]
   );
   const searchMatchCount = useMemo(
-    () => (filter.searchQuery ? searchMatchIds.size : allNodes.length),
-    [filter.searchQuery, searchMatchIds, allNodes]
+    () => (filter.searchQuery ? searchMatchIds.size : filteredNodes.length),
+    [filter.searchQuery, searchMatchIds, filteredNodes]
   );
 
   const generations = useMemo(() => {
@@ -84,23 +158,39 @@ export function FamilyTreeView({
 
   const navigateToMember = useCallback(
     (id: string) => {
-      const target = allNodes.find((n) => n.id === id);
-      if (target) setSelectedMember(target);
+      const target = filteredNodes.find((n) => n.id === id);
+      if (target) {
+        setSelectedMember(target);
+        if (zoomRef.current && (zoomRef.current as any).zoomToNode) {
+          (zoomRef.current as any).zoomToNode(id);
+        }
+      }
     },
-    [allNodes]
+    [filteredNodes]
   );
+
+  // Determine if the "Join Tree" button should show
+  const showJoinButton =
+    userState &&
+    userState.internalUserId &&
+    (userState.isResident || userState.isAdmin) &&
+    !userState.isInTree;
+
+  // Can add/edit
+  const canModify = userState && (userState.isInTree || userState.isAdmin);
 
   // Empty state
   if (allNodes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-center">
-        <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-8 mb-5">
+        <div className="rounded-2xl bg-linear-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-8 mb-5">
           <TreePine className="h-14 w-14 text-emerald-500" />
         </div>
         <h3 className="text-xl font-bold mb-2">No Family Members Yet</h3>
-        <p className="text-sm text-zinc-500 max-w-sm">
+        <p className="text-sm text-zinc-500 max-w-sm mb-4">
           Family members will appear here once they are added and approved.
         </p>
+        {showJoinButton && <JoinTreeForm clans={clans} />}
       </div>
     );
   }
@@ -127,14 +217,17 @@ export function FamilyTreeView({
           <div className="hidden sm:flex items-center gap-1.5 ml-3 px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
             <Users className="h-3.5 w-3.5 text-zinc-500" />
             <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
-              {allNodes.length} members
+              {filteredNodes.length} members
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2.5">
+          {showJoinButton && <JoinTreeForm clans={clans} />}
           <TreeSearch
             value={filter.searchQuery}
-            onChange={(q) => setFilter({ ...filter, searchQuery: q })}
+            onChange={(q) => {
+              setFilter({ ...filter, searchQuery: q });
+            }}
             matchCount={searchMatchCount}
           />
         </div>
@@ -153,15 +246,22 @@ export function FamilyTreeView({
       </div>
 
       {/* ─ Canvas (always visible) ─ */}
-      <div className="relative flex-1 overflow-hidden bg-gradient-to-b from-zinc-50/80 to-white dark:from-zinc-900/50 dark:to-zinc-950">
+      <div className="relative flex-1 overflow-hidden bg-linear-to-b from-zinc-50/80 to-white dark:from-zinc-900/50 dark:to-zinc-950">
         <TreeCanvas
-          roots={roots}
-          allNodes={allNodes}
+          allNodes={filteredNodes}
+          edges={filteredEdges}
           layout={layout}
           matchingIds={matchingIds}
           searchMatchIds={searchMatchIds}
+          hasHighlightFilter={
+            filter.generation !== null ||
+            filter.gender !== null ||
+            !filter.showLiving ||
+            !filter.showDeceased
+          }
           onNodeClick={setSelectedMember}
           zoomRef={zoomRef}
+          currentUserNode={currentUserNode}
         />
         <TreeLegend />
         <TreeControls
@@ -184,8 +284,39 @@ export function FamilyTreeView({
         <MemberProfileView
           member={selectedMember}
           allNodes={allNodes}
+          edges={edges}
           onClose={() => setSelectedMember(null)}
           onNavigateToMember={navigateToMember}
+          canModify={!!canModify}
+          isAdmin={!!userState?.isAdmin}
+          currentUserClan={currentUserNode?.familyClan ?? null}
+          onAddRelative={(node: TreeNode) => {
+            setSelectedMember(null);
+            setAddRelativeTarget(node);
+          }}
+          onEditMember={(node: TreeNode) => {
+            setSelectedMember(null);
+            setEditMemberTarget(node);
+          }}
+        />
+      )}
+
+      {/* ─ Add Relative Dialog ─ */}
+      {addRelativeTarget && (
+        <AddRelativeForm
+          open={!!addRelativeTarget}
+          onOpenChange={(open) => !open && setAddRelativeTarget(null)}
+          targetNode={addRelativeTarget}
+          clans={clans}
+        />
+      )}
+
+      {/* ─ Edit Member Dialog ─ */}
+      {editMemberTarget && (
+        <EditMemberForm
+          open={!!editMemberTarget}
+          onOpenChange={(open) => !open && setEditMemberTarget(null)}
+          member={editMemberTarget}
         />
       )}
     </div>

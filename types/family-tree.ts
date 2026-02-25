@@ -14,14 +14,22 @@ export interface FamilyTreeMember {
   familyClan: string | null;
   generation: number | null;
   isAlive: boolean;
-  fatherId: string | null;
-  motherId: string | null;
-  spouseId: string | null;
-  fatherChildren: { id: string; firstName: string; lastName: string }[];
-  motherChildren: { id: string; firstName: string; lastName: string }[];
-  father: { id: string; firstName: string; lastName: string } | null;
-  mother: { id: string; firstName: string; lastName: string } | null;
-  spouse: { id: string; firstName: string; lastName: string } | null;
+  maritalStatus: "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED";
+  profession: string | null;
+  bloodGroup: string | null;
+  isPlaceholder?: boolean;
+}
+
+export interface FamilyEdgeData {
+  id: string;
+  fromNodeId: string;
+  toNodeId: string;
+  type: "PARENT_CHILD" | "SPOUSE" | "ADOPTION" | "DIVORCED_SPOUSE";
+  isApproved: boolean;
+  order: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  notes: string | null;
 }
 
 export interface TreeNode {
@@ -33,18 +41,16 @@ export interface TreeNode {
   photo: string | null;
   birthYear: number | null;
   deathYear: number | null;
+  dateOfBirth: string | null;
+  dateOfDeath: string | null;
   isAlive: boolean;
   familyClan: string | null;
   generation: number | null;
   bio: string | null;
-  fatherId: string | null;
-  motherId: string | null;
-  spouseId: string | null;
-  spouseName: string | null;
-  fatherName: string | null;
-  motherName: string | null;
-  childrenIds: string[];
-  children?: TreeNode[];
+  maritalStatus: "SINGLE" | "MARRIED" | "DIVORCED" | "WIDOWED";
+  profession: string | null;
+  bloodGroup: string | null;
+  isPlaceholder?: boolean;
 }
 
 export interface TreeLink {

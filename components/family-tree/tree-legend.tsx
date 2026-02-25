@@ -1,47 +1,103 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+
 export function TreeLegend() {
+  const [open, setOpen] = useState(false);
+
   return (
-    <div className="absolute bottom-4 left-4 z-30 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl px-4 py-3 shadow-lg">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2.5">
-        Legend
-      </p>
-      <div className="space-y-2">
-        <LegendDot color="#3b82f6" label="Male" />
-        <LegendDot color="#ec4899" label="Female" />
-        <LegendDot color="#8b5cf6" label="Other" />
-        <LegendDot color="#9ca3af" label="Deceased" />
-        <div className="border-t border-zinc-100 dark:border-zinc-800 my-2" />
-        <div className="flex items-center gap-2.5">
-          <svg width="24" height="6" className="shrink-0">
-            <line
-              x1="0"
-              y1="3"
-              x2="24"
-              y2="3"
-              stroke="#94a3b8"
-              strokeWidth="2.5"
-            />
-          </svg>
-          <span className="text-[10px] text-zinc-500 font-medium">
-            Parent–Child
-          </span>
+    <div className="absolute bottom-4 left-4 z-30 mb-4 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between gap-3 w-full px-4 py-2.5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+      >
+        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
+          Legend
+        </span>
+        {open ? (
+          <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+        ) : (
+          <ChevronUp className="h-3.5 w-3.5 text-zinc-400" />
+        )}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-3 space-y-2 border-t border-zinc-100 dark:border-zinc-800 pt-2.5">
+          <LegendDot color="#3b82f6" label="Male" />
+          <LegendDot color="#f472b6" label="Female" />
+          <LegendDot color="#8b5cf6" label="Other" />
+          <LegendDot color="#9ca3af" label="Deceased" />
+
+          <div className="border-t border-zinc-100 dark:border-zinc-800 my-2" />
+
+          <div className="flex items-center gap-2.5">
+            <svg width="24" height="6" className="shrink-0">
+              <line
+                x1="0"
+                y1="3"
+                x2="24"
+                y2="3"
+                stroke="#94a3b8"
+                strokeWidth="3.5"
+              />
+            </svg>
+            <span className="text-[10px] text-zinc-500 font-medium">
+              Parent–Child
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <svg width="24" height="6" className="shrink-0">
+              <line
+                x1="0"
+                y1="3"
+                x2="24"
+                y2="3"
+                stroke="#7dd3fc"
+                strokeWidth="2.5"
+              />
+            </svg>
+            <span className="text-[10px] text-zinc-500 font-medium">
+              Adoption
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <svg width="24" height="6" className="shrink-0">
+              <line
+                x1="0"
+                y1="3"
+                x2="24"
+                y2="3"
+                stroke="#f472b6"
+                strokeWidth="2"
+                strokeDasharray="5,3"
+              />
+            </svg>
+            <span className="text-[10px] text-zinc-500 font-medium">
+              Spouse
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <svg width="24" height="6" className="shrink-0">
+              <line
+                x1="0"
+                y1="3"
+                x2="24"
+                y2="3"
+                stroke="#d6d3d1"
+                strokeWidth="2"
+                strokeDasharray="5,3"
+              />
+            </svg>
+            <span className="text-[10px] text-zinc-500 font-medium">
+              Divorced Spouse
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2.5">
-          <svg width="24" height="6" className="shrink-0">
-            <line
-              x1="0"
-              y1="3"
-              x2="24"
-              y2="3"
-              stroke="#f472b6"
-              strokeWidth="2"
-              strokeDasharray="5,3"
-            />
-          </svg>
-          <span className="text-[10px] text-zinc-500 font-medium">Spouse</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

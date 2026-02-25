@@ -122,12 +122,12 @@
 
 **Step 4.2: Family Management**
 
-- [ ] Build MemberForm (add family member)
-- [ ] Create addFamilyMember server action
-- [ ] Create updateFamilyMember server action
-- [ ] Build family tree data queries
-- [ ] Build admin approval page (`/admin/family-tree`)
-- [ ] Create approveFamilyMember / rejectFamilyMember actions
+- [x] Build MemberForm (add family member)
+- [x] Create addFamilyMember server action
+- [x] Create updateFamilyMember server action
+- [x] Build family tree data queries
+- [x] Build admin approval page (`/admin/family-tree`)
+- [x] Create approveFamilyMember / rejectFamilyMember actions
 
 ### Phase 5: Blog System (Week 5-7)
 

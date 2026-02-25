@@ -122,7 +122,7 @@ export function PublicNavbar() {
         </div>
 
         {/* ─── MOBILE: Theme toggle + Hamburger ────────────── */}
-        <div className="flex items-center gap-3 md:hidden">
+        <div className="flex items-center gap-3 md:hidden ml-auto">
           <ThemeToggle />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
