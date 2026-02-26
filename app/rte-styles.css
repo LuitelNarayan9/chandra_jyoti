@@ -223,3 +223,74 @@
 .rte-editor ::selection {
   background: rgba(245, 158, 11, 0.2);
 }
+
+/* ── Dark mode overrides (Tailwind class strategy) ───────────────────────── */
+
+.dark .rte-editor {
+  color: #e7e5e4;
+}
+
+.dark .rte-editor h1,
+.dark .rte-editor h2 {
+  color: #fafaf9;
+}
+
+.dark .rte-editor h3 {
+  color: #e7e5e4;
+}
+
+.dark .rte-editor blockquote {
+  color: #a8a29e;
+  background: #1c1917;
+  border-left-color: #f59e0b;
+}
+
+.dark .rte-editor code {
+  background: #292524;
+  border-color: #44403c;
+  color: #fcd34d;
+}
+
+.dark .rte-editor pre {
+  background: #0c0a09;
+}
+
+.dark .rte-editor pre code {
+  color: #d6d3d1;
+}
+
+.dark .rte-editor table th {
+  background: #292524;
+  color: #fcd34d;
+}
+
+.dark .rte-editor table th,
+.dark .rte-editor table td {
+  border-color: #44403c;
+}
+
+.dark .rte-editor table tr:nth-child(even) td {
+  background: #1c1917;
+}
+
+.dark .rte-editor hr {
+  border-top-color: #44403c;
+}
+
+.dark .rte-editor img.rte-image {
+  border-color: #44403c;
+}
+
+.dark .rte-editor a.rte-link {
+  color: #fbbf24;
+  text-decoration-color: #92400e;
+}
+
+.dark .rte-editor a.rte-link:hover {
+  color: #fcd34d;
+  text-decoration-color: #f59e0b;
+}
+
+.dark .rte-editor ::selection {
+  background: rgba(245, 158, 11, 0.3);
+}
