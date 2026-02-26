@@ -1,0 +1,225 @@
+/*
+ * rte-styles.css
+ * Shared styles for RichTextEditor and RichTextViewer.
+ * Import this file once in your global stylesheet (e.g. globals.css):
+ *   @import './rte-styles.css';
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600&display=swap');
+
+/* ── Base editor area ─────────────────────────────────────────────────────── */
+
+.rte-editor {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 1.0625rem;
+  line-height: 1.85;
+  color: #292524;
+  min-height: inherit;
+}
+
+/* Placeholder (editor only – viewer is never empty) */
+.rte-editor.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #a8a29e;
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
+/* ── Headings ─────────────────────────────────────────────────────────────── */
+
+.rte-editor h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 2rem 0 1rem;
+  letter-spacing: -0.03em;
+  color: #0c0a09;
+}
+
+.rte-editor h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1.75rem 0 0.75rem;
+  letter-spacing: -0.02em;
+  color: #0c0a09;
+}
+
+.rte-editor h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1.5rem 0 0.6rem;
+  color: #1c1917;
+}
+
+/* ── Paragraphs & inline ──────────────────────────────────────────────────── */
+
+.rte-editor p {
+  margin: 0 0 1rem;
+}
+
+.rte-editor p:last-child {
+  margin-bottom: 0;
+}
+
+.rte-editor strong { font-weight: 700; }
+.rte-editor em     { font-style: italic; }
+.rte-editor u      { text-decoration: underline; text-underline-offset: 3px; }
+.rte-editor s      { text-decoration: line-through; }
+
+/* ── Code ─────────────────────────────────────────────────────────────────── */
+
+.rte-editor code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.8125rem;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.375rem;
+  color: #92400e;
+}
+
+.rte-editor pre {
+  background: #1c1917;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
+}
+
+.rte-editor pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: #d6d3d1;
+}
+
+/* ── Blockquote ───────────────────────────────────────────────────────────── */
+
+.rte-editor blockquote {
+  border-left: 4px solid #f59e0b;
+  padding: 0.5rem 0 0.5rem 1.5rem;
+  margin: 1.5rem 0;
+  color: #57534e;
+  font-style: italic;
+  font-size: 1.1rem;
+  background: #fef3e2;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+/* ── Lists ────────────────────────────────────────────────────────────────── */
+
+.rte-editor ul { list-style: disc;    padding-left: 1.75rem; margin: 0.75rem 0; }
+.rte-editor ol { list-style: decimal; padding-left: 1.75rem; margin: 0.75rem 0; }
+.rte-editor li { margin: 0.35rem 0; }
+
+/* Task list */
+.rte-editor ul[data-type="taskList"]                          { list-style: none; padding-left: 0; }
+.rte-editor ul[data-type="taskList"] li                       { display: flex; align-items: flex-start; gap: 0.6rem; margin: 0.4rem 0; }
+.rte-editor ul[data-type="taskList"] li > label               { display: flex; align-items: center; margin-top: 0.2rem; cursor: pointer; flex-shrink: 0; }
+.rte-editor ul[data-type="taskList"] li > label input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: #f59e0b; cursor: pointer; }
+.rte-editor ul[data-type="taskList"] li > div                 { flex: 1; }
+.rte-editor ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; color: #a8a29e; }
+
+/* ── Links & images ───────────────────────────────────────────────────────── */
+
+.rte-editor a.rte-link {
+  color: #b45309;
+  text-decoration: underline;
+  text-decoration-color: #fcd34d;
+  text-underline-offset: 3px;
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+
+.rte-editor a.rte-link:hover {
+  color: #92400e;
+  text-decoration-color: #f59e0b;
+}
+
+.rte-editor img.rte-image {
+  max-width: 100%;
+  border-radius: 1rem;
+  margin: 1.25rem 0;
+  border: 1px solid #e0d9ce;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Divider ──────────────────────────────────────────────────────────────── */
+
+.rte-editor hr {
+  border: none;
+  border-top: 2px solid #e8e0d4;
+  margin: 2rem 0;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+
+.rte-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.25rem 0;
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+}
+
+.rte-editor table th,
+.rte-editor table td {
+  border: 1px solid #e0d9ce;
+  padding: 0.625rem 0.875rem;
+  text-align: left;
+  vertical-align: top;
+  position: relative;
+}
+
+.rte-editor table th {
+  background: #fef3c7;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: #92400e;
+}
+
+.rte-editor table tr:nth-child(even) td {
+  background: #f5f0e8;
+}
+
+/* Table selection & resize handle (editor only – harmless in viewer) */
+.rte-editor .selectedCell::after {
+  background: rgba(245, 158, 11, 0.1);
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.rte-editor .column-resize-handle {
+  background-color: #f59e0b;
+  bottom: -2px;
+  pointer-events: none;
+  position: absolute;
+  right: -2px;
+  top: 0;
+  width: 2px;
+}
+
+/* ── Misc ─────────────────────────────────────────────────────────────────── */
+
+.rte-editor .ProseMirror-selectednode {
+  outline: 2px solid rgba(245, 158, 11, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.rte-editor mark {
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.25rem;
+}
+
+.rte-editor ::selection {
+  background: rgba(245, 158, 11, 0.2);
+}

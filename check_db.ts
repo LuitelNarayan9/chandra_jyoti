@@ -1,0 +1,1 @@
+import { PrismaClient } from "@prisma/client"; const prisma = new PrismaClient(); async function main() { const post = await prisma.blogPost.findFirst({orderBy: {createdAt: "desc"}}); console.log("Content:", JSON.stringify(post?.content))} main();

@@ -6,6 +6,7 @@ import { Upload, X, File, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface ImageUploadProps {
   value: string;
@@ -16,17 +17,50 @@ interface ImageUploadProps {
 export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
 
-  // Mock upload for now - will be replaced with real S3 Signed URL logic later
+  // Upload file to S3 via Signed URL
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
-      if (file) {
-        setIsUploading(true);
-        // Simulate upload delay
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        // For now, just create a local object URL to visualize
-        const url = URL.createObjectURL(file);
-        onChange(url);
+      if (!file) return;
+
+      setIsUploading(true);
+      try {
+        // 1. Get presigned URL
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: file.name,
+            contentType: file.type,
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Failed to get upload URL");
+        }
+
+        const { signedUrl, publicUrl } = await res.json();
+
+        // 2. Upload directly to S3
+        const uploadRes = await fetch(signedUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type,
+          },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload image to S3");
+        }
+
+        onChange(publicUrl);
+        toast.success("Image uploaded successfully");
+      } catch (error) {
+        console.error("Upload error:", error);
+        toast.error(error instanceof Error ? error.message : "Upload failed");
+      } finally {
         setIsUploading(false);
       }
     },

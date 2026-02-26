@@ -133,23 +133,23 @@
 
 **Step 5.1: Blog CRUD**
 
-- [ ] Build BlogEditor with Tiptap
-- [ ] Create createPost, updatePost, deletePost server actions
-- [ ] Build blog listing page with filters + pagination
-- [ ] Build BlogCard component
-- [ ] Build featured post card
-- [ ] Build blog sidebar (categories, tags, authors)
-- [ ] Build blog categories/tags pages
+- [x] Build BlogEditor with Tiptap
+- [x] Create createPost, updatePost, deletePost server actions
+- [x] Build blog listing page with filters + pagination
+- [x] Build BlogCard component
+- [x] Build featured post card
+- [x] Build blog sidebar (categories, tags, authors)
+- [x] Build blog categories/tags pages
 
 **Step 5.2: Blog Detail**
 
-- [ ] Build blog detail page
-- [ ] Build table of contents (auto from headings)
-- [ ] Build author bio section
-- [ ] Build related posts
-- [ ] Build like, bookmark, share buttons
-- [ ] Create like, bookmark server actions
-- [ ] Implement view counting
+- [x] Build blog detail page
+- [x] Build table of contents (auto from headings)
+- [x] Build author bio section
+- [x] Build related posts
+- [x] Build like, bookmark, share buttons
+- [x] Create like, bookmark server actions
+- [x] Implement view counting
 
 **Step 5.3: Comments**
 
