@@ -183,7 +183,7 @@ export function FamilyTreeView({
   if (allNodes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-center">
-        <div className="rounded-2xl bg-linear-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 p-8 mb-5">
+        <div className="rounded-2xl bg-linear-to-br from-emerald-50 to-teal-50 dark:from-emerald-800/30 dark:to-teal-800/30 p-8 mb-5">
           <TreePine className="h-14 w-14 text-emerald-500" />
         </div>
         <h3 className="text-xl font-bold mb-2">No Family Members Yet</h3>
@@ -198,10 +198,10 @@ export function FamilyTreeView({
   return (
     <div
       ref={containerRef}
-      className="flex flex-col h-full bg-white dark:bg-zinc-950"
+      className="flex flex-col h-full bg-stone-50 dark:bg-zinc-800"
     >
       {/* ─ Header ─ */}
-      <div className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-zinc-100 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-sm flex-wrap shrink-0">
+      <div className="flex items-center justify-between gap-4 px-5 py-3.5 border-b border-stone-200 dark:border-zinc-700 bg-stone-50/90 dark:bg-zinc-800/90 backdrop-blur-sm flex-wrap shrink-0">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-2xl flex items-center justify-center shadow-md shadow-emerald-500/20">
             <img src="/logo.svg" alt="Logo" className="h-5 w-5 text-white" />
@@ -234,7 +234,7 @@ export function FamilyTreeView({
       </div>
 
       {/* ─ Filter bar ─ */}
-      <div className="px-5 py-2 border-b border-zinc-50 dark:border-zinc-800/50 bg-zinc-50/50 dark:bg-zinc-900/50 shrink-0">
+      <div className="px-5 py-2 border-b border-stone-200 dark:border-zinc-700/50 bg-stone-100/50 dark:bg-zinc-700/50 shrink-0">
         <TreeFilters
           filter={filter}
           onFilterChange={setFilter}
@@ -246,7 +246,7 @@ export function FamilyTreeView({
       </div>
 
       {/* ─ Canvas (always visible) ─ */}
-      <div className="relative flex-1 overflow-hidden bg-linear-to-b from-zinc-50/80 to-white dark:from-zinc-900/50 dark:to-zinc-950">
+      <div className="relative flex-1 overflow-hidden bg-linear-to-b from-stone-100/80 to-stone-50 dark:from-zinc-700/50 dark:to-zinc-800">
         <TreeCanvas
           allNodes={filteredNodes}
           edges={filteredEdges}

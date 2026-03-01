@@ -10,6 +10,8 @@ import { AdminMobileSidebar } from "@/components/layouts/admin/admin-mobile-side
 import { SuperAdminSidebar } from "@/components/layouts/super-admin/super-admin-sidebar";
 import { SuperAdminNavbar } from "@/components/layouts/super-admin/super-admin-navbar";
 import { SuperAdminMobileSidebar } from "@/components/layouts/super-admin/super-admin-mobile-sidebar";
+import { usePathname } from "next/navigation";
+import { AppFooter } from "@/components/shared/app-footer";
 
 interface RoleLayoutShellProps {
   role: Role;
@@ -28,6 +30,8 @@ export function RoleLayoutShell({
 }: RoleLayoutShellProps) {
   const isSuperAdmin = hasPermission(role, "SUPER_ADMIN");
   const isAdmin = !isSuperAdmin && hasPermission(role, "ADMIN");
+  const pathname = usePathname();
+  const showFooter = !pathname.startsWith("/family-tree");
 
   if (isSuperAdmin) {
     return (
@@ -40,8 +44,9 @@ export function RoleLayoutShell({
         />
         <div className="flex flex-1">
           <SuperAdminSidebar />
-          <main className="flex-1 overflow-y-auto bg-background">
-            <div className="p-4 sm:p-6">{children}</div>
+          <main className="flex flex-1 flex-col overflow-y-auto bg-background">
+            <div className="flex-1 p-4 sm:p-6">{children}</div>
+            {showFooter && <AppFooter />}
           </main>
         </div>
       </div>
@@ -59,8 +64,9 @@ export function RoleLayoutShell({
         />
         <div className="flex flex-1">
           <AdminSidebar />
-          <main className="flex-1 overflow-y-auto bg-background">
-            <div className="p-4 sm:p-6">{children}</div>
+          <main className="flex flex-1 flex-col overflow-y-auto bg-background">
+            <div className="flex-1 p-4 sm:p-6">{children}</div>
+            {showFooter && <AppFooter />}
           </main>
         </div>
       </div>
@@ -78,8 +84,9 @@ export function RoleLayoutShell({
       />
       <div className="flex flex-1">
         <MemberSidebar />
-        <main className="flex-1 overflow-y-auto bg-background">
-          <div className="p-4 sm:p-6">{children}</div>
+        <main className="flex flex-1 flex-col overflow-y-auto bg-background">
+          <div className="flex-1 p-4 sm:p-6">{children}</div>
+          {showFooter && <AppFooter />}
         </main>
       </div>
     </div>

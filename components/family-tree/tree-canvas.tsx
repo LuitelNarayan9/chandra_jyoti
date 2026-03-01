@@ -802,11 +802,11 @@ export function TreeCanvas({
         .attr("transform", `translate(${x}, ${y})`)
         .attr("opacity", nodeOpacity);
 
-      let cardFill = "#ffffff";
-      let cardStroke = "#e2e8f0";
+      let cardFill = "#fafaf9"; // stone-50
+      let cardStroke = "#e7e5e4"; // stone-200
 
       if (node.isAlive === false) {
-        cardFill = "#D3D3D3"; // slate-100 for deceased
+        cardFill = "#e7e5e4"; // stone-200 for deceased
       }
 
       if (node.gender === "MALE") {
@@ -818,7 +818,7 @@ export function TreeCanvas({
       }
 
       if (isSearchHL) {
-        cardFill = "#f8fafc";
+        cardFill = "#f5f5f4"; // stone-100
       }
 
       // Main Card Background
