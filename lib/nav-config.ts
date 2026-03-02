@@ -18,8 +18,15 @@ import {
   Bell,
   Heart,
   UserCheck,
+  Bookmark,
   type LucideIcon,
 } from "lucide-react";
+
+export interface NavChild {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
 
 export interface NavItem {
   href: string;
@@ -27,12 +34,19 @@ export interface NavItem {
   icon: LucideIcon;
   badge?: string;
   exact?: boolean;
+  children?: NavChild[];
 }
 
 export interface NavSection {
   title: string;
   items: NavItem[];
 }
+
+// ── Blog sub-items (shared across all roles) ───────────────────────
+const blogChildren: NavChild[] = [
+  { href: "/blog/my-posts", label: "My Posts", icon: FileText },
+  { href: "/blog/bookmarks", label: "Bookmarks", icon: Bookmark },
+];
 
 // ── Member / Moderator Navigation ─────────────────────────────────
 export const memberNavSections: NavSection[] = [
@@ -41,7 +55,7 @@ export const memberNavSections: NavSection[] = [
     items: [
       { href: "/home", label: "Dashboard", icon: Home },
       { href: "/family-tree", label: "Family Tree", icon: TreePine },
-      { href: "/blog", label: "Blog", icon: BookOpen },
+      { href: "/blog", label: "Blog", icon: BookOpen, children: blogChildren },
       { href: "/forum", label: "Forum", icon: MessageSquare },
       { href: "/news", label: "News", icon: Newspaper },
     ],
@@ -67,7 +81,7 @@ export const adminNavSections: NavSection[] = [
   {
     title: "Content",
     items: [
-      { href: "/blog", label: "Blog Posts", icon: BookOpen },
+      { href: "/blog", label: "Blog Posts", icon: BookOpen, children: blogChildren },
       { href: "/forum", label: "Forum", icon: MessageSquare },
       { href: "/news", label: "News", icon: Newspaper },
       { href: "/family-tree", label: "Family Tree", icon: TreePine },
@@ -105,7 +119,7 @@ export const superAdminNavSections: NavSection[] = [
   {
     title: "Content Management",
     items: [
-      { href: "/blog", label: "Blog", icon: BookOpen },
+      { href: "/blog", label: "Blog", icon: BookOpen, children: blogChildren },
       { href: "/forum", label: "Forum", icon: MessageSquare },
       { href: "/news", label: "News", icon: Newspaper },
       { href: "/family-tree", label: "Family Tree", icon: TreePine },

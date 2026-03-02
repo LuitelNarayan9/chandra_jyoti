@@ -88,7 +88,7 @@ export function NewsHighlights({ articles }: NewsHighlightsProps) {
                   <p className="text-sm font-medium line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                     {article.title}
                   </p>
-                  <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
                     <Badge
                       variant="outline"
                       className={`text-[10px] px-1.5 py-0 h-4 ${CATEGORY_COLORS[article.category] ?? ""}`}
@@ -96,11 +96,11 @@ export function NewsHighlights({ articles }: NewsHighlightsProps) {
                       {article.category}
                     </Badge>
                     {article.sourceName && (
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
                         {article.sourceName}
                       </span>
                     )}
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground shrink-0">
                       <TimeAgo date={article.publishedAt} />
                     </span>
                   </div>

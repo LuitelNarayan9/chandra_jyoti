@@ -198,6 +198,29 @@ export async function getMyPosts(authorId: string, status?: PostStatus) {
   });
 }
 
+// ─── Get user bookmarks ─────────────────────────────────────
+
+export async function getUserBookmarks(userId: string) {
+  return db.bookmark.findMany({
+    where: { userId },
+    include: {
+      post: {
+        include: {
+          author: {
+            select: { id: true, firstName: true, lastName: true, avatar: true },
+          },
+          category: {
+            select: { id: true, name: true, slug: true, color: true },
+          },
+          _count: { select: { comments: true, likes: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+
 // ─── Get related posts (same category, excluding current) ─────
 
 export async function getRelatedPosts(
@@ -227,27 +250,34 @@ export async function getRelatedPosts(
 
 // ─── Get post comments (threaded, max 2 levels) ──────────────
 
+const commentAuthorSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  avatar: true,
+} as const;
+
+const commentLikesSelect = {
+  select: { userId: true },
+} as const;
+
 export async function getPostComments(postId: string) {
   return db.comment.findMany({
     where: { postId, parentId: null },
     include: {
-      author: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          avatar: true,
-        },
-      },
+      author: { select: commentAuthorSelect },
+      likes: commentLikesSelect,
       replies: {
         include: {
-          author: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              avatar: true,
+          author: { select: commentAuthorSelect },
+          likes: commentLikesSelect,
+          replies: {
+            include: {
+              author: { select: commentAuthorSelect },
+              likes: commentLikesSelect,
+              _count: { select: { likes: true } },
             },
+            orderBy: { createdAt: "asc" },
           },
           _count: { select: { likes: true } },
         },
@@ -257,4 +287,10 @@ export async function getPostComments(postId: string) {
     },
     orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
   });
+}
+
+// ─── Count only top-level comments for a post ─────────────────
+
+export async function getTopLevelCommentCount(postId: string) {
+  return db.comment.count({ where: { postId, parentId: null } });
 }

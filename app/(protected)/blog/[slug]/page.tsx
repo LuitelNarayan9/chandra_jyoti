@@ -7,6 +7,8 @@ import {
   getBlogPostBySlug,
   getUserPostInteractions,
   getRelatedPosts,
+  getPostComments,
+  getTopLevelCommentCount,
 } from "@/lib/queries/blog.queries";
 
 import { RichTextViewer } from "@/components/shared/rich-text-viewer";
@@ -16,7 +18,7 @@ import { BlogAuthorBio } from "@/components/blog/blog-author-bio";
 import { BlogRelatedPosts } from "@/components/blog/blog-related-posts";
 import { BlogPostActions } from "@/components/blog/blog-post-actions";
 import { BlogViewCounter } from "@/components/blog/blog-view-counter";
-import { MessageSquare } from "lucide-react";
+import { CommentSection } from "@/components/blog/comments/comment-section";
 
 // ─── Dynamic metadata ──────────────────────────────────────────────────────
 
@@ -62,12 +64,25 @@ export default async function BlogDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const [interactions, relatedPosts] = await Promise.all([
-    user
-      ? getUserPostInteractions(user.id, post.id)
-      : { liked: false, bookmarked: false },
-    getRelatedPosts(post.id, post.categoryId),
-  ]);
+  const [interactions, relatedPosts, rawComments, topLevelCount] =
+    await Promise.all([
+      user
+        ? getUserPostInteractions(user.id, post.id)
+        : { liked: false, bookmarked: false },
+      getRelatedPosts(post.id, post.categoryId),
+      getPostComments(post.id),
+      getTopLevelCommentCount(post.id),
+    ]);
+
+  // Recursively map likedByMe onto comments
+  const mapComments = (comments: any[]): any[] => {
+    return comments.map((c) => ({
+      ...c,
+      likedByMe: user ? c.likes?.some((l: any) => l.userId === user.id) : false,
+      replies: c.replies ? mapComments(c.replies) : [],
+    }));
+  };
+  const comments = mapComments(rawComments);
 
   const canEdit =
     user &&
@@ -138,43 +153,13 @@ export default async function BlogDetailPage({ params }: PageProps) {
             <BlogAuthorBio author={post.author} />
 
             {/* Comments section */}
-            <section id="comments-section" className="space-y-5 scroll-mt-20">
-              {/* Section header */}
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-border" />
-                <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground/60 whitespace-nowrap">
-                  ✦ Discussion
-                </span>
-                <div className="h-px flex-1 bg-gradient-to-l from-transparent via-border to-border" />
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                </div>
-                <h3 className="text-lg font-black font-(family-name:--font-outfit) tracking-tight">
-                  Comments
-                  <span className="ml-2 text-sm font-semibold text-muted-foreground">
-                    ({post._count.comments})
-                  </span>
-                </h3>
-              </div>
-
-              {/* Placeholder */}
-              <div className="relative overflow-hidden rounded-2xl border border-dashed border-border/60 bg-muted/20 px-8 py-14 text-center">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 opacity-[0.03]"
-                  style={{
-                    backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-                    backgroundSize: "24px 24px",
-                  }}
-                />
-                <p className="relative text-sm text-muted-foreground">
-                  Comments coming soon — stay tuned!
-                </p>
-              </div>
-            </section>
+            <CommentSection
+              comments={comments}
+              postId={post.id}
+              totalComments={topLevelCount}
+              postAuthorId={post.authorId}
+              currentUser={user as any}
+            />
 
             {/* Related posts */}
             <BlogRelatedPosts posts={relatedPosts} />

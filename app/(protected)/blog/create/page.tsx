@@ -43,7 +43,7 @@ export default async function CreatePostPage() {
           className="pointer-events-none absolute -top-8 right-1/3 h-36 w-36 rounded-full bg-primary/5 blur-2xl"
         />
 
-        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-10 md:py-14">
+        <div className="relative w-full px-4 sm:px-6 lg:px-8 py-10 md:py-14">
           <div className="space-y-3">
             {/* Eyebrow */}
             <div className="flex items-center gap-2.5">

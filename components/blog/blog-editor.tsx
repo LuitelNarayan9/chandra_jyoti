@@ -178,6 +178,10 @@ function Section({
 export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // Track which button triggered the submit so only that spinner spins
+  const [submittingAs, setSubmittingAs] = useState<
+    "DRAFT" | "PUBLISHED" | null
+  >(null);
   const [newCatInput, setNewCatInput] = useState("");
   const [newTagInput, setNewTagInput] = useState("");
 
@@ -310,6 +314,7 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
 
   const onSubmit = (status: "DRAFT" | "PUBLISHED") => {
     form.setValue("status", status);
+    setSubmittingAs(status);
     form.handleSubmit(async (values) => {
       startTransition(async () => {
         try {
@@ -319,7 +324,11 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
               ...values,
             });
             if (result.success) {
-              toast.success(result.message ?? "Post updated!");
+              const msg =
+                status === "DRAFT"
+                  ? "Post saved as draft."
+                  : (result.message ?? "Post updated!");
+              toast.success(msg);
               router.push(`/blog/${result.data?.slug ?? initialData.id}`);
               router.refresh();
             } else {
@@ -328,7 +337,11 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
           } else {
             const result = await createPost(values);
             if (result.success) {
-              toast.success(result.message ?? "Post created!");
+              const msg =
+                status === "DRAFT"
+                  ? "Post saved as draft."
+                  : (result.message ?? "Post published!");
+              toast.success(msg);
               router.push(`/blog/${result.data?.slug}`);
               router.refresh();
             } else {
@@ -337,6 +350,8 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
           }
         } catch {
           toast.error("An unexpected error occurred.");
+        } finally {
+          setSubmittingAs(null);
         }
       });
     })();
@@ -808,7 +823,7 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
                 "font-medium text-sm"
               )}
             >
-              {isPending ? (
+              {submittingAs === "DRAFT" ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Save className="h-3.5 w-3.5" />
@@ -829,13 +844,13 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
                 "group"
               )}
             >
-              {isPending ? (
+              {submittingAs === "PUBLISHED" ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Send className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform duration-200" />
               )}
               {isEditing ? "Update Post" : "Publish Post"}
-              {!isPending && (
+              {submittingAs !== "PUBLISHED" && (
                 <ChevronRight className="h-3.5 w-3.5 opacity-60 -ml-1 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-200" />
               )}
             </Button>

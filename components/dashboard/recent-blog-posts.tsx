@@ -113,7 +113,7 @@ export function RecentBlogPosts({ posts }: RecentBlogPostsProps) {
                       {post.excerpt}
                     </p>
                   )}
-                  <div className="flex items-center justify-between mt-3">
+                  <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-4 mt-3">
                     <div className="flex items-center gap-2">
                       <Avatar className="h-5 w-5">
                         <AvatarImage src={post.author.avatar ?? undefined} />

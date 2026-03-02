@@ -72,45 +72,49 @@ export function ActiveForumThreads({ threads }: ActiveForumThreadsProps) {
           >
             <Link
               href={`/forum/${thread.category.slug}/${thread.slug}`}
-              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group"
+              className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 hover:bg-muted/50 transition-colors group"
             >
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={thread.author.avatar ?? undefined} />
-                <AvatarFallback className="text-xs">
-                  {thread.author.firstName[0]}
-                  {thread.author.lastName[0]}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                  {thread.title}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] px-1.5 py-0 h-4"
-                    style={{
-                      borderColor: thread.category.color ?? "#6366f1",
-                      color: thread.category.color ?? "#6366f1",
-                    }}
-                  >
-                    {thread.category.name}
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground">
-                    by {thread.author.firstName}
-                  </span>
+              <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                <Avatar className="h-8 w-8 shrink-0">
+                  <AvatarImage src={thread.author.avatar ?? undefined} />
+                  <AvatarFallback className="text-xs">
+                    {thread.author.firstName[0]}
+                    {thread.author.lastName[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {thread.title}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0 h-4"
+                      style={{
+                        borderColor: thread.category.color ?? "#6366f1",
+                        color: thread.category.color ?? "#6366f1",
+                      }}
+                    >
+                      {thread.category.name}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      by {thread.author.firstName}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
-                <span className="flex items-center gap-0.5" title="Replies">
-                  <MessageCircle className="h-3 w-3" />
-                  {thread._count.replies}
-                </span>
-                <span className="flex items-center gap-0.5" title="Views">
-                  <Eye className="h-3 w-3" />
-                  {thread.views}
-                </span>
-                <span className="hidden sm:block text-[10px]">
+              <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-muted-foreground shrink-0 mt-1 sm:mt-0 pl-11 sm:pl-0">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-0.5" title="Replies">
+                    <MessageCircle className="h-3 w-3" />
+                    {thread._count.replies}
+                  </span>
+                  <span className="flex items-center gap-0.5" title="Views">
+                    <Eye className="h-3 w-3" />
+                    {thread.views}
+                  </span>
+                </div>
+                <span className="text-[10px]">
                   <TimeAgo date={thread.updatedAt} />
                 </span>
               </div>

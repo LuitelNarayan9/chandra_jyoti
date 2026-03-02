@@ -81,7 +81,9 @@ export function MemberMobileSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState<ExpandMap>({});
+  const [expanded, setExpanded] = useState<ExpandMap>(() => ({
+    "/blog": pathname.startsWith("/blog"),
+  }));
   const toggleExpand = useCallback(
     (href: string) => setExpanded((p) => ({ ...p, [href]: !p[href] })),
     []
@@ -121,9 +123,11 @@ export function MemberMobileSidebar() {
                 {section.items.map((item) => {
                   const pal = ICON_PALETTE[gi % ICON_PALETTE.length];
                   gi++;
-                  const isActive =
-                    pathname === item.href ||
-                    pathname.startsWith(item.href + "/");
+                  const isActive = item.children
+                    ? pathname === item.href ||
+                      item.children.some((c) => pathname.startsWith(c.href))
+                    : pathname === item.href ||
+                      pathname.startsWith(item.href + "/");
                   const hasChildren =
                     "children" in item && Array.isArray((item as any).children);
                   const isOpen = expanded[item.href];
@@ -150,22 +154,35 @@ export function MemberMobileSidebar() {
                   return (
                     <div key={item.href}>
                       {hasChildren ? (
-                        <button
-                          type="button"
-                          onClick={() => toggleExpand(item.href)}
-                          className={rowClass}
-                        >
-                          {iconEl}
-                          <span className="flex-1 text-left truncate">
-                            {item.label}
-                          </span>
-                          <ChevronDown
-                            className={cn(
-                              "h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-white/20 transition-transform duration-200",
-                              isOpen && "rotate-180"
-                            )}
-                          />
-                        </button>
+                        // Split row: Link navigates, chevron toggles submenu
+                        <div className={cn(rowClass, "pr-1")}>
+                          {isActive && (
+                            <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-l-full bg-gradient-to-b from-indigo-400 to-violet-500" />
+                          )}
+                          <Link
+                            href={item.href}
+                            onClick={() => setOpen(false)}
+                            className="flex flex-1 items-center gap-3 min-w-0"
+                          >
+                            {iconEl}
+                            <span className="flex-1 truncate">
+                              {item.label}
+                            </span>
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(item.href)}
+                            aria-label="Toggle submenu"
+                            className="shrink-0 flex items-center justify-center h-7 w-7 rounded-lg text-neutral-400 dark:text-white/30 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 ring-0 hover:ring-1 hover:ring-indigo-200 dark:hover:ring-indigo-500/20 transition-all duration-200 active:scale-90"
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+                                isOpen && "rotate-180"
+                              )}
+                            />
+                          </button>
+                        </div>
                       ) : (
                         <Link
                           href={item.href}
@@ -179,31 +196,48 @@ export function MemberMobileSidebar() {
                           <span className="flex-1 truncate">{item.label}</span>
                         </Link>
                       )}
-                      {hasChildren && isOpen && (
-                        <div className="ml-[52px] mt-0.5 space-y-px border-l-2 border-neutral-100 dark:border-white/[0.06] pl-3">
-                          {(
-                            (item as any).children as {
-                              href: string;
-                              label: string;
-                            }[]
-                          ).map((child) => {
-                            const ca = pathname === child.href;
-                            return (
-                              <Link
-                                key={child.href}
-                                href={child.href}
-                                onClick={() => setOpen(false)}
-                                className={cn(
-                                  "block rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all duration-150",
-                                  ca
-                                    ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10"
-                                    : "text-neutral-400 dark:text-white/30 hover:text-neutral-700 dark:hover:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/[0.04]"
-                                )}
-                              >
-                                {child.label}
-                              </Link>
-                            );
-                          })}
+                      {/* FAQ-style accordion for children */}
+                      {hasChildren && (
+                        <div
+                          className={cn(
+                            "grid transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]",
+                            isOpen
+                              ? "grid-rows-[1fr] opacity-100"
+                              : "grid-rows-[0fr] opacity-0"
+                          )}
+                        >
+                          <div className="overflow-hidden">
+                            <div className="ml-[52px] mt-1 space-y-px border-l-2 border-neutral-100 dark:border-white/6 pl-3 pb-1">
+                              {(
+                                (item as any).children as {
+                                  href: string;
+                                  label: string;
+                                  icon: React.ElementType;
+                                }[]
+                              ).map((child) => {
+                                const ca =
+                                  pathname === child.href ||
+                                  pathname.startsWith(child.href + "/");
+                                const ChildIcon = child.icon;
+                                return (
+                                  <Link
+                                    key={child.href}
+                                    href={child.href}
+                                    onClick={() => setOpen(false)}
+                                    className={cn(
+                                      "flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
+                                      ca
+                                        ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10"
+                                        : "text-neutral-400 dark:text-white/30 hover:text-neutral-700 dark:hover:text-white/70 hover:bg-neutral-50 dark:hover:bg-white/4"
+                                    )}
+                                  >
+                                    <ChildIcon className="h-4 w-4 shrink-0" />
+                                    {child.label}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

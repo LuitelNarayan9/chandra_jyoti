@@ -33,7 +33,7 @@ export function CommunityActivityFeed({
   if (activities.length === 0) {
     return (
       <Card className="p-6">
-        <h2 className="text-lg font-semibold font-[family-name:var(--font-outfit)] mb-3">
+        <h2 className="text-lg font-semibold font-(family-name:--font-outfit) mb-3">
           Community Activity
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -45,7 +45,7 @@ export function CommunityActivityFeed({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold font-[family-name:var(--font-outfit)]">
+      <h2 className="text-lg font-semibold font-(family-name:--font-outfit)">
         Community Activity
       </h2>
       <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm p-4">
@@ -84,11 +84,11 @@ export function CommunityActivityFeed({
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="min-w-0">
-                        <p className="text-sm leading-snug">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm leading-snug wrap-break-word">
                           {activity.description}
                         </p>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-[10px] text-muted-foreground block mt-0.5">
                           <TimeAgo date={activity.createdAt} />
                         </span>
                       </div>

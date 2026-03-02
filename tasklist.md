@@ -153,17 +153,17 @@
 
 **Step 5.3: Comments**
 
-- [ ] Build comment form (Tiptap mini)
-- [ ] Build threaded comment list (3 levels)
-- [ ] Create addComment, deleteComment, pinComment actions
-- [ ] Build comment like button
-- [ ] Build report comment
+- [x] Build comment form (Tiptap mini)
+- [x] Build threaded comment list (3 levels)
+- [x] Create addComment, deleteComment, pinComment actions
+- [x] Build comment like button
+- [x] Build report comment
 
 **Step 5.4: My Posts + Bookmarks**
 
-- [ ] Build my posts page with all statuses
-- [ ] Build bookmarks page
-- [ ] Build scheduled posts handling
+- [x] Build my posts page with all statuses
+- [x] Build bookmarks page
+- [x] Build scheduled posts handling
 
 ### Phase 6: Forum System (Week 7-8)
 
