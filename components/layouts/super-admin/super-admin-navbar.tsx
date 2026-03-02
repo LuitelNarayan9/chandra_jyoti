@@ -192,6 +192,7 @@ export function SuperAdminNavbar({
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               placeholder="Global search — users, logs, settings…"
+              aria-label="Global search"
               className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
             />
             <kbd className="shrink-0 rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] font-mono text-muted-foreground/60">
@@ -288,6 +289,9 @@ export function SuperAdminNavbar({
                 variant="ghost"
                 size="icon"
                 onClick={() => setNotifOpen((v) => !v)}
+                aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+                aria-expanded={notifOpen}
+                aria-haspopup="true"
                 className={cn(
                   "relative h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground",
                   "hover:bg-teal-500/[0.08] transition-all duration-200",

@@ -25,28 +25,27 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "relative overflow-hidden border-b border-border/60 bg-gradient-to-b from-muted/40 to-transparent",
+        "relative border-b border-border/60 bg-gradient-to-b from-muted/40 to-transparent",
         className
       )}
     >
       {/* Dot-grid background */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.03] dark:opacity-[0.06]"
+        className="pointer-events-none absolute inset-0 overflow-hidden opacity-[0.03] dark:opacity-[0.06]"
         style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
           backgroundSize: "32px 32px",
         }}
       />
-      {/* Glow blobs */}
+      {/* Glow blobs — clipped individually */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-20 left-1/3 h-56 w-56 rounded-full bg-primary/10 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-10 right-1/4 h-40 w-40 rounded-full bg-primary/5 blur-2xl"
-      />
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -top-20 left-1/3 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -top-10 right-1/4 h-40 w-40 rounded-full bg-primary/5 blur-2xl" />
+      </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">

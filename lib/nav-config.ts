@@ -19,6 +19,7 @@ import {
   Heart,
   UserCheck,
   Bookmark,
+  MessagesSquare,
   type LucideIcon,
 } from "lucide-react";
 
@@ -48,6 +49,16 @@ const blogChildren: NavChild[] = [
   { href: "/blog/bookmarks", label: "Bookmarks", icon: Bookmark },
 ];
 
+// ── Forum sub-items (shared across all roles) ──────────────────
+const forumChildren: NavChild[] = [
+  { href: "/forum/my-threads", label: "My Threads", icon: MessagesSquare },
+];
+
+const adminForumChildren: NavChild[] = [
+  ...forumChildren,
+  { href: "/forum/manage-polls", label: "Manage Polls", icon: BarChart3 },
+];
+
 // ── Member / Moderator Navigation ─────────────────────────────────
 export const memberNavSections: NavSection[] = [
   {
@@ -56,7 +67,7 @@ export const memberNavSections: NavSection[] = [
       { href: "/home", label: "Dashboard", icon: Home },
       { href: "/family-tree", label: "Family Tree", icon: TreePine },
       { href: "/blog", label: "Blog", icon: BookOpen, children: blogChildren },
-      { href: "/forum", label: "Forum", icon: MessageSquare },
+      { href: "/forum", label: "Forum", icon: MessageSquare, children: forumChildren },
       { href: "/news", label: "News", icon: Newspaper },
     ],
   },
@@ -82,7 +93,7 @@ export const adminNavSections: NavSection[] = [
     title: "Content",
     items: [
       { href: "/blog", label: "Blog Posts", icon: BookOpen, children: blogChildren },
-      { href: "/forum", label: "Forum", icon: MessageSquare },
+      { href: "/forum", label: "Forum", icon: MessageSquare, children: adminForumChildren },
       { href: "/news", label: "News", icon: Newspaper },
       { href: "/family-tree", label: "Family Tree", icon: TreePine },
     ],
@@ -120,7 +131,7 @@ export const superAdminNavSections: NavSection[] = [
     title: "Content Management",
     items: [
       { href: "/blog", label: "Blog", icon: BookOpen, children: blogChildren },
-      { href: "/forum", label: "Forum", icon: MessageSquare },
+      { href: "/forum", label: "Forum", icon: MessageSquare, children: adminForumChildren },
       { href: "/news", label: "News", icon: Newspaper },
       { href: "/family-tree", label: "Family Tree", icon: TreePine },
     ],

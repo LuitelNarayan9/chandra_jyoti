@@ -169,30 +169,30 @@
 
 **Step 6.1: Forum Structure**
 
-- [ ] Build forum categories page
-- [ ] Build CategoryCard component
-- [ ] Build category threads page
-- [ ] Build ThreadCard component
-- [ ] Build forum sidebar
+- [x] Build forum categories page
+- [x] Build CategoryCard component
+- [x] Build category threads page
+- [x] Build ThreadCard component
+- [x] Build forum sidebar
 
 **Step 6.2: Thread CRUD**
 
-- [ ] Build thread creation page + form
-- [ ] Create createThread, updateThread actions
-- [ ] Build thread detail page
-- [ ] Build reply form and reply list (nested)
-- [ ] Create addReply action
-- [ ] Build upvote/downvote buttons + voteReply action
-- [ ] Build mark-as-solution
+- [x] Build thread creation page + form
+- [x] Create createThread, updateThread actions
+- [x] Build thread detail page
+- [x] Build reply form and reply list (nested)
+- [x] Create addReply action
+- [x] Build upvote/downvote buttons + voteReply action
+- [x] Build mark-as-solution
 
 **Step 6.3: Forum Features**
 
-- [ ] Build poll creation form
-- [ ] Build poll voting widget
-- [ ] Create poll actions
-- [ ] Build pin/lock thread (mod actions)
-- [ ] Build search forum
-- [ ] Build my-threads page
+- [x] Build poll creation form
+- [x] Build poll voting widget
+- [x] Create poll actions
+- [x] Build pin/lock thread (mod actions)
+- [x] Build search forum
+- [x] Build my-threads page
 
 ### Phase 7: News System (Week 8-9)
 

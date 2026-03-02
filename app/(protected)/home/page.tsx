@@ -10,6 +10,7 @@ import {
   getAdminOverview,
   getSystemHealth,
 } from "@/lib/queries/dashboard.queries";
+import { getActiveAdminPollsForUser } from "@/lib/queries/forum.queries";
 
 import { WelcomeBanner } from "@/components/dashboard/welcome-banner";
 import { QuickStats } from "@/components/dashboard/quick-stats";
@@ -20,6 +21,7 @@ import { CommunityActivityFeed } from "@/components/dashboard/community-activity
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { AdminOverview } from "@/components/dashboard/admin-overview";
 import { SystemHealth } from "@/components/dashboard/system-health";
+import { ActiveAdminPolls } from "@/components/dashboard/active-admin-polls";
 
 export const metadata = {
   title: "Dashboard",
@@ -34,14 +36,21 @@ export default async function DashboardPage() {
   const isSuperAdmin = hasPermission(user.role, "SUPER_ADMIN");
 
   // Fetch all data in parallel
-  const [stats, recentPosts, activeThreads, newsArticles, activities] =
-    await Promise.all([
-      getDashboardStats(),
-      getRecentBlogPosts(),
-      getActiveForumThreads(),
-      getNewsHighlights(),
-      getCommunityActivity(),
-    ]);
+  const [
+    stats,
+    recentPosts,
+    activeThreads,
+    newsArticles,
+    activities,
+    adminPolls,
+  ] = await Promise.all([
+    getDashboardStats(),
+    getRecentBlogPosts(),
+    getActiveForumThreads(),
+    getNewsHighlights(),
+    getCommunityActivity(),
+    getActiveAdminPollsForUser(user.id),
+  ]);
 
   // Admin-only data
   const adminData = isAdmin ? await getAdminOverview() : null;
@@ -79,8 +88,9 @@ export default async function DashboardPage() {
           <ActiveForumThreads threads={activeThreads} />
         </div>
 
-        {/* Right column: News + Activity Feed */}
+        {/* Right column: News + Polls + Activity Feed */}
         <div className="space-y-6">
+          <ActiveAdminPolls polls={adminPolls} currentUserId={user.id} />
           <NewsHighlights articles={newsArticles} />
           <CommunityActivityFeed activities={activities} />
         </div>

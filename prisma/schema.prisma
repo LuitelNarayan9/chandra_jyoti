@@ -46,7 +46,10 @@ model User {
   notifications   Notification[]
   likes           Like[]
   forumVotes      ForumVote[]
+  forumThreadVotes ForumThreadVote[]
   pollVotes       PollVote[]
+  adminPolls      AdminPoll[]      @relation("AdminPollCreator")
+  adminPollVotes  AdminPollVote[]
   familyEdges     FamilyEdge[]     @relation("AddedByEdgeUser")
 
   @@index([clerkId])
@@ -347,6 +350,7 @@ model ForumThread {
   tags    ForumThreadTag[]
   replies ForumReply[]
   polls   ForumPoll[]
+  votes   ForumThreadVote[]
   reports Report[]
 
   createdAt DateTime @default(now())
@@ -401,6 +405,18 @@ model ForumVote {
   @@unique([userId, replyId])
 }
 
+model ForumThreadVote {
+  id        String      @id @default(cuid())
+  value     Int // +1 or -1
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  threadId  String
+  thread    ForumThread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([userId, threadId])
+}
+
 model ForumTag {
   id      String           @id @default(cuid())
   name    String           @unique
@@ -441,6 +457,52 @@ model PollVote {
   user     User            @relation(fields: [userId], references: [id])
   optionId String
   option   ForumPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, optionId])
+}
+
+// =============================================
+// ADMIN POLLS
+// =============================================
+
+enum AdminPollType {
+  DISMISSIBLE
+  NON_DISMISSIBLE
+}
+
+model AdminPoll {
+  id            String            @id @default(cuid())
+  question      String
+  description   String?           @db.Text
+  type          AdminPollType     @default(NON_DISMISSIBLE)
+  isMultiChoice Boolean           @default(false)
+  isPublished   Boolean           @default(false)
+  publishedAt   DateTime?
+  
+  createdById   String
+  createdBy     User              @relation("AdminPollCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  
+  options       AdminPollOption[]
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model AdminPollOption {
+  id        String          @id @default(cuid())
+  text      String
+  pollId    String
+  poll      AdminPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes     AdminPollVote[]
+}
+
+model AdminPollVote {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optionId  String
+  option    AdminPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  createdAt DateTime        @default(now())
 
   @@unique([userId, optionId])
 }

@@ -2,6 +2,7 @@ import { RoleLayoutShell } from "@/components/layouts/role-layout-shell";
 import { getCurrentDbUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import type { Role } from "@/lib/roles";
+import { AdminPollPresenter } from "@/components/forum/admin-poll-presenter";
 
 export default async function ProtectedLayout({
   children,
@@ -19,6 +20,7 @@ export default async function ProtectedLayout({
       avatar={user.avatar}
     >
       {children}
+      <AdminPollPresenter />
     </RoleLayoutShell>
   );
 }

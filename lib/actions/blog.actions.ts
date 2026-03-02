@@ -177,8 +177,9 @@ export async function updatePost(input: UpdatePostValues) {
       updateData.slug = await generateUniqueSlug(validated.title);
     }
     if (validated.content !== undefined) {
-      updateData.content = sanitizeHtml(validated.content);
-      updateData.readingTime = estimateReadingTime(validated.content);
+      const safeContent = sanitizeHtml(validated.content);
+      updateData.content = safeContent;
+      updateData.readingTime = estimateReadingTime(safeContent);
     }
     if (validated.excerpt !== undefined) updateData.excerpt = validated.excerpt;
     if (validated.coverImage !== undefined)
@@ -400,7 +401,9 @@ export async function incrementPostViews(postId: string) {
     return { success: true };
   } catch (error: unknown) {
     console.error("Error incrementing views:", error);
-    return { success: false };
+    const message =
+      error instanceof Error ? error.message : "Failed to increment views.";
+   return { success: false, error: message };
   }
 }
 
