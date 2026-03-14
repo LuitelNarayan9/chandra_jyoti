@@ -94,7 +94,7 @@ export function AdminOverview({ data }: AdminOverviewProps) {
       className="space-y-4"
     >
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold font-[family-name:var(--font-outfit)]">
+        <h2 className="text-lg font-semibold font-(family-name:--font-outfit)">
           Admin Overview
         </h2>
         <Badge

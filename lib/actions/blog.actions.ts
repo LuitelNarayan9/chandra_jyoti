@@ -183,7 +183,7 @@ export async function updatePost(input: UpdatePostValues) {
     }
     if (validated.excerpt !== undefined) updateData.excerpt = validated.excerpt;
     if (validated.coverImage !== undefined)
-      updateData.coverImage = validated.coverImage;
+      updateData.coverImage = validated.coverImage || null;
     if (validated.category !== undefined) {
       if (validated.category) {
         updateData.category = validated.category.id

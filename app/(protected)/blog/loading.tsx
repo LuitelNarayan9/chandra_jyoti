@@ -4,7 +4,7 @@ export default function BlogLoading() {
   return (
     <div className="min-h-screen pb-16 animate-pulse">
       {/* ── Hero header skeleton ── */}
-      <div className="relative overflow-hidden border-b border-border/60 bg-gradient-to-b from-muted/40 to-transparent">
+      <div className="relative overflow-hidden border-b border-border/60 bg-linear-to-b from-muted/40 to-transparent">
         {/* Dot-grid (static, no skeleton needed) */}
         <div
           aria-hidden

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { s3Client } from "@/lib/s3";
+import { uploadToS3 } from "@/lib/s3";
 import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(req: Request) {
@@ -11,35 +9,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { filename, contentType } = await req.json();
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
 
-    if (!filename || !contentType) {
+    if (!file) {
       return NextResponse.json(
-        { error: "Missing filename or contentType" },
+        { error: "No file provided" },
         { status: 400 }
       );
     }
 
-    const ext = filename.split(".").pop();
+    const ext = file.name.split(".").pop();
     const uniqueFilename = `${crypto.randomUUID()}.${ext}`;
-    // Store in a 'blog-media' folder, or 'uploads'
     const key = `blog-media/${uniqueFilename}`;
 
-    const command = new PutObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME!,
-      Key: key,
-      ContentType: contentType,
-    });
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const publicUrl = await uploadToS3(buffer, key, file.type);
 
-    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-    const encodedKey = key.split("/").map(encodeURIComponent).join("/");
-    const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${encodedKey}`;
-
-    return NextResponse.json({ signedUrl, publicUrl });
+    return NextResponse.json({ url: publicUrl });
   } catch (error) {
-    console.error("Error generating signed URL:", error);
+    console.error("Error uploading file:", error);
     return NextResponse.json(
-      { error: "Failed to generate upload URL" },
+      { error: "Failed to upload file" },
       { status: 500 }
     );
   }

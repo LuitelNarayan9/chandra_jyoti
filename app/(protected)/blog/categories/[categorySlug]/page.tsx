@@ -74,7 +74,7 @@ export default async function CategoryPage({
   return (
     <div className="min-h-screen pb-16">
       {/* ── Hero header ── */}
-      <div className="relative overflow-hidden border-b border-border/60 bg-gradient-to-b from-muted/40 to-transparent">
+      <div className="relative overflow-hidden border-b border-border/60 bg-linear-to-b from-muted/40 to-transparent">
         {/* Dot-grid */}
         <div
           aria-hidden

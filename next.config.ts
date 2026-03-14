@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+
+  reactCompiler: true,
+  experimental: {
+    turbopackFileSystemCacheForDev: true,
+    turbopackFileSystemCacheForBuild: true,
+  },
+
   images: {
     unoptimized: true,
     remotePatterns: [
@@ -15,15 +21,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "chandra-jyoti.s3.ap-south-1.amazonaws.com",
-      },
-      {
-        protocol: "https",
-        hostname: "*.s3.*.amazonaws.com",
+        hostname: "storage.chandrajyotisanstha.online",
       },
     ],
   },
-  allowedDevOrigins: ['decisive-subneural-serafina.ngrok-free.dev']
+  allowedDevOrigins: ['decisive-subneural-serafina.ngrok-free.dev', 'dev.chandrajyotisanstha.online']
 };
 
 export default nextConfig;

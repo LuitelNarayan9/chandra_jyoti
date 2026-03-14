@@ -11,7 +11,7 @@ export const CreatePostSchema = z.object({
     .string()
     .max(300, "Excerpt must be at most 300 characters.")
     .optional(),
-  coverImage: z.string().url("Must be a valid URL.").optional().or(z.literal("")),
+  coverImage: z.string().refine(val => val === '' || z.string().url().safeParse(val).success, { message: "Must be a valid URL." }).optional().nullable(),
   category: z.object({ id: z.string().optional(), name: z.string().min(1) }),
   tags: z.array(z.object({ id: z.string().optional(), name: z.string() })).max(5, "At most 5 tags.").optional(),
   status: z.enum(["DRAFT", "PUBLISHED"]),
@@ -36,7 +36,7 @@ export const UpdatePostSchema = z.object({
     .string()
     .max(300, "Excerpt must be at most 300 characters.")
     .optional(),
-  coverImage: z.string().url().optional().nullable(),
+  coverImage: z.string().refine(val => val === '' || z.string().url().safeParse(val).success, { message: "Must be a valid URL." }).optional().nullable(),
   category: z.object({ id: z.string().optional(), name: z.string().min(1) }).optional(),
   tags: z.array(z.object({ id: z.string().optional(), name: z.string() })).max(5).optional(),
   status: z.enum(["DRAFT", "PUBLISHED"]).optional(),

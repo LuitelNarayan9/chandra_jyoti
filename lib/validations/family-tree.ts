@@ -18,7 +18,7 @@ export const joinFamilyTreeSchema = z.object({
   }),
   dateOfBirth: z.string().optional().nullable(),
   familyClan: z.string().max(100).optional().nullable(),
-  photo: z.string().url("Invalid photo URL").optional().nullable(),
+  photo: z.string().url("Invalid photo URL").optional().nullable().or(z.literal("")),
   bio: z.string().max(1000, "Bio must be at most 1000 characters").optional().nullable(),
   maritalStatus: z
     .enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"])
@@ -90,7 +90,7 @@ export const updateFamilyMemberSchema = z.object({
   dateOfBirth: z.string().optional().nullable(),
   dateOfDeath: z.string().optional().nullable(),
   familyClan: z.string().max(100).optional().nullable(),
-  photo: z.string().url().optional().nullable(),
+  photo: z.string().refine(val => val === '' || z.string().url().safeParse(val).success, { message: "Must be a valid URL." }).optional().nullable(),
   bio: z.string().max(1000).optional().nullable(),
   maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
   bloodGroup: z.string().max(10).optional().nullable(),

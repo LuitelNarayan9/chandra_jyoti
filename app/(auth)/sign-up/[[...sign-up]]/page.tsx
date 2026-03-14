@@ -26,7 +26,7 @@ export default function SignUpPage() {
       >
         {/* Abstract Background Pattern */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -right-[20%] -bottom-[20%] h-[140%] w-[140%] rounded-full bg-gradient-to-tl from-emerald-500/10 via-teal-500/10 to-transparent blur-3xl animate-pulse" />
+          <div className="absolute -right-[20%] -bottom-[20%] h-[140%] w-[140%] rounded-full bg-linear-to-tl from-emerald-500/10 via-teal-500/10 to-transparent blur-3xl animate-pulse" />
           <svg
             className="absolute inset-0 h-full w-full opacity-[0.03]"
             xmlns="http://www.w3.org/2000/svg"
@@ -52,7 +52,7 @@ export default function SignUpPage() {
 
         {/* Main Content */}
         <div className="relative z-10 max-w-md">
-          <h1 className="mb-6 text-4xl font-bold leading-tight font-[family-name:var(--font-outfit)] tracking-tight">
+          <h1 className="mb-6 text-4xl font-bold leading-tight font-(family-name:--font-outfit) tracking-tight">
             Join our growing community
           </h1>
           <p className="mb-8 text-lg text-zinc-400 leading-relaxed">

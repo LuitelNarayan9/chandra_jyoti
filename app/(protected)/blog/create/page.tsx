@@ -23,7 +23,7 @@ export default async function CreatePostPage() {
   return (
     <div className="min-h-screen pb-20">
       {/* ── Page hero ── */}
-      <div className="relative overflow-hidden border-b border-border/60 bg-gradient-to-b from-muted/40 to-transparent">
+      <div className="relative overflow-hidden border-b border-border/60 bg-linear-to-b from-muted/40 to-transparent">
         {/* Dot-grid background */}
         <div
           aria-hidden
@@ -62,7 +62,7 @@ export default async function CreatePostPage() {
                 thoughts
                 <span
                   aria-hidden
-                  className="absolute -bottom-1 left-0 h-[3px] w-full rounded-full bg-gradient-to-r from-primary to-primary/40"
+                  className="absolute -bottom-1 left-0 h-[3px] w-full rounded-full bg-linear-to-r from-primary to-primary/40"
                 />
               </span>
             </h1>

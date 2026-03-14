@@ -103,7 +103,7 @@ export function SystemHealth({ data }: SystemHealthProps) {
       className="space-y-4"
     >
       <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold font-[family-name:var(--font-outfit)] flex items-center gap-2">
+        <h2 className="text-lg font-semibold font-(family-name:--font-outfit) flex items-center gap-2">
           <Activity className="h-5 w-5 text-indigo-500" />
           System Health
         </h2>
@@ -125,7 +125,7 @@ export function SystemHealth({ data }: SystemHealthProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-[family-name:var(--font-outfit)] mb-4">
+            <div className="text-2xl font-bold font-(family-name:--font-outfit) mb-4">
               {totalRecords.toLocaleString()}{" "}
               <span className="text-sm font-normal text-muted-foreground">
                 total records
@@ -148,7 +148,7 @@ export function SystemHealth({ data }: SystemHealthProps) {
                         initial={{ width: 0 }}
                         animate={{ width: `${percentage}%` }}
                         transition={{ duration: 0.8, delay: 0.1 }}
-                        className={`h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500`}
+                        className={`h-full rounded-full bg-linear-to-r from-indigo-500 to-purple-500`}
                       />
                     </div>
                     <span className="text-xs font-medium w-12 text-right">
@@ -185,7 +185,7 @@ export function SystemHealth({ data }: SystemHealthProps) {
                       height: `${Math.max((count / maxGrowth) * 100, 4)}%`,
                     }}
                     transition={{ duration: 0.6, delay: 0.05 * idx }}
-                    className="w-full rounded-t-md bg-gradient-to-t from-indigo-500 to-purple-400 min-h-1"
+                    className="w-full rounded-t-md bg-linear-to-t from-indigo-500 to-purple-400 min-h-1"
                   />
                   <span className="text-[10px] text-muted-foreground">
                     {growthLabels[idx]}

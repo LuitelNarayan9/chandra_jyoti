@@ -7,15 +7,17 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const s3Client = new S3Client({
-  region: process.env.AWS_REGION!,
+  endpoint: process.env.MINIO_ENDPOINT!,
+  region: "us-east-1", // MinIO ignores this but SDK requires it
+  forcePathStyle: true, // Required for MinIO — uses path style instead of subdomain
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.MINIO_ACCESS_KEY!,
+    secretAccessKey: process.env.MINIO_SECRET_KEY!,
   },
 });
 
 /**
- * Upload a file buffer to S3.
+ * Upload a file buffer to MinIO.
  * @returns The public URL of the uploaded file.
  */
 export async function uploadToS3(
@@ -25,24 +27,25 @@ export async function uploadToS3(
 ): Promise<string> {
   await s3Client.send(
     new PutObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME!,
+      Bucket: process.env.MINIO_BUCKET_NAME!,
       Key: key,
       Body: file,
       ContentType: contentType,
     })
   );
 
+  // MinIO public URL format (path style)
   const encodedKey = key.split("/").map(encodeURIComponent).join("/");
-  return `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${encodedKey}`;
+  return `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_BUCKET_NAME}/${encodedKey}`;
 }
 
 /**
- * Delete a file from S3 by its key.
+ * Delete a file from MinIO by its key.
  */
 export async function deleteFromS3(key: string): Promise<void> {
   await s3Client.send(
     new DeleteObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME!,
+      Bucket: process.env.MINIO_BUCKET_NAME!,
       Key: key,
     })
   );
@@ -50,7 +53,7 @@ export async function deleteFromS3(key: string): Promise<void> {
 
 /**
  * Generate a presigned URL for temporary read access.
- * @param key - The S3 object key.
+ * @param key - The object key.
  * @param expiresIn - Expiry in seconds (default: 1 hour).
  */
 export async function getSignedFileUrl(
@@ -58,7 +61,7 @@ export async function getSignedFileUrl(
   expiresIn = 3600
 ): Promise<string> {
   const command = new GetObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET_NAME!,
+    Bucket: process.env.MINIO_BUCKET_NAME!,
     Key: key,
   });
 

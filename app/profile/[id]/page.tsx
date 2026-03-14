@@ -580,7 +580,7 @@ function FactsPanel({
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-            <span className="w-1 h-5 bg-gradient-to-b from-emerald-500 to-teal-400 rounded-full inline-block" />
+            <span className="w-1 h-5 bg-linear-to-b from-emerald-500 to-teal-400 rounded-full inline-block" />
             Timeline
           </h2>
           <div className="flex gap-2">
@@ -1323,7 +1323,7 @@ function LifeStoryPanel({
 function ExplorePanel() {
   return (
     <div className="max-w-2xl">
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-md p-6 text-center mb-4">
+      <div className="bg-linear-to-br from-green-50 to-emerald-50 border border-green-200 rounded-md p-6 text-center mb-4">
         <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
           <Lock className="w-6 h-6 text-green-700" />
         </div>

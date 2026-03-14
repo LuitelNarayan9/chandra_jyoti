@@ -108,21 +108,22 @@ export function ForumSearch() {
 
   return (
     <div className="relative flex items-center h-10" ref={containerRef}>
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence>
         {!isOpen ? (
           <motion.div
             key="button"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, width: 0, scale: 0.9 }}
+            animate={{ opacity: 1, width: "auto", scale: 1 }}
+            exit={{ opacity: 0, width: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center overflow-hidden whitespace-nowrap"
           >
             <Button
               variant="outline"
               className="gap-2 rounded-full h-10 px-4 transition-all hover:bg-muted"
               onClick={() => setIsOpen(true)}
             >
-              <Search className="h-4 w-4" />
+              <Search className="h-4 w-4 shrink-0" />
               <span>Search</span>
             </Button>
           </motion.div>

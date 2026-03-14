@@ -19,7 +19,7 @@ export default function SignInPage() {
       >
         {/* Abstract Background Pattern */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -left-[40%] -top-[40%] h-[180%] w-[180%] rounded-full bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-transparent blur-3xl animate-pulse" />
+          <div className="absolute -left-[40%] -top-[40%] h-[180%] w-[180%] rounded-full bg-linear-to-br from-indigo-500/10 via-purple-500/10 to-transparent blur-3xl animate-pulse" />
           <svg
             className="absolute inset-0 h-full w-full opacity-[0.03]"
             xmlns="http://www.w3.org/2000/svg"
@@ -45,7 +45,7 @@ export default function SignInPage() {
 
         {/* Main Content */}
         <div className="relative z-10 max-w-md">
-          <h1 className="mb-6 text-4xl font-bold leading-tight font-[family-name:var(--font-outfit)] tracking-tight">
+          <h1 className="mb-6 text-4xl font-bold leading-tight font-(family-name:--font-outfit) tracking-tight">
             Welcome back to your community
           </h1>
           <p className="text-lg text-zinc-400 leading-relaxed">

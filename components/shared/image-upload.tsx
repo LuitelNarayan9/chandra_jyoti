@@ -17,7 +17,7 @@ interface ImageUploadProps {
 export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
 
-  // Upload file to S3 via Signed URL
+  // Upload file via server-side proxy (no CORS needed)
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       const file = acceptedFiles[0];
@@ -25,37 +25,21 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
 
       setIsUploading(true);
       try {
-        // 1. Get presigned URL
+        const formData = new FormData();
+        formData.append("file", file);
+
         const res = await fetch("/api/upload", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filename: file.name,
-            contentType: file.type,
-          }),
+          body: formData,
         });
 
         if (!res.ok) {
           const data = await res.json();
-          throw new Error(data.error || "Failed to get upload URL");
+          throw new Error(data.error || "Failed to upload image");
         }
 
-        const { signedUrl, publicUrl } = await res.json();
-
-        // 2. Upload directly to S3
-        const uploadRes = await fetch(signedUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type,
-          },
-          body: file,
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error("Failed to upload image to S3");
-        }
-
-        onChange(publicUrl);
+        const { url } = await res.json();
+        onChange(url);
         toast.success("Image uploaded successfully");
       } catch (error) {
         console.error("Upload error:", error);

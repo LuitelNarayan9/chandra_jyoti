@@ -1,0 +1,5 @@
+{
+  "devCommand": "next dev --port $PORT",
+  "buildCommand": "next build",
+  "installCommand": "bun install"
+}
