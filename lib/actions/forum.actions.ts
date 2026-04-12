@@ -65,9 +65,8 @@ function sanitizeHtml(html: string): string {
     ]),
     allowedAttributes: {
       ...sanitizeHtmlLib.defaults.allowedAttributes,
-      "*": ["style", "class"],
+      "*": ["class"],
     },
-    allowedIframeHostnames: ["www.youtube.com"],
   });
 }
 
@@ -635,20 +634,29 @@ export async function createPoll(input: CreatePollValues) {
         error: "Only the thread author can create a poll.",
       };
     }
+    // Fast-path check (non-atomic, but avoids unnecessary DB writes in the common case)
     if (thread._count.polls > 0) {
       return { success: false, error: "This thread already has a poll." };
     }
 
-    await db.forumPoll.create({
-      data: {
-        question,
-        isMultiChoice,
-        thread: { connect: { id: threadId } },
-        options: {
-          create: options.map((text) => ({ text })),
+    try {
+      await db.forumPoll.create({
+        data: {
+          question,
+          isMultiChoice,
+          thread: { connect: { id: threadId } },
+          options: {
+            create: options.map((text) => ({ text })),
+          },
         },
-      },
-    });
+      });
+    } catch (createError: any) {
+      // Handle race condition: unique constraint on threadId prevents duplicates
+      if (createError?.code === "P2002") {
+        return { success: false, error: "This thread already has a poll." };
+      }
+      throw createError;
+    }
 
     revalidatePath(`/forum/${thread.category.slug}/${thread.slug}`);
 

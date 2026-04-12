@@ -4,6 +4,7 @@ import { mailClient } from "@/lib/mailer";
 import { render } from "@react-email/render";
 import { ContactNotificationEmail } from "@/components/emails/ContactNotificationEmail";
 import { ContactConfirmationEmail } from "@/components/emails/ContactConfirmationEmail";
+import { resend } from "@/lib/resend-mailer";
 
 /* ── In-memory rate limiter (per IP, 3 requests / 15 min) ── */
 const RATE_LIMIT = 3;
@@ -25,12 +26,15 @@ function isRateLimited(ip: string): boolean {
 }
 
 // Cleanup stale entries every 30 minutes to prevent memory leak
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of hits) {
-    if (now > entry.resetAt) hits.delete(ip);
-  }
-}, 30 * 60 * 1000).unref?.();
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [ip, entry] of hits) {
+      if (now > entry.resetAt) hits.delete(ip);
+    }
+  },
+  30 * 60 * 1000
+).unref?.();
 
 export async function POST(req: Request) {
   try {
@@ -97,7 +101,8 @@ export async function POST(req: Request) {
       })
     );
 
-    // 3. Send both emails in parallel
+    // ─── ZEPTO MAIL IMPLEMENTATION (Dormant) ───
+    /*
     await Promise.all([
       // Email 1: Notification to site owner
       mailClient.sendMail({
@@ -115,16 +120,49 @@ export async function POST(req: Request) {
         htmlbody: userHtml,
       }),
     ]);
+    */
+
+    // ─── ALTERNATIVE: RESEND IMPLEMENTATION (Active) ───
+    await Promise.all([
+      // Email 1: Notification to site owner
+      resend.emails.send({
+        from: `${fromName} <${fromAddress}>`,
+        to: [ownerEmail],
+        subject: `New Contact Form Submission from ${name}`,
+        react: ContactNotificationEmail({
+          name,
+          email,
+          subject: emailSubject,
+          message,
+          phone,
+          submittedAt,
+        }),
+      }),
+
+      // Email 2: Auto-reply confirmation to user
+      resend.emails.send({
+        from: `${fromName} <${fromAddress}>`,
+        to: [email],
+        subject: `Thank you for contacting us, ${name}!`,
+        react: ContactConfirmationEmail({
+          name,
+          message,
+        }),
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
       message: "Email sent successfully",
     });
-
-  } catch (error) {
+  } catch (error: any) {
     console.error("Contact form error:", error);
+    const details =
+      error && typeof error === "object"
+        ? JSON.stringify(error)
+        : String(error);
     return NextResponse.json(
-      { error: "Failed to send email. Please try again." },
+      { error: "Failed to send email. Please try again.", details },
       { status: 500 }
     );
   }

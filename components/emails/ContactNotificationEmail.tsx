@@ -36,38 +36,46 @@ export function ContactNotificationEmail({
           {/* Header */}
           <Section style={header}>
             <Heading style={headerText}>New Contact Form Submission</Heading>
-            <Text style={headerSubText}>chandrajyotisanstha.online</Text>
           </Section>
 
           {/* Body */}
           <Section style={content}>
-            <Text style={label}>Full Name</Text>
-            <Text style={value}>{name}</Text>
+            <Section style={metaBox}>
+              <Text style={metaSpacing}>
+                <span style={metaLabel}>Full Name</span>
+                <br />
+                <span style={metaValue}>{name}</span>
+              </Text>
 
-            <Hr style={divider} />
+              <Text style={metaSpacing}>
+                <span style={metaLabel}>Email Address</span>
+                <br />
+                <a href={`mailto:${email}`} style={metaLink}>
+                  {email}
+                </a>
+              </Text>
 
-            <Text style={label}>Email Address</Text>
-            <Text style={value}>{email}</Text>
+              <Text style={metaSpacing}>
+                <span style={metaLabel}>Phone Number</span>
+                <br />
+                <span style={metaValue}>{phone || "Not provided"}</span>
+              </Text>
 
-            <Hr style={divider} />
+              <Text style={metaSpacing}>
+                <span style={metaLabel}>Subject</span>
+                <br />
+                <span style={metaValue}>{subject || "No Subject"}</span>
+              </Text>
 
-            <Text style={label}>Phone</Text>
-            <Text style={value}>{phone || "Not provided"}</Text>
+              <Text style={metaSpacingLast}>
+                <span style={metaLabel}>Submitted At</span>
+                <br />
+                <span style={metaValue}>{submittedAt}</span>
+              </Text>
+            </Section>
 
-            <Hr style={divider} />
-
-            <Text style={label}>Subject</Text>
-            <Text style={value}>{subject || "No Subject"}</Text>
-
-            <Hr style={divider} />
-
-            <Text style={label}>Message</Text>
+            <Text style={messageLabel}>Message Content</Text>
             <Text style={messageBox}>{message}</Text>
-
-            <Hr style={divider} />
-
-            <Text style={label}>Submitted At</Text>
-            <Text style={value}>{submittedAt}</Text>
           </Section>
 
           {/* Footer */}
@@ -132,25 +140,65 @@ const label: React.CSSProperties = {
   margin: "0 0 4px 0",
 };
 
-const value: React.CSSProperties = {
+const metaBox: React.CSSProperties = {
+  backgroundColor: "#f8faff",
+  border: "1px solid #dbeafe",
+  borderRadius: "8px",
+  padding: "20px",
+  margin: "0 0 24px 0",
+};
+
+const metaSpacing: React.CSSProperties = {
+  margin: "0 0 16px 0",
+};
+
+const metaSpacingLast: React.CSSProperties = {
+  margin: "0",
+};
+
+const metaLabel: React.CSSProperties = {
+  fontSize: "11px",
+  fontWeight: "bold",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  color: "#2563eb",
+};
+
+const metaValue: React.CSSProperties = {
   fontSize: "15px",
-  color: "#333333",
+  color: "#1a1a1a",
+  fontWeight: "500",
+  lineHeight: "1.5",
+};
+
+const metaLink: React.CSSProperties = {
+  fontSize: "15px",
+  color: "#2563eb",
+  textDecoration: "underline",
+  fontWeight: "500",
+};
+
+const messageLabel: React.CSSProperties = {
+  fontSize: "13px",
+  fontWeight: "bold",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  color: "#1a1a1a",
   margin: "0 0 8px 0",
 };
 
 const messageBox: React.CSSProperties = {
   fontSize: "15px",
   color: "#333333",
-  backgroundColor: "#f4f4f4",
-  padding: "15px",
-  borderRadius: "6px",
+  backgroundColor: "#fcfcfc",
+  padding: "16px",
+  borderLeft: "4px solid #2563eb",
+  borderRadius: "0 4px 4px 0",
   whiteSpace: "pre-wrap",
-  margin: "0 0 8px 0",
-};
-
-const divider: React.CSSProperties = {
-  borderColor: "#eeeeee",
-  margin: "16px 0",
+  margin: "0",
+  lineHeight: "1.6",
+  border: "1px solid #eeeeee",
+  borderLeftWidth: "4px",
 };
 
 const footer: React.CSSProperties = {

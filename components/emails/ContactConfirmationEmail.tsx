@@ -28,7 +28,6 @@ export function ContactConfirmationEmail({
           {/* Header */}
           <Section style={header}>
             <Heading style={headerText}>Thank You for Contacting Us</Heading>
-            <Text style={headerSubText}>Chandrajyoti Sanstha</Text>
           </Section>
 
           {/* Body */}
@@ -39,7 +38,7 @@ export function ContactConfirmationEmail({
               Thank you for reaching out to{" "}
               <strong>Chandrajyoti Sanstha</strong>. We have received your
               message and our team will get back to you within{" "}
-              <strong>24-48 hours</strong>.
+              <strong>24 hours</strong>.
             </Text>
 
             <Text style={paragraph}>
@@ -55,8 +54,16 @@ export function ContactConfirmationEmail({
 
             <Text style={paragraph}>
               If you have any urgent queries, please feel free to reach out to
-              us directly by replying to this email.
+              us:
             </Text>
+
+            <Section style={contactBox}>
+              <Text style={contactLabel}>Phone Support</Text>
+              <Text style={contactValue}>+91 7797328133</Text>
+              <Text style={contactSubText}>
+                Monday - Friday (10:00 AM - 4:00 PM)
+              </Text>
+            </Section>
 
             <Text style={signOff}>Warm regards,</Text>
             <Text style={signOffName}>Chandrajyoti Sanstha Team</Text>
@@ -65,7 +72,7 @@ export function ContactConfirmationEmail({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              © 2025 Chandrajyoti Sanstha. All rights reserved.
+              © 2026 Chandrajyoti Sanstha. All rights reserved.
             </Text>
             <Text style={footerText}>chandrajyotisanstha.online</Text>
           </Section>
@@ -147,6 +154,37 @@ const messageBox: React.CSSProperties = {
   borderLeft: "4px solid #2563eb",
   whiteSpace: "pre-wrap",
   margin: "0 0 8px 0",
+};
+
+const contactBox: React.CSSProperties = {
+  backgroundColor: "#f8faff",
+  border: "1px dashed #bfdbfe",
+  borderRadius: "6px",
+  padding: "16px",
+  margin: "16px 0",
+};
+
+const contactLabel: React.CSSProperties = {
+  fontSize: "11px",
+  fontWeight: "bold",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  color: "#2563eb",
+  margin: "0 0 6px 0",
+};
+
+const contactValue: React.CSSProperties = {
+  fontSize: "16px",
+  color: "#1a1a1a",
+  fontWeight: "bold",
+  margin: "0 0 4px 0",
+};
+
+const contactSubText: React.CSSProperties = {
+  fontSize: "13px",
+  color: "#666666",
+  fontStyle: "italic",
+  margin: 0,
 };
 
 const divider: React.CSSProperties = {

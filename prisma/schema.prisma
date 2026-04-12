@@ -437,7 +437,7 @@ model ForumPoll {
   id            String            @id @default(cuid())
   question      String
   isMultiChoice Boolean           @default(false)
-  threadId      String
+  threadId      String            @unique
   thread        ForumThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
   options       ForumPollOption[]
   createdAt     DateTime          @default(now())
