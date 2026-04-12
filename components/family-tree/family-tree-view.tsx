@@ -20,6 +20,7 @@ import { TreeLegend } from "./tree-legend";
 import { MemberProfileView } from "./member-profile-view";
 import { JoinTreeForm } from "./join-tree-form";
 import { AddRelativeForm } from "./add-relative-form";
+import { MissingParentPicker } from "./missing-parent-picker";
 import { EditMemberForm } from "./edit-member-form";
 import type { TreeNode } from "@/types/family-tree";
 import { TreePine, Users } from "lucide-react";
@@ -58,12 +59,17 @@ export function FamilyTreeView({
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Form dialog states
-  const [addRelativeTarget, setAddRelativeTarget] = useState<TreeNode | null>(
-    null
-  );
+  const [addRelativeTarget, setAddRelativeTarget] = useState<{
+    node: TreeNode;
+    preselectedRelationship?: "FATHER" | "MOTHER" | "SPOUSE" | "CHILD" | "BROTHER" | "SISTER";
+  } | null>(null);
   const [editMemberTarget, setEditMemberTarget] = useState<TreeNode | null>(
     null
   );
+  const [missingParentTarget, setMissingParentTarget] = useState<{
+    node: TreeNode;
+    missingType: "FATHER" | "MOTHER";
+  } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -290,13 +296,36 @@ export function FamilyTreeView({
           canModify={!!canModify}
           isAdmin={!!userState?.isAdmin}
           currentUserClan={currentUserNode?.familyClan ?? null}
-          onAddRelative={(node: TreeNode) => {
+          onAddRelative={(node: TreeNode, preselectedRelationship?: "FATHER" | "MOTHER" | "SPOUSE" | "CHILD" | "BROTHER" | "SISTER") => {
             setSelectedMember(null);
-            setAddRelativeTarget(node);
+            // For FATHER/MOTHER, show the picker first
+            if (preselectedRelationship === "FATHER" || preselectedRelationship === "MOTHER") {
+              setMissingParentTarget({ node, missingType: preselectedRelationship });
+            } else {
+              setAddRelativeTarget({ node, preselectedRelationship });
+            }
           }}
           onEditMember={(node: TreeNode) => {
             setSelectedMember(null);
             setEditMemberTarget(node);
+          }}
+        />
+      )}
+
+      {/* ─ Missing Parent Picker ─ */}
+      {missingParentTarget && (
+        <MissingParentPicker
+          open={!!missingParentTarget}
+          onOpenChange={(open) => !open && setMissingParentTarget(null)}
+          member={missingParentTarget.node}
+          missingType={missingParentTarget.missingType}
+          allNodes={allNodes}
+          edges={edges}
+          onAddNew={() => {
+            // Close picker and open the full AddRelativeForm with preselected type
+            const { node, missingType } = missingParentTarget;
+            setMissingParentTarget(null);
+            setAddRelativeTarget({ node, preselectedRelationship: missingType });
           }}
         />
       )}
@@ -306,8 +335,11 @@ export function FamilyTreeView({
         <AddRelativeForm
           open={!!addRelativeTarget}
           onOpenChange={(open) => !open && setAddRelativeTarget(null)}
-          targetNode={addRelativeTarget}
+          targetNode={addRelativeTarget.node}
           clans={clans}
+          allNodes={allNodes}
+          edges={edges}
+          preselectedRelationship={addRelativeTarget.preselectedRelationship}
         />
       )}
 

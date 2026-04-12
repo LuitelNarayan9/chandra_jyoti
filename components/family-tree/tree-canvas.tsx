@@ -343,11 +343,47 @@ export function TreeCanvas({
           });
         }
 
-        // Sort component to keep males roughly on the left, females on right
-        component.sort((a, b) => {
-          if (a.gender !== b.gender) return a.gender === "MALE" ? -1 : 1;
-          return 0;
-        });
+        // ── Multi-spouse hub ordering ──
+        // If one person has 2+ spouse edges within this component, place them in the middle
+        if (component.length >= 3) {
+          const spouseCountMap = new Map<string, number>();
+          component.forEach((c: any) => spouseCountMap.set(c.id, 0));
+          edges.forEach((e) => {
+            if (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE") {
+              if (spouseCountMap.has(e.fromNodeId) && spouseCountMap.has(e.toNodeId)) {
+                spouseCountMap.set(e.fromNodeId, (spouseCountMap.get(e.fromNodeId) || 0) + 1);
+                spouseCountMap.set(e.toNodeId, (spouseCountMap.get(e.toNodeId) || 0) + 1);
+              }
+            }
+          });
+          let hubNode: any = null;
+          let maxSC = 0;
+          for (const c of component) {
+            const sc = spouseCountMap.get(c.id) || 0;
+            if (sc > maxSC) { maxSC = sc; hubNode = c; }
+          }
+          if (hubNode && maxSC >= 2) {
+            // Hub goes in the middle; others split on each side
+            const others = component.filter((c: any) => c.id !== hubNode.id);
+            const half = Math.ceil(others.length / 2);
+            const leftSide = others.slice(0, half);
+            const rightSide = others.slice(half);
+            component.length = 0;
+            component.push(...leftSide, hubNode, ...rightSide);
+          } else {
+            // Default: males left, females right
+            component.sort((a: any, b: any) => {
+              if (a.gender !== b.gender) return a.gender === "MALE" ? -1 : 1;
+              return 0;
+            });
+          }
+        } else {
+          // 1-2 person units: males left, females right
+          component.sort((a: any, b: any) => {
+            if (a.gender !== b.gender) return a.gender === "MALE" ? -1 : 1;
+            return 0;
+          });
+        }
 
         const uId =
           "UNIT_" +
@@ -834,6 +870,22 @@ export function TreeCanvas({
         .attr("stroke-width", 2)
         .attr("filter", isSearchHL ? "url(#search-glow)" : "url(#card-shadow)");
 
+      // Clan Label (above avatar)
+      if (node.familyClan) {
+        cardG
+          .append("text")
+          .attr("x", 0)
+          .attr("y", -88)
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "central")
+          .attr("fill", "#78716c") // stone-500
+          .attr("font-size", 9)
+          .attr("font-weight", 500)
+          .attr("font-family", "Inter, system-ui, sans-serif")
+          .attr("letter-spacing", "0.5px")
+          .text(`Clan: ${node.familyClan}`);
+      }
+
       // Avatar
       const hasPhoto = !!node.photo;
       if (hasPhoto) {
@@ -966,12 +1018,16 @@ export function TreeCanvas({
     for (const link of allDagLinks) {
       const parentUnitNodes = link.source.data.nodes;
       const childUnitNodes = link.target.data.nodes;
+      const parentUnitW = link.source.data.width;
 
       let sourceX = link.source.x;
       let targetX = link.target.x;
 
       let specificChildIndex = -1;
       let linkType = "PARENT_CHILD";
+
+      // Find the specific child and ALL biological parent indices within the parent unit
+      const bioParentIndices: number[] = [];
 
       for (let i = 0; i < childUnitNodes.length; i++) {
         const cNode = childUnitNodes[i];
@@ -984,18 +1040,46 @@ export function TreeCanvas({
               e.fromNodeId === pNode.id
           );
           if (childEdge) {
-            specificChildIndex = i;
-            linkType = childEdge.type;
-            break;
+            if (specificChildIndex === -1) {
+              specificChildIndex = i;
+              linkType = childEdge.type;
+            }
+            if (!bioParentIndices.includes(j)) {
+              bioParentIndices.push(j);
+            }
           }
         }
-        if (specificChildIndex !== -1) break;
       }
 
-      // 1. Line ALWAYS drops from the geometric center of the Parents' Marriage Unit
-      sourceX = link.source.x;
+      // Also include cross-clan parents of the same child that exist in the parent unit
+      // This ensures the edge drops from the midpoint between BOTH biological parents
+      if (specificChildIndex !== -1) {
+        const childId = childUnitNodes[specificChildIndex].id;
+        for (let j = 0; j < parentUnitNodes.length; j++) {
+          if (bioParentIndices.includes(j)) continue;
+          const pNode = parentUnitNodes[j];
+          const hasCrossClanParent = crossClanEdges.some(
+            (e) => e.fromNodeId === pNode.id && e.toNodeId === childId
+          );
+          if (hasCrossClanParent) {
+            bioParentIndices.push(j);
+          }
+        }
+      }
 
-      // 2. Line ALWAYS targets the specific blood child in the Child's Unit
+      // Route sourceX from the midpoint between specific biological parents
+      if (bioParentIndices.length >= 2) {
+        const parentXPositions = bioParentIndices.map((idx) =>
+          link.source.x - parentUnitW / 2 + NODE_W / 2 + idx * (NODE_W + H_GAP)
+        );
+        sourceX = parentXPositions.reduce((a, b) => a + b, 0) / parentXPositions.length;
+      } else if (bioParentIndices.length === 1) {
+        sourceX = link.source.x - parentUnitW / 2 + NODE_W / 2 + bioParentIndices[0] * (NODE_W + H_GAP);
+      } else {
+        sourceX = link.source.x;
+      }
+
+      // Target the specific blood child in the Child's Unit
       if (specificChildIndex !== -1) {
         const cUnitW = link.target.data.width;
         targetX =
@@ -1005,15 +1089,13 @@ export function TreeCanvas({
           specificChildIndex * (NODE_W + H_GAP);
       }
 
-      // The horizontal spouse line is drawn precisely at cy = link.source.y
       const sourceY = link.source.y;
-
       const targetY = link.target.y - NODE_H / 2;
       const midY = (link.source.y + NODE_H / 2 + targetY) / 2;
 
       const pathD = `M ${sourceX} ${sourceY} L ${sourceX} ${midY} L ${targetX} ${midY} L ${targetX} ${targetY}`;
 
-      let strokeColor = "#94a3b8"; // dark slate for parent_child
+      let strokeColor = "#94a3b8";
       let strokeWidth = 3.5;
 
       if (linkType === "ADOPTION") {
@@ -1096,38 +1178,63 @@ export function TreeCanvas({
     });
 
     // ───── Draw Cross-Clan Edges ─────
-    // Parent-child edges between different clans, same style as regular edges
-    // The line drops from the CENTER of the parent's spouse unit (like regular edges)
+    // Group cross-clan edges by (parent-unit, child) to route from parent-pair midpoint.
+    // Skip edges where the child is already connected via DAG link from the same parent unit.
+    const dagLinkedChildKeys = new Set<string>();
+    for (const link of allDagLinks) {
+      const childUnitNodes = link.target.data.nodes;
+      childUnitNodes.forEach((cn: any) =>
+        dagLinkedChildKeys.add(`${link.source.data.id}:${cn.id}`)
+      );
+    }
+
+    // Group: Map<"unitId:childId", { parentIds, childId }>
+    const crossClanGroups = new Map<
+      string,
+      { parentIds: string[]; childId: string }
+    >();
+
     for (const ccEdge of crossClanEdges) {
-      const fromPos = nodePositions.get(ccEdge.fromNodeId);
-      const toPos = nodePositions.get(ccEdge.toNodeId);
-      if (!fromPos || !toPos) continue;
-
-      // Find the center of the parent's spouse unit
       const parentUnit = nodeToUnit.get(ccEdge.fromNodeId);
-      let sourceX = fromPos.x;
-      if (parentUnit && parentUnit.nodes.length > 1) {
-        // Calculate geometric center X of all nodes in the unit
-        let sumX = 0;
-        let count = 0;
-        for (const unitNode of parentUnit.nodes) {
-          const pos = nodePositions.get(unitNode.id);
-          if (pos) {
-            sumX += pos.x;
-            count++;
-          }
-        }
-        if (count > 0) sourceX = sumX / count;
-      }
+      if (!parentUnit) continue;
 
-      const sourceY = fromPos.y; // center of card = where spouse line is drawn
+      // Skip if child already has a DAG connection from this parent unit
+      const dagKey = `${parentUnit.id}:${ccEdge.toNodeId}`;
+      if (dagLinkedChildKeys.has(dagKey)) continue;
+
+      const groupKey = `${parentUnit.id}:${ccEdge.toNodeId}`;
+      if (!crossClanGroups.has(groupKey)) {
+        crossClanGroups.set(groupKey, {
+          parentIds: [],
+          childId: ccEdge.toNodeId,
+        });
+      }
+      const group = crossClanGroups.get(groupKey)!;
+      if (!group.parentIds.includes(ccEdge.fromNodeId)) {
+        group.parentIds.push(ccEdge.fromNodeId);
+      }
+    }
+
+    for (const [, group] of crossClanGroups) {
+      const toPos = nodePositions.get(group.childId);
+      if (!toPos) continue;
+
+      // Get positions of all biological parents in this group
+      const parentPositions = group.parentIds
+        .map((pid) => nodePositions.get(pid))
+        .filter(Boolean) as { x: number; y: number }[];
+
+      if (parentPositions.length === 0) continue;
+
+      // Source = midpoint of all biological parents' X positions
+      const sourceX =
+        parentPositions.reduce((sum, p) => sum + p.x, 0) /
+        parentPositions.length;
+      const sourceY = parentPositions[0].y; // All parents in same unit share Y
       const targetY = toPos.y - NODE_H / 2;
 
-      // Standard edges route through the exact middle.
-      // To avoid overlapping with standard horizontal sibling lines (which use the exact middle),
-      // we'll shift the cross-clan horizontal routing line slightly lower.
-      const standardMidY = (fromPos.y + NODE_H / 2 + targetY) / 2;
-      const midY = standardMidY + V_SPACING * 0.25; // Push the horizontal line down by 25% of spacing
+      const standardMidY = (sourceY + NODE_H / 2 + targetY) / 2;
+      const midY = standardMidY + V_SPACING * 0.25;
 
       const pathD = `M ${sourceX} ${sourceY} L ${sourceX} ${midY} L ${toPos.x} ${midY} L ${toPos.x} ${targetY}`;
 

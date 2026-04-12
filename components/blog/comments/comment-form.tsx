@@ -83,8 +83,26 @@ function MiniToolbar({ editor }: { editor: any }) {
         active={editor.isActive("link")}
         onClick={() => {
           const url = window.prompt("Enter URL");
-          if (url) editor.chain().focus().setLink({ href: url }).run();
-          else if (url === "") editor.chain().focus().unsetLink().run();
+          if (url) {
+            // Validate URL protocol to prevent XSS
+            try {
+              const parsed = new URL(url, window.location.origin);
+              if (!['http:', 'https:', 'mailto:'].includes(parsed.protocol)) {
+                return; // Reject non-safe protocols
+              }
+              editor.chain().focus().setLink({ href: parsed.href }).run();
+            } catch {
+              // If URL parsing fails, try prepending https://
+              try {
+                const parsed = new URL(`https://${url}`);
+                editor.chain().focus().setLink({ href: parsed.href }).run();
+              } catch {
+                // Invalid URL, ignore
+              }
+            }
+          } else if (url === "") {
+            editor.chain().focus().unsetLink().run();
+          }
         }}
         title="Link"
       >
@@ -102,8 +120,8 @@ interface CommentFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   autoFocus?: boolean;
-  /** Called immediately on submit for optimistic UI */
-  onOptimisticAdd?: (htmlContent: string) => void;
+  /** Called immediately on submit for optimistic UI; returns rollback function */
+  onOptimisticAdd?: (htmlContent: string) => (() => void) | void;
 }
 
 export function CommentForm({
@@ -159,6 +177,7 @@ export function CommentForm({
   });
 
   const isEmpty = charCount === 0;
+  const isOverLimit = charCount > MAX_CHARS;
 
   function onSubmit(values: CreateCommentValues) {
     const textContent = editor?.getText().trim();
@@ -166,9 +185,14 @@ export function CommentForm({
       toast.error("Comment cannot be empty.");
       return;
     }
+    if (isOverLimit) {
+      toast.error(`Comment exceeds ${MAX_CHARS} character limit.`);
+      return;
+    }
 
+    let rollback: (() => void) | void;
     if (!parentId && onOptimisticAdd) {
-      onOptimisticAdd(values.content);
+      rollback = onOptimisticAdd(values.content);
     }
 
     startTransition(async () => {
@@ -181,9 +205,11 @@ export function CommentForm({
           setCharCount(0);
           onSuccess?.();
         } else {
+          rollback?.();
           toast.error(result.error);
         }
       } catch {
+        rollback?.();
         toast.error("Something went wrong.");
       }
     });
@@ -272,11 +298,11 @@ export function CommentForm({
             <Button
               type="submit"
               size="sm"
-              disabled={isPending || isEmpty}
+              disabled={isPending || isEmpty || isOverLimit}
               className={cn(
-                "h-8 px-4 text-xs font-semibold gap-2 rounded-xl transition-all duration-200",
+                "group h-8 px-4 text-xs font-semibold gap-2 rounded-xl transition-all duration-200",
                 "shadow-sm hover:shadow-md active:scale-[0.97]",
-                isEmpty && "opacity-40 cursor-not-allowed"
+                (isEmpty || isOverLimit) && "opacity-40 cursor-not-allowed"
               )}
             >
               {isPending ? (

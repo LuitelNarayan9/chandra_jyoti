@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -31,19 +31,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import {
   addRelativeSchema,
   type AddRelativeInput,
 } from "@/lib/validations/family-tree";
 import { addRelative } from "@/lib/actions/family-tree.actions";
-import type { TreeNode } from "@/types/family-tree";
+import type { TreeNode, FamilyEdgeData } from "@/types/family-tree";
 
 interface AddRelativeFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   targetNode: TreeNode;
   clans: string[];
+  allNodes?: TreeNode[];
+  edges?: FamilyEdgeData[];
+  preselectedRelationship?: "FATHER" | "MOTHER" | "SPOUSE" | "CHILD" | "BROTHER" | "SISTER";
 }
 
 export function AddRelativeForm({
@@ -51,15 +54,41 @@ export function AddRelativeForm({
   onOpenChange,
   targetNode,
   clans,
+  allNodes = [],
+  edges = [],
+  preselectedRelationship,
 }: AddRelativeFormProps) {
   const [isPending, startTransition] = useTransition();
   const [openClanDropdown, setOpenClanDropdown] = useState(false);
+
+  // Find target's spouse(s) for auto-suggesting the second parent
+  const targetSpouses = useMemo(() => {
+    if (!edges.length || !allNodes.length) return [];
+    const spouseIds = new Set<string>();
+    edges.forEach((e) => {
+      if (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE") {
+        if (e.fromNodeId === targetNode.id) spouseIds.add(e.toNodeId);
+        if (e.toNodeId === targetNode.id) spouseIds.add(e.fromNodeId);
+      }
+    });
+    return allNodes.filter((n) => spouseIds.has(n.id));
+  }, [targetNode.id, edges, allNodes]);
+
+  // All possible second parents: same clan members (excluding the target itself + the new child being created)
+  const secondParentCandidates = useMemo(() => {
+    if (!allNodes.length) return [];
+    return allNodes.filter(
+      (n) => n.id !== targetNode.id
+    );
+  }, [allNodes, targetNode.id]);
+
+  const defaultSecondParentId = targetSpouses.length === 1 ? targetSpouses[0].id : "";
 
   const form = useForm<AddRelativeInput>({
     resolver: zodResolver(addRelativeSchema),
     defaultValues: {
       relatedToNodeId: targetNode.id,
-      relationshipType: undefined,
+      relationshipType: preselectedRelationship || undefined,
       firstName: "",
       lastName: "",
       gender: undefined,
@@ -71,6 +100,7 @@ export function AddRelativeForm({
       bloodGroup: "",
       profession: "",
       bio: "",
+      secondParentId: defaultSecondParentId,
       startDate: "",
       endDate: "",
       notes: "",
@@ -82,7 +112,7 @@ export function AddRelativeForm({
     if (open) {
       form.reset({
         relatedToNodeId: targetNode.id,
-        relationshipType: undefined,
+        relationshipType: preselectedRelationship || undefined,
         firstName: "",
         lastName: "",
         gender: undefined,
@@ -94,15 +124,19 @@ export function AddRelativeForm({
         bloodGroup: "",
         profession: "",
         bio: "",
+        secondParentId: defaultSecondParentId,
         startDate: "",
         endDate: "",
         notes: "",
       });
     }
-  }, [open, targetNode.id, targetNode.familyClan, form]);
+  }, [open, targetNode.id, targetNode.familyClan, form, preselectedRelationship, defaultSecondParentId]);
 
   const watchRelationship = form.watch("relationshipType");
   const watchIsAlive = form.watch("isAlive");
+  const watchSecondParentId = form.watch("secondParentId");
+  const [secondParentSearch, setSecondParentSearch] = useState("");
+  const [showSecondParentDropdown, setShowSecondParentDropdown] = useState(false);
 
   // Auto-set gender and marital status based on relationship type
   useEffect(() => {
@@ -464,6 +498,166 @@ export function AddRelativeForm({
                 </FormItem>
               )}
             />
+
+            {/* Second Parent (when adding a CHILD) */}
+            {watchRelationship === "CHILD" && secondParentCandidates.length > 0 && (
+              <FormField
+                control={form.control}
+                name="secondParentId"
+                render={({ field }) => {
+                  const selectedParent = allNodes.find((n) => n.id === field.value);
+                  const filteredCandidates = secondParentCandidates.filter((c) =>
+                    `${c.firstName} ${c.lastName}`
+                      .toLowerCase()
+                      .includes(secondParentSearch.toLowerCase())
+                  );
+
+                  return (
+                    <FormItem className="relative">
+                      <FormLabel className="flex items-center gap-1">
+                        Second Parent (Other Parent)
+                        <span className="text-xs text-muted-foreground font-normal">
+                          — optional
+                        </span>
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            placeholder="Search for second parent..."
+                            value={
+                              showSecondParentDropdown
+                                ? secondParentSearch
+                                : selectedParent
+                                  ? `${selectedParent.firstName} ${selectedParent.lastName}`
+                                  : ""
+                            }
+                            onChange={(e) => {
+                              setSecondParentSearch(e.target.value);
+                              setShowSecondParentDropdown(true);
+                              // Clear the current selection if typing
+                              if (field.value) {
+                                field.onChange("");
+                              }
+                            }}
+                            onFocus={() => {
+                              setShowSecondParentDropdown(true);
+                              setSecondParentSearch("");
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => setShowSecondParentDropdown(false), 200);
+                            }}
+                          />
+                          {field.value && (
+                            <button
+                              type="button"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                field.onChange("");
+                                setSecondParentSearch("");
+                              }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </FormControl>
+                      {showSecondParentDropdown && (
+                        <div className="absolute top-[68px] z-[100] w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
+                          <div className="max-h-[200px] overflow-auto p-1">
+                            {/* Show target's spouse(s) first with a label */}
+                            {targetSpouses.length > 0 && (
+                              <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                Spouse of {targetName}
+                              </div>
+                            )}
+                            {targetSpouses
+                              .filter((sp) =>
+                                `${sp.firstName} ${sp.lastName}`
+                                  .toLowerCase()
+                                  .includes(secondParentSearch.toLowerCase())
+                              )
+                              .map((sp) => (
+                                <div
+                                  key={sp.id}
+                                  className={`relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
+                                    field.value === sp.id ? "bg-accent" : ""
+                                  }`}
+                                  onClick={() => {
+                                    field.onChange(sp.id);
+                                    setShowSecondParentDropdown(false);
+                                    setSecondParentSearch("");
+                                  }}
+                                >
+                                  <span className="mr-2 text-xs">💍</span>
+                                  {sp.firstName} {sp.lastName}
+                                  {sp.familyClan ? (
+                                    <span className="ml-auto text-xs text-muted-foreground">
+                                      {sp.familyClan}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ))}
+
+                            {/* Divider */}
+                            {targetSpouses.length > 0 && filteredCandidates.length > 0 && (
+                              <div className="my-1 border-t border-border" />
+                            )}
+
+                            {/* Other members */}
+                            {filteredCandidates
+                              .filter(
+                                (c) =>
+                                  !targetSpouses.some((sp) => sp.id === c.id)
+                              )
+                              .slice(0, 20)
+                              .map((candidate) => (
+                                <div
+                                  key={candidate.id}
+                                  className={`relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
+                                    field.value === candidate.id
+                                      ? "bg-accent"
+                                      : ""
+                                  }`}
+                                  onClick={() => {
+                                    field.onChange(candidate.id);
+                                    setShowSecondParentDropdown(false);
+                                    setSecondParentSearch("");
+                                  }}
+                                >
+                                  {candidate.firstName} {candidate.lastName}
+                                  {candidate.familyClan ? (
+                                    <span className="ml-auto text-xs text-muted-foreground">
+                                      {candidate.familyClan}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ))}
+
+                            {filteredCandidates.length === 0 && (
+                              <div className="py-2 text-center text-sm text-muted-foreground">
+                                No members found.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      <FormMessage />
+
+                      {/* Warning if no second parent selected */}
+                      {!watchSecondParentId && (
+                        <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                            No second parent selected. You can add one later via
+                            the member&apos;s profile.
+                          </p>
+                        </div>
+                      )}
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
 
             {/* Marriage date (only for spouse) */}
             {watchRelationship === "SPOUSE" && (

@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import sanitizeHtmlLib from "sanitize-html";
 import {
   CreateThreadSchema,
   UpdateThreadSchema,
@@ -39,10 +41,10 @@ function slugify(text: string): string {
 async function generateUniqueSlug(title: string): Promise<string> {
   const base = slugify(title);
   let slug = base;
-  let counter = 1;
 
   while (await db.forumThread.findUnique({ where: { slug } })) {
-    slug = `${base}-${++counter}`;
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    slug = `${base}-${randomSuffix}`;
   }
 
   return slug;
@@ -51,11 +53,22 @@ async function generateUniqueSlug(title: string): Promise<string> {
 // ─── Helper: sanitize HTML to prevent XSS ────────────────────
 
 function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/\bon\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\bon\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/javascript\s*:/gi, "");
+  return sanitizeHtmlLib(html, {
+    allowedTags: sanitizeHtmlLib.defaults.allowedTags.concat([
+      "img",
+      "h1",
+      "h2",
+      "h3",
+      "u",
+      "s",
+      "span",
+    ]),
+    allowedAttributes: {
+      ...sanitizeHtmlLib.defaults.allowedAttributes,
+      "*": ["style", "class"],
+    },
+    allowedIframeHostnames: ["www.youtube.com"],
+  });
 }
 
 // ─── Create Thread ────────────────────────────────────────────
@@ -89,46 +102,50 @@ export async function createThread(input: CreateThreadValues) {
     const safeContent = sanitizeHtml(validated.content);
     const slug = await generateUniqueSlug(validated.title);
 
-    const thread = await db.forumThread.create({
-      data: {
-        title: validated.title,
-        slug,
-        content: safeContent,
-        author: { connect: { id: user.id } },
-        category: { connect: { id: category.id } },
-        ...(validated.tags && validated.tags.length > 0
-          ? {
-              tags: {
-                create: validated.tags.map((tag) => {
-                  if (tag.id) return { tag: { connect: { id: tag.id } } };
-                  return {
-                    tag: {
-                      connectOrCreate: {
-                        where: { name: tag.name },
-                        create: { name: tag.name, slug: slugify(tag.name) },
-                      },
-                    },
-                  };
-                }),
-              },
-            }
-          : {}),
-      },
-    });
-
-    // Create poll if provided
-    if (validated.poll) {
-      await db.forumPoll.create({
+    const thread = await db.$transaction(async (tx) => {
+      const createdThread = await tx.forumThread.create({
         data: {
-          question: validated.poll.question,
-          isMultiChoice: validated.poll.isMultiChoice,
-          thread: { connect: { id: thread.id } },
-          options: {
-            create: validated.poll.options.map((text) => ({ text })),
-          },
+          title: validated.title,
+          slug,
+          content: safeContent,
+          author: { connect: { id: user.id } },
+          category: { connect: { id: category.id } },
+          ...(validated.tags && validated.tags.length > 0
+            ? {
+                tags: {
+                  create: validated.tags.map((tag) => {
+                    if (tag.id) return { tag: { connect: { id: tag.id } } };
+                    return {
+                      tag: {
+                        connectOrCreate: {
+                          where: { name: tag.name },
+                          create: { name: tag.name, slug: slugify(tag.name) },
+                        },
+                      },
+                    };
+                  }),
+                },
+              }
+            : {}),
         },
       });
-    }
+
+      // Create poll if provided
+      if (validated.poll) {
+        await tx.forumPoll.create({
+          data: {
+            question: validated.poll.question,
+            isMultiChoice: validated.poll.isMultiChoice,
+            thread: { connect: { id: createdThread.id } },
+            options: {
+              create: validated.poll.options.map((text) => ({ text })),
+            },
+          },
+        });
+      }
+
+      return createdThread;
+    });
 
     revalidatePath("/forum");
     revalidatePath(`/forum/${category.slug}`);
@@ -290,7 +307,11 @@ export async function lockThread(threadId: string) {
 
     const thread = await db.forumThread.findUnique({
       where: { id: threadId },
-      select: { isLocked: true, category: { select: { slug: true } }, slug: true },
+      select: {
+        isLocked: true,
+        category: { select: { slug: true } },
+        slug: true,
+      },
     });
 
     if (!thread) {
@@ -322,10 +343,22 @@ export async function lockThread(threadId: string) {
 
 export async function incrementThreadViews(threadId: string) {
   try {
+    const cookieStore = await cookies();
+    const cookieName = `viewed_thread_${threadId}`;
+    if (cookieStore.get(cookieName)) {
+      return { success: true };
+    }
+
     await db.forumThread.update({
       where: { id: threadId },
       data: { views: { increment: 1 } },
     });
+
+    try {
+      cookieStore.set(cookieName, "1", { maxAge: 60 * 60 * 24 }); // 24 hours
+    } catch (e) {
+      // Ignore errors when setting cookies outside a proper context
+    }
     return { success: true };
   } catch (error: unknown) {
     console.error("Error incrementing views:", error);
@@ -439,8 +472,7 @@ export async function voteReply(replyId: string, value: 1 | -1) {
     return { success: true };
   } catch (error: unknown) {
     console.error("Error voting:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to vote.";
+    const message = error instanceof Error ? error.message : "Failed to vote.";
     return { success: false, error: message };
   }
 }
@@ -509,9 +541,7 @@ export async function markSolution(replyId: string) {
       ]);
     }
 
-    revalidatePath(
-      `/forum/${reply.thread.category.slug}/${reply.thread.slug}`
-    );
+    revalidatePath(`/forum/${reply.thread.category.slug}/${reply.thread.slug}`);
     revalidatePath(`/forum/${reply.thread.category.slug}`);
 
     return {
@@ -568,8 +598,7 @@ export async function voteThread(threadId: string, value: 1 | -1) {
     return { success: true };
   } catch (error: unknown) {
     console.error("Error voting on thread:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to vote.";
+    const message = error instanceof Error ? error.message : "Failed to vote.";
     return { success: false, error: message };
   }
 }
@@ -581,7 +610,10 @@ export async function createPoll(input: CreatePollValues) {
     const user = await requireRole("MEMBER");
     const parsed = CreatePollSchema.safeParse(input);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid input.",
+      };
     }
 
     const { threadId, question, options, isMultiChoice } = parsed.data;
@@ -598,7 +630,10 @@ export async function createPoll(input: CreatePollValues) {
 
     if (!thread) return { success: false, error: "Thread not found." };
     if (thread.authorId !== user.id) {
-      return { success: false, error: "Only the thread author can create a poll." };
+      return {
+        success: false,
+        error: "Only the thread author can create a poll.",
+      };
     }
     if (thread._count.polls > 0) {
       return { success: false, error: "This thread already has a poll." };
@@ -633,7 +668,10 @@ export async function votePoll(input: VotePollValues) {
     const user = await requireRole("MEMBER");
     const parsed = VotePollSchema.safeParse(input);
     if (!parsed.success) {
-      return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+      return {
+        success: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid input.",
+      };
     }
 
     const { pollId, optionIds } = parsed.data;
@@ -657,7 +695,10 @@ export async function votePoll(input: VotePollValues) {
 
     // Single choice: exactly 1 option
     if (!poll.isMultiChoice && optionIds.length > 1) {
-      return { success: false, error: "Only one option allowed for single-choice polls." };
+      return {
+        success: false,
+        error: "Only one option allowed for single-choice polls.",
+      };
     }
 
     // Check if user already voted on any option in this poll
@@ -685,8 +726,7 @@ export async function votePoll(input: VotePollValues) {
     return { success: true, message: "Vote recorded!" };
   } catch (error: unknown) {
     console.error("Error voting in poll:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to vote.";
+    const message = error instanceof Error ? error.message : "Failed to vote.";
     return { success: false, error: message };
   }
 }
@@ -701,7 +741,11 @@ export async function createAdminPoll(values: unknown) {
 
     const parsed = CreateAdminPollSchema.safeParse(values);
     if (!parsed.success) {
-      return { success: false, error: "Invalid poll data", issues: parsed.error.issues };
+      return {
+        success: false,
+        error: "Invalid poll data",
+        issues: parsed.error.issues,
+      };
     }
 
     const data = parsed.data;
@@ -723,7 +767,10 @@ export async function createAdminPoll(values: unknown) {
 
     revalidatePath("/forum");
     revalidatePath("/home");
-    return { success: true, message: data.isPublished ? "Poll published!" : "Poll saved as draft" };
+    return {
+      success: true,
+      message: data.isPublished ? "Poll published!" : "Poll saved as draft",
+    };
   } catch (error) {
     console.error("[CREATE_ADMIN_POLL]", error);
     return { success: false, error: "Internal server error" };
@@ -733,6 +780,14 @@ export async function createAdminPoll(values: unknown) {
 export async function publishAdminPoll(pollId: string) {
   try {
     const user = await requireRole("ADMIN");
+
+    const poll = await db.adminPoll.findUnique({
+      where: { id: pollId },
+    });
+
+    if (!poll) {
+      return { success: false, error: "Poll not found" };
+    }
 
     await db.adminPoll.update({
       where: { id: pollId },
@@ -758,6 +813,14 @@ export async function cancelAdminPoll(pollId: string) {
   try {
     const user = await requireRole("ADMIN");
 
+    const poll = await db.adminPoll.findUnique({
+      where: { id: pollId },
+    });
+
+    if (!poll) {
+      return { success: false, error: "Poll not found" };
+    }
+
     await db.adminPoll.delete({
       where: { id: pollId },
     });
@@ -778,13 +841,17 @@ export async function voteAdminPoll(values: unknown) {
 
     const parsed = VoteAdminPollSchema.safeParse(values);
     if (!parsed.success) {
-      return { success: false, error: "Invalid vote data", issues: parsed.error.issues };
+      return {
+        success: false,
+        error: "Invalid vote data",
+        issues: parsed.error.issues,
+      };
     }
 
     const { pollId, optionIds } = parsed.data;
 
     // Run interactively so we guarantee all checks pass
-    return await db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       // 1. Fetch poll
       const poll = await tx.adminPoll.findUnique({
         where: { id: pollId },
@@ -792,23 +859,32 @@ export async function voteAdminPoll(values: unknown) {
       });
 
       if (!poll) return { success: false, error: "Poll not found" };
-      if (!poll.isPublished) return { success: false, error: "Poll is not active" };
-      
+      if (!poll.isPublished)
+        return { success: false, error: "Poll is not active" };
+
       // Prevent creator from participating in their own prompt
       if (poll.createdById === user.id) {
-        return { success: false, error: "Creators cannot vote on their own polls" };
+        return {
+          success: false,
+          error: "Creators cannot vote on their own polls",
+        };
       }
 
       // 2. Validate options
       const validOptionIds = poll.options.map((o) => o.id);
-      const allSelectedAreValid = optionIds.every((id) => validOptionIds.includes(id));
+      const allSelectedAreValid = optionIds.every((id) =>
+        validOptionIds.includes(id)
+      );
       if (!allSelectedAreValid) {
         return { success: false, error: "Invalid option selected" };
       }
 
       // 3. Choice rules
       if (!poll.isMultiChoice && optionIds.length > 1) {
-        return { success: false, error: "This poll only allows a single choice" };
+        return {
+          success: false,
+          error: "This poll only allows a single choice",
+        };
       }
 
       // 4. Check existing votes
@@ -833,6 +909,14 @@ export async function voteAdminPoll(values: unknown) {
 
       return { success: true, message: "Vote recorded!" };
     });
+
+    if (result.success) {
+      revalidatePath("/forum");
+      revalidatePath("/home");
+      revalidatePath("/forum/manage-polls");
+    }
+
+    return result;
   } catch (error) {
     console.error("[VOTE_ADMIN_POLL]", error);
     return { success: false, error: "Internal server error" };
@@ -849,13 +933,20 @@ export async function fetchAdminPollVoters(pollId: string) {
           include: {
             votes: {
               include: {
-                user: { select: { id: true, firstName: true, lastName: true, avatar: true } }
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    avatar: true,
+                  },
+                },
               },
-              orderBy: { createdAt: "desc" }
-            }
-          }
-        }
-      }
+              orderBy: { createdAt: "desc" },
+            },
+          },
+        },
+      },
     });
     return { success: true, data: poll };
   } catch (error) {

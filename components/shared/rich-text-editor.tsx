@@ -22,6 +22,47 @@ import Typography from "@tiptap/extension-typography";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import { cn } from "@/lib/utils";
+import sanitizeHtmlLib from "sanitize-html";
+
+function isValidUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:", "mailto:"].includes(parsed.protocol);
+  } catch (e) {
+    return false;
+  }
+}
+
+function sanitizeHtml(html: string) {
+  return sanitizeHtmlLib(html, {
+    allowedTags: sanitizeHtmlLib.defaults.allowedTags.concat([
+      "img",
+      "h1",
+      "h2",
+      "h3",
+      "s",
+      "u",
+      "span",
+      "table",
+      "thead",
+      "tbody",
+      "tr",
+      "th",
+      "td",
+    ]),
+    allowedAttributes: {
+      ...sanitizeHtmlLib.defaults.allowedAttributes,
+      "*": ["style", "class"],
+      img: ["src", "alt", "title"],
+      a: ["href", "target", "rel"],
+      th: ["colspan", "rowspan", "colwidth"],
+      td: ["colspan", "rowspan", "colwidth"],
+      ul: ["data-type"],
+      li: ["data-type", "data-checked"],
+    },
+    allowedSchemes: ["http", "https", "mailto"],
+  });
+}
 
 import {
   Bold,
@@ -138,6 +179,7 @@ function ToolbarButton({
             "disabled:opacity-30 disabled:cursor-not-allowed",
             className
           )}
+          aria-label={tooltip}
         >
           {children}
         </Toggle>
@@ -180,63 +222,72 @@ export function RichTextEditor({
   const [imageAlt, setImageAlt] = useState("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
+  const [, setUpdateCount] = useState(0);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-        codeBlock: { languageClassPrefix: "language-" },
-      }),
-      Underline,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Highlight.configure({ multicolor: true }),
-      LinkExtension.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: "rte-link",
-          target: "_blank",
-          rel: "noopener noreferrer",
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+          codeBlock: { languageClassPrefix: "language-" },
+        }),
+        Underline,
+        TextAlign.configure({ types: ["heading", "paragraph"] }),
+        Highlight.configure({ multicolor: true }),
+        LinkExtension.configure({
+          openOnClick: false,
+          HTMLAttributes: {
+            class: "rte-link",
+            target: "_blank",
+            rel: "noopener noreferrer",
+          },
+        }),
+        ImageExtension.configure({
+          HTMLAttributes: { class: "rte-image" },
+        }),
+        Placeholder.configure({
+          placeholder,
+          emptyEditorClass: "is-editor-empty",
+        }),
+        CharacterCount.configure({ limit: maxChars }),
+        TextStyle,
+        Color,
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableCell,
+        TableHeader,
+        Typography,
+        Subscript,
+        Superscript,
+      ],
+      content: value || "",
+      editorProps: {
+        attributes: {
+          // ↓ "rte-editor" activates all shared styles from rte-styles.css
+          class: "rte-editor focus:outline-none",
+          spellcheck: "true",
         },
-      }),
-      ImageExtension.configure({
-        HTMLAttributes: { class: "rte-image" },
-      }),
-      Placeholder.configure({
-        placeholder,
-        emptyEditorClass: "is-editor-empty",
-      }),
-      CharacterCount.configure({ limit: maxChars }),
-      TextStyle,
-      Color,
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableCell,
-      TableHeader,
-      Typography,
-      Subscript,
-      Superscript,
-    ],
-    content: value || "",
-    editorProps: {
-      attributes: {
-        // ↓ "rte-editor" activates all shared styles from rte-styles.css
-        class: "rte-editor focus:outline-none",
-        spellcheck: "true",
       },
+      onTransaction() {
+        setUpdateCount((c) => c + 1);
+      },
+      onUpdate({ editor }) {
+        onChange(sanitizeHtml(editor.getHTML()));
+      },
+      immediatelyRender: false,
     },
-    onUpdate({ editor }) {
-      onChange(editor.getHTML());
-    },
-    immediatelyRender: false,
-  });
+    [placeholder, maxChars]
+  );
 
   useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
     if (value !== current) {
-      editor.commands.setContent(value || "", { emitUpdate: false });
+      editor.commands.setContent(sanitizeHtml(value || ""), {
+        emitUpdate: false,
+      });
     }
   }, [value, editor]);
 
@@ -254,7 +305,9 @@ export function RichTextEditor({
     if (!linkUrl) {
       editor.chain().focus().unsetLink().run();
     } else {
-      editor.chain().focus().setLink({ href: linkUrl }).run();
+      if (isValidUrl(linkUrl)) {
+        editor.chain().focus().setLink({ href: linkUrl }).run();
+      }
     }
     setLinkPopoverOpen(false);
     setLinkUrl("");
@@ -269,11 +322,13 @@ export function RichTextEditor({
 
   const applyImage = useCallback(() => {
     if (!editor || !imageUrl) return;
-    editor
-      .chain()
-      .focus()
-      .setImage({ src: imageUrl, alt: imageAlt || undefined })
-      .run();
+    if (isValidUrl(imageUrl)) {
+      editor
+        .chain()
+        .focus()
+        .setImage({ src: imageUrl, alt: imageAlt || undefined })
+        .run();
+    }
     setImagePopoverOpen(false);
     setImageUrl("");
     setImageAlt("");
@@ -309,9 +364,9 @@ export function RichTextEditor({
 
   return (
     <TooltipProvider delayDuration={400}>
-      <div className="rte-root flex flex-col bg-[#f5f0e8] border border-[#e0d4c0] rounded-2xl shadow-sm overflow-hidden w-full">
+      <div className="rte-root flex flex-col bg-[#f5f0e8] border border-[#e0d4c0] rounded-2xl shadow-sm w-full">
         {/* ── Toolbar ── */}
-        <div className="flex flex-wrap items-center gap-0.5 px-4 py-2 border-b border-[#d9cfc0] bg-[#ede8df]/95 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex flex-wrap items-center gap-0.5 px-4 py-2 border-b border-[#d9cfc0] bg-[#ede8df]/95 backdrop-blur-sm sticky top-0 z-10 rounded-t-2xl">
           {/* Undo / Redo */}
           <div className="flex items-center gap-0.5">
             <ToolbarButton
@@ -341,6 +396,7 @@ export function RichTextEditor({
                     variant="ghost"
                     size="sm"
                     className="h-8 gap-1.5 px-2.5 text-xs font-medium text-stone-500 hover:text-stone-800 hover:bg-stone-200/60 rounded-md"
+                    aria-label="Text style"
                   >
                     <Type className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">
@@ -443,6 +499,7 @@ export function RichTextEditor({
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 rounded-md text-stone-500 hover:text-stone-800 hover:bg-stone-200/60"
+                    aria-label="Text color"
                   >
                     <Palette className="h-3.5 w-3.5" />
                   </Button>
@@ -509,6 +566,7 @@ export function RichTextEditor({
                       editor.isActive("highlight") &&
                         "bg-amber-100 text-amber-700"
                     )}
+                    aria-label="Highlight"
                   >
                     <Highlighter className="h-3.5 w-3.5" />
                   </Button>
@@ -670,6 +728,7 @@ export function RichTextEditor({
                     pressed={editor.isActive("link")}
                     onPressedChange={openLinkPopover}
                     className="h-8 w-8 p-0 rounded-md text-stone-500 hover:text-stone-800 hover:bg-stone-200/60 data-[state=on]:bg-amber-100 data-[state=on]:text-amber-700"
+                    aria-label="Insert link"
                   >
                     <LinkIcon className="h-3.5 w-3.5" />
                   </Toggle>
@@ -727,6 +786,7 @@ export function RichTextEditor({
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 rounded-md text-stone-500 hover:text-stone-800 hover:bg-stone-200/60"
+                    aria-label="Insert image"
                   >
                     <ImageIcon className="h-3.5 w-3.5" />
                   </Button>
@@ -779,6 +839,7 @@ export function RichTextEditor({
                 type="button"
                 onClick={insertTable}
                 className="h-8 w-8 p-0 rounded-md text-stone-500 hover:text-stone-800 hover:bg-stone-200/60"
+                aria-label="Insert table"
               >
                 <TableIcon className="h-3.5 w-3.5" />
               </Button>
@@ -855,6 +916,7 @@ export function RichTextEditor({
                 type="button"
                 onClick={fn}
                 className="h-6 px-2 text-xs rounded-md text-amber-700 hover:bg-amber-100"
+                aria-label={label}
               >
                 {label}
               </Button>
@@ -865,12 +927,12 @@ export function RichTextEditor({
         {/* ── Editor area ── */}
         <EditorContent
           editor={editor}
-          className="rte-content flex-1 overflow-y-auto px-8 py-6 md:px-16 lg:px-24"
+          className="rte-content flex-1 overflow-auto px-8 py-6 md:px-16 lg:px-24"
           style={{ minHeight }}
         />
 
         {/* ── Footer ── */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-t border-[#d9cfc0] bg-[#ede8df]/80">
+        <div className="flex items-center justify-between px-6 py-2.5 border-t border-[#d9cfc0] bg-[#ede8df]/80 rounded-b-2xl">
           <div className="flex items-center gap-3 text-xs text-stone-400 font-medium">
             <span>
               {wordCount} {wordCount === 1 ? "word" : "words"}

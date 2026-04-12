@@ -281,6 +281,51 @@ export async function addRelative(rawData: AddRelativeInput) {
         }
       }
 
+      // When adding a CHILD: link the second parent if provided, and auto-create SPOUSE edge
+      if (data.relationshipType === "CHILD" && data.secondParentId) {
+        // Verify second parent exists
+        const secondParent = await tx.familyMember.findUnique({
+          where: { id: data.secondParentId },
+        });
+
+        if (secondParent) {
+          // Create second PARENT_CHILD edge: secondParent → newChild
+          await tx.familyEdge.create({
+            data: {
+              fromNodeId: secondParent.id,
+              toNodeId: newNode.id,
+              type: "PARENT_CHILD",
+              isApproved: autoApprove,
+              addedByUserId: user.id,
+            },
+          });
+
+          // Auto-create SPOUSE edge between targetNode and secondParent (if not existing)
+          const existingSpouse = await tx.familyEdge.findFirst({
+            where: {
+              OR: [
+                { fromNodeId: targetNode.id, toNodeId: secondParent.id, type: "SPOUSE" },
+                { fromNodeId: secondParent.id, toNodeId: targetNode.id, type: "SPOUSE" },
+              ],
+            },
+          });
+
+          if (!existingSpouse) {
+            const spouseFrom = targetNode.id < secondParent.id ? targetNode.id : secondParent.id;
+            const spouseTo = targetNode.id < secondParent.id ? secondParent.id : targetNode.id;
+            await tx.familyEdge.create({
+              data: {
+                fromNodeId: spouseFrom,
+                toNodeId: spouseTo,
+                type: "SPOUSE",
+                isApproved: autoApprove,
+                addedByUserId: user.id,
+              },
+            });
+          }
+        }
+      }
+
       return { newNode, newEdge };
     });
 
@@ -423,6 +468,78 @@ export async function deleteFamilyMember(memberId: string) {
     return { success: true, message: "Family member removed from the tree." };
   } catch (error: any) {
     console.error("Failed to delete family member:", error);
+    return { success: false, error: error.message || "Something went wrong" };
+  }
+}
+
+// ========================================
+// 5. Link Existing Member as Parent
+// ========================================
+
+export async function linkExistingParent(
+  childId: string,
+  parentId: string
+): Promise<{ success: boolean; error?: string; message?: string }> {
+  try {
+    const user = await getAuthenticatedUser();
+
+    if (!user.isResidentOfTuminDhanbari && !isAdmin(user.role)) {
+      return {
+        success: false,
+        error: "Only approved residents can modify the family tree.",
+      };
+    }
+
+    // Verify both members exist
+    const [child, parent] = await Promise.all([
+      db.familyMember.findUnique({ where: { id: childId } }),
+      db.familyMember.findUnique({ where: { id: parentId } }),
+    ]);
+
+    if (!child || !parent) {
+      return { success: false, error: "Child or parent member not found." };
+    }
+
+    // Check if this edge already exists
+    const existingEdge = await db.familyEdge.findFirst({
+      where: {
+        fromNodeId: parentId,
+        toNodeId: childId,
+        type: "PARENT_CHILD",
+      },
+    });
+
+    if (existingEdge) {
+      return {
+        success: false,
+        error: "This parent-child relationship already exists.",
+      };
+    }
+
+    const autoApprove = isAdmin(user.role);
+
+    await db.familyEdge.create({
+      data: {
+        fromNodeId: parentId,
+        toNodeId: childId,
+        type: "PARENT_CHILD",
+        isApproved: autoApprove,
+        addedByUserId: user.id,
+      },
+    });
+
+    await calculateAndSyncGenerations();
+    revalidatePath("/family-tree");
+    revalidatePath("/admin/family-tree");
+
+    return {
+      success: true,
+      message: autoApprove
+        ? "Parent linked successfully."
+        : "Parent link submitted for admin approval.",
+    };
+  } catch (error: any) {
+    console.error("Failed to link existing parent:", error);
     return { success: false, error: error.message || "Something went wrong" };
   }
 }

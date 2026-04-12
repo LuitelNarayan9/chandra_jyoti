@@ -69,6 +69,9 @@ export const addRelativeSchema = z.object({
   profession: z.string().max(100).optional().nullable(),
   bio: z.string().max(1000).optional().nullable(),
 
+  // Second parent (optional, for CHILD relationship)
+  secondParentId: z.string().optional().nullable(),
+
   // Edge metadata
   startDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable(),

@@ -260,7 +260,7 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
               <div
                 className={cn(
                   // Mobile: fixed full-width panel below navbar
-                  "fixed inset-x-3 top-[68px] z-50 overflow-hidden rounded-2xl",
+                  "fixed inset-x-3 top-[60px] sm:top-auto z-50 overflow-hidden rounded-2xl",
                   // sm+: absolute dropdown
                   "sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+10px)] sm:w-[340px]",
                   "border border-border bg-card",

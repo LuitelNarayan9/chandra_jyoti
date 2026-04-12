@@ -13,6 +13,8 @@ import {
   type DeletePostValues,
 } from "@/lib/validations/blog";
 
+import sanitizeHtmlLib from "sanitize-html";
+
 // ─── Helper: slugify ──────────────────────────────────────────
 
 function slugify(text: string): string {
@@ -28,7 +30,7 @@ function slugify(text: string): string {
 async function generateUniqueSlug(title: string): Promise<string> {
   const base = slugify(title);
   let slug = base;
-  let counter = 1;
+  let counter = 0;
 
   while (await db.blogPost.findUnique({ where: { slug } })) {
     slug = `${base}-${++counter}`;
@@ -48,11 +50,18 @@ function estimateReadingTime(html: string): number {
 // ─── Helper: sanitize HTML to prevent XSS ────────────────────
 
 function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/\bon\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\bon\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/javascript\s*:/gi, "");
+  return sanitizeHtmlLib(html, {
+    allowedTags: sanitizeHtmlLib.defaults.allowedTags.concat([
+      "img",
+      "h1",
+      "h2",
+    ]),
+    allowedAttributes: {
+      ...sanitizeHtmlLib.defaults.allowedAttributes,
+      img: ["src", "alt", "title"],
+    },
+    allowedSchemes: ["http", "https", "mailto"],
+  });
 }
 
 // ─── Create Post ──────────────────────────────────────────────
@@ -77,8 +86,7 @@ export async function createPost(input: CreatePostValues) {
         coverImage: validated.coverImage || null,
         status: validated.status,
         readingTime,
-        publishedAt:
-          validated.status === "PUBLISHED" ? new Date() : null,
+        publishedAt: validated.status === "PUBLISHED" ? new Date() : null,
         scheduledAt: validated.scheduledAt
           ? new Date(validated.scheduledAt)
           : null,
@@ -93,7 +101,24 @@ export async function createPost(input: CreatePostValues) {
                       create: {
                         name: validated.category.name,
                         slug: slugify(validated.category.name),
-                        color: ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e"][Math.floor(Math.random() * 16)],
+                        color: [
+                          "#ef4444",
+                          "#f97316",
+                          "#f59e0b",
+                          "#84cc16",
+                          "#22c55e",
+                          "#10b981",
+                          "#14b8a6",
+                          "#06b6d4",
+                          "#0ea5e9",
+                          "#3b82f6",
+                          "#6366f1",
+                          "#8b5cf6",
+                          "#a855f7",
+                          "#d946ef",
+                          "#ec4899",
+                          "#f43f5e",
+                        ][Math.floor(Math.random() * 16)],
                       },
                     },
                   },
@@ -130,6 +155,7 @@ export async function createPost(input: CreatePostValues) {
         slug: post.slug,
         status: post.status,
         createdAt: post.createdAt.toISOString(),
+        publishedAt: post.publishedAt?.toISOString() || null,
       },
       message:
         validated.status === "PUBLISHED"
@@ -154,7 +180,7 @@ export async function updatePost(input: UpdatePostValues) {
     // Fetch the existing post to check ownership
     const existing = await db.blogPost.findUnique({
       where: { id: validated.postId },
-      select: { authorId: true, slug: true },
+      select: { authorId: true, slug: true, publishedAt: true },
     });
 
     if (!existing) {
@@ -165,7 +191,10 @@ export async function updatePost(input: UpdatePostValues) {
     const isOwner = existing.authorId === user.id;
     const isMod = hasPermission(user.role, "MODERATOR");
     if (!isOwner && !isMod) {
-      return { success: false, error: "You do not have permission to edit this post." };
+      return {
+        success: false,
+        error: "You do not have permission to edit this post.",
+      };
     }
 
     // Build update data
@@ -194,7 +223,24 @@ export async function updatePost(input: UpdatePostValues) {
                 create: {
                   name: validated.category.name,
                   slug: slugify(validated.category.name),
-                  color: ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899", "#f43f5e"][Math.floor(Math.random() * 16)],
+                  color: [
+                    "#ef4444",
+                    "#f97316",
+                    "#f59e0b",
+                    "#84cc16",
+                    "#22c55e",
+                    "#10b981",
+                    "#14b8a6",
+                    "#06b6d4",
+                    "#0ea5e9",
+                    "#3b82f6",
+                    "#6366f1",
+                    "#8b5cf6",
+                    "#a855f7",
+                    "#d946ef",
+                    "#ec4899",
+                    "#f43f5e",
+                  ][Math.floor(Math.random() * 16)],
                 },
               },
             };
@@ -204,40 +250,43 @@ export async function updatePost(input: UpdatePostValues) {
     }
     if (validated.status !== undefined) {
       updateData.status = validated.status;
-      if (validated.status === "PUBLISHED") {
+      // Only set publishedAt if not already published
+      if (validated.status === "PUBLISHED" && !existing.publishedAt) {
         updateData.publishedAt = new Date();
       }
     }
 
     // Handle tags: disconnect all, then reconnect
-    if (validated.tags !== undefined) {
-      await db.blogPostTag.deleteMany({
-        where: { postId: validated.postId },
-      });
-    }
-
-    const post = await db.blogPost.update({
-      where: { id: validated.postId },
-      data: {
-        ...updateData,
-        ...(validated.tags && validated.tags.length > 0
-          ? {
-              tags: {
-                create: validated.tags.map((tag) => {
-                  if (tag.id) return { tag: { connect: { id: tag.id } } };
-                  return {
-                    tag: {
-                      connectOrCreate: {
-                        where: { name: tag.name },
-                        create: { name: tag.name, slug: slugify(tag.name) },
+    const post = await db.$transaction(async (tx) => {
+      // Handle tags: disconnect all, then reconnect
+      if (validated.tags !== undefined) {
+        await tx.blogPostTag.deleteMany({
+          where: { postId: validated.postId },
+        });
+      }
+      return tx.blogPost.update({
+        where: { id: validated.postId },
+        data: {
+          ...updateData,
+          ...(validated.tags && validated.tags.length > 0
+            ? {
+                tags: {
+                  create: validated.tags.map((tag) => {
+                    if (tag.id) return { tag: { connect: { id: tag.id } } };
+                    return {
+                      tag: {
+                        connectOrCreate: {
+                          where: { name: tag.name },
+                          create: { name: tag.name, slug: slugify(tag.name) },
+                        },
                       },
-                    },
-                  };
-                }),
-              },
-            }
-          : {}),
-      },
+                    };
+                  }),
+                },
+              }
+            : {}),
+        },
+      });
     });
 
     revalidatePath("/blog");
@@ -313,6 +362,10 @@ export async function likePost(postId: string) {
   try {
     const user = await requireRole("MEMBER");
 
+    if (!postId || typeof postId !== "string") {
+      return { success: false, error: "Invalid post ID." };
+    }
+
     const existing = await db.like.findUnique({
       where: { userId_postId: { userId: user.id, postId } },
     });
@@ -353,6 +406,10 @@ export async function likePost(postId: string) {
 export async function bookmarkPost(postId: string) {
   try {
     const user = await requireRole("MEMBER");
+
+    if (!postId || typeof postId !== "string") {
+      return { success: false, error: "Invalid post ID." };
+    }
 
     const existing = await db.bookmark.findUnique({
       where: { userId_postId: { userId: user.id, postId } },
@@ -403,7 +460,6 @@ export async function incrementPostViews(postId: string) {
     console.error("Error incrementing views:", error);
     const message =
       error instanceof Error ? error.message : "Failed to increment views.";
-   return { success: false, error: message };
+    return { success: false, error: message };
   }
 }
-

@@ -67,14 +67,17 @@ export async function GET(
       .filter((e) => e.type === "PARENT_CHILD" || e.type === "ADOPTION")
       .map((e) => e.toNode);
 
-    const spouses = [
-      ...member.edgesAsFrom
-        .filter((e) => e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE")
-        .map((e) => e.toNode),
-      ...member.edgesAsTo
-        .filter((e) => e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE")
-        .map((e) => e.fromNode),
-    ];
+    const spouseMap = new Map<
+      string,
+      (typeof member.edgesAsFrom)[0]["toNode"]
+    >();
+    member.edgesAsFrom
+      .filter((e) => e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE")
+      .forEach((e) => spouseMap.set(e.toNode.id, e.toNode));
+    member.edgesAsTo
+      .filter((e) => e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE")
+      .forEach((e) => spouseMap.set(e.fromNode.id, e.fromNode));
+    const spouses = Array.from(spouseMap.values());
 
     // Get children of spouses (since edges often only connect from one parent)
     const spouseIds = spouses.map((s) => s.id);
@@ -119,8 +122,14 @@ export async function GET(
       const parentSpouseEdges = await db.familyEdge.findMany({
         where: {
           OR: [
-            { fromNodeId: { in: parentIds }, type: { in: ["SPOUSE", "DIVORCED_SPOUSE"] } },
-            { toNodeId: { in: parentIds }, type: { in: ["SPOUSE", "DIVORCED_SPOUSE"] } },
+            {
+              fromNodeId: { in: parentIds },
+              type: { in: ["SPOUSE", "DIVORCED_SPOUSE"] },
+            },
+            {
+              toNodeId: { in: parentIds },
+              type: { in: ["SPOUSE", "DIVORCED_SPOUSE"] },
+            },
           ],
           isApproved: true,
         },
@@ -174,7 +183,7 @@ export async function GET(
       // If there are direct children that don't belong to any spouse, we will add them to the first spouse
       // or "No spouse" group. But usually they belong to the primary spouse.
       // For simplicity, let's include all direct children with the primary (first) spouse if they were not explicitly found as children of *another* spouse.
-      
+
       return {
         spouse,
         children: childrenOfThisSpouse,
@@ -206,7 +215,10 @@ export async function GET(
 
     // Determine marital status dynamically if it's Single but has spouses
     let derivedMaritalStatus = member.maritalStatus;
-    if (spouses.length > 0 && (derivedMaritalStatus === "SINGLE" || !derivedMaritalStatus)) {
+    if (
+      spouses.length > 0 &&
+      (derivedMaritalStatus === "SINGLE" || !derivedMaritalStatus)
+    ) {
       derivedMaritalStatus = "MARRIED";
     }
 
@@ -232,11 +244,17 @@ export async function GET(
 
     const resolvePhoto = (node: any) => ({
       ...node,
-      photo: node.photo || (node.linkedUserId ? avatarMap.get(node.linkedUserId) ?? null : null),
+      photo:
+        node.photo ||
+        (node.linkedUserId ? (avatarMap.get(node.linkedUserId) ?? null) : null),
       linkedUserId: undefined, // strip from response
     });
 
-    const memberPhoto = member.photo || (member.linkedUserId ? avatarMap.get(member.linkedUserId) ?? null : null);
+    const memberPhoto =
+      member.photo ||
+      (member.linkedUserId
+        ? (avatarMap.get(member.linkedUserId) ?? null)
+        : null);
 
     return NextResponse.json({
       member: {

@@ -15,14 +15,11 @@ import {
   type PinCommentValues,
   type ReportCommentValues,
 } from "@/lib/validations/comment";
+import { sanitizeRichTextHtml } from "@/lib/sanitize-html";
 
 // Helper for XSS sanitization
 function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/\bon\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\bon\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/javascript\s*:/gi, "");
+  return sanitizeRichTextHtml(html);
 }
 
 // ─── Add Comment / Reply ──────────────────────────────────────
@@ -68,11 +65,16 @@ export async function addComment(input: CreateCommentValues) {
     revalidatePath(`/blog/${post.slug}`);
 
     // Create notification if reply (we skip self-notifs here for simplicity, typically you'd add this)
-    
-    return { success: true, message: "Comment added successfully.", data: { id: comment.id } };
+
+    return {
+      success: true,
+      message: "Comment added successfully.",
+      data: { id: comment.id },
+    };
   } catch (error: unknown) {
     console.error("Error adding comment:", error);
-    const message = error instanceof Error ? error.message : "Failed to add comment.";
+    const message =
+      error instanceof Error ? error.message : "Failed to add comment.";
     return { success: false, error: message };
   }
 }
@@ -87,8 +89,8 @@ export async function deleteComment(input: DeleteCommentValues) {
     const existing = await db.comment.findUnique({
       where: { id: validated.commentId },
       include: {
-        post: { select: { slug: true } }
-      }
+        post: { select: { slug: true } },
+      },
     });
 
     if (!existing) {
@@ -98,9 +100,12 @@ export async function deleteComment(input: DeleteCommentValues) {
     // Authorization: comment author OR MODERATOR+
     const isOwner = existing.authorId === user.id;
     const isMod = hasPermission(user.role, "MODERATOR");
-    
+
     if (!isOwner && !isMod) {
-      return { success: false, error: "Not authorized to delete this comment." };
+      return {
+        success: false,
+        error: "Not authorized to delete this comment.",
+      };
     }
 
     // Hard-delete
@@ -117,7 +122,7 @@ export async function deleteComment(input: DeleteCommentValues) {
   }
 }
 
-// ─── Pin Comment ──────────────────────────────────────────────
+// ─── Pin Comment ─────────────────────────────────────────────
 
 export async function pinComment(input: PinCommentValues) {
   try {
@@ -126,7 +131,7 @@ export async function pinComment(input: PinCommentValues) {
 
     const existing = await db.comment.findUnique({
       where: { id: validated.commentId },
-      include: { post: { select: { slug: true, authorId: true } } }
+      include: { post: { select: { slug: true, authorId: true } } },
     });
 
     if (!existing) {
@@ -135,7 +140,7 @@ export async function pinComment(input: PinCommentValues) {
 
     // Must be top-level comment
     if (existing.parentId) {
-       return { success: false, error: "Cannot pin a reply." };
+      return { success: false, error: "Cannot pin a reply." };
     }
 
     // Authorization: post author OR MODERATOR+
@@ -143,7 +148,10 @@ export async function pinComment(input: PinCommentValues) {
     const isMod = hasPermission(user.role, "MODERATOR");
 
     if (!isPostAuthor && !isMod) {
-      return { success: false, error: "Not authorized to pin comments on this post." };
+      return {
+        success: false,
+        error: "Not authorized to pin comments on this post.",
+      };
     }
 
     // Toggle pin status
@@ -154,7 +162,10 @@ export async function pinComment(input: PinCommentValues) {
 
     revalidatePath(`/blog/${existing.post.slug}`);
 
-    return { success: true, message: existing.isPinned ? "Comment unpinned." : "Comment pinned." };
+    return {
+      success: true,
+      message: existing.isPinned ? "Comment unpinned." : "Comment pinned.",
+    };
   } catch (error: unknown) {
     console.error("Error pinning comment:", error);
     return { success: false, error: "Failed to pin comment." };
@@ -165,29 +176,38 @@ export async function pinComment(input: PinCommentValues) {
 
 export async function likeComment(commentId: string) {
   try {
-     const user = await requireRole("MEMBER");
+    const user = await requireRole("MEMBER");
 
-     const existingLike = await db.like.findUnique({
-        where: { userId_commentId: { userId: user.id, commentId } }
-     });
+    const validated = LikeCommentSchema.parse({ commentId });
+ 
+    // Verify comment exists first
+    const comment = await db.comment.findUnique({
+      where: { id: validated.commentId },
+      include: { post: { select: { slug: true } } },
+    });
 
-     let comment;
-     if (existingLike) {
-        await db.like.delete({ where: { id: existingLike.id } });
-        comment = await db.comment.findUnique({ where: { id: commentId }, include: { post: { select: { slug: true } } } });
-     } else {
-        await db.like.create({ data: { userId: user.id, commentId } });
-        comment = await db.comment.findUnique({ where: { id: commentId }, include: { post: { select: { slug: true } } } });
-     }
+    if (!comment) {
+      return { success: false, error: "Comment not found." };
+    }
 
-     if (comment?.post?.slug) {
-         revalidatePath(`/blog/${comment.post.slug}`);
-     }
+    const existingLike = await db.like.findUnique({
+     where: { userId_commentId: { userId: user.id, commentId: validated.commentId } },
+    });
 
-     return { success: true, data: { liked: !existingLike } };
+    if (existingLike) {
+      await db.like.delete({ where: { id: existingLike.id } });
+     
+    } else {
+      await db.like.create({ data: { userId: user.id, commentId: validated.commentId } });
+    }
+
+    revalidatePath(`/blog/${comment.post.slug}`);
+    
+
+    return { success: true, data: { liked: !existingLike } };
   } catch (error: unknown) {
-      console.error("Error liking comment:", error);
-      return { success: false, error: "Failed to toggle like." };
+    console.error("Error liking comment:", error);
+    return { success: false, error: "Failed to toggle like." };
   }
 }
 
@@ -195,24 +215,29 @@ export async function likeComment(commentId: string) {
 
 export async function reportComment(input: ReportCommentValues) {
   try {
-     const user = await requireRole("MEMBER");
-     const validated = ReportCommentSchema.parse(input);
+    const user = await requireRole("MEMBER");
+    const validated = ReportCommentSchema.parse(input);
 
-     // Check if already reported by this user (prevent spam)
-     // For simplicity in this PRD, creating a new report.
+    const comment = await db.comment.findUnique({
+      where: { id: validated.commentId },
+      select: { id: true },
+    });
 
-     await db.report.create({
-        data: {
-           reporterId: user.id,
-           commentId: validated.commentId,
-           reason: validated.reason,
-           status: "PENDING"
-        }
-     });
+    if (!comment) {
+      return { success: false, error: "Comment not found." };
+    }
+    await db.report.create({
+      data: {
+        reporterId: user.id,
+        commentId: validated.commentId,
+        reason: validated.reason,
+        status: "PENDING",
+      },
+    });
 
-     return { success: true, message: "Comment reported. Thank you." };
+    return { success: true, message: "Comment reported. Thank you." };
   } catch (error: unknown) {
-      console.error("Error reporting comment:", error);
-      return { success: false, error: "Failed to submit report." };
+    console.error("Error reporting comment:", error);
+    return { success: false, error: "Failed to submit report." };
   }
 }

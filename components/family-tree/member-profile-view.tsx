@@ -15,7 +15,7 @@ interface MemberProfileViewProps {
   canModify?: boolean;
   isAdmin?: boolean;
   currentUserClan?: string | null;
-  onAddRelative?: (node: TreeNode) => void;
+  onAddRelative?: (node: TreeNode, preselectedRelationship?: "FATHER" | "MOTHER" | "SPOUSE" | "CHILD" | "BROTHER" | "SISTER") => void;
   onEditMember?: (node: TreeNode) => void;
 }
 
@@ -323,24 +323,95 @@ export function MemberProfileView({
           (isAdmin ||
             (currentUserClan &&
               member.familyClan &&
-              currentUserClan === member.familyClan)) && (
-            <div className="flex items-center gap-2 p-3 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
-              <button
-                onClick={() => onAddRelative?.(member)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-              >
-                <UserPlus className="h-4 w-4" />
-                Add Relative
-              </button>
-              <button
-                onClick={() => onEditMember?.(member)}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors"
-              >
-                <Pencil className="h-4 w-4" />
-                Edit Details
-              </button>
-            </div>
-          )}
+              currentUserClan === member.familyClan)) && (() => {
+            // Compute missing parents for this member
+            const parentEdges = edges.filter(
+              (e) =>
+                e.toNodeId === member.id &&
+                (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
+            );
+            const parentNodes = parentEdges
+              .map((e) => allNodes.find((n) => n.id === e.fromNodeId))
+              .filter(Boolean);
+            const hasFather = parentNodes.some((p) => p?.gender === "MALE");
+            const hasMother = parentNodes.some((p) => p?.gender === "FEMALE");
+            const missingFather = !hasFather;
+            const missingMother = !hasMother;
+
+            return (
+              <div className="flex flex-col gap-0 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
+                {/* Missing parent warning + quick-add buttons */}
+                {(missingFather || missingMother) && (
+                  <div className="px-3 pt-3 pb-1.5">
+                    <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50">
+                      <svg
+                        className="h-4 w-4 text-amber-500 mt-0.5 shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300 mb-1.5">
+                          {missingFather && missingMother
+                            ? "Both parents are missing"
+                            : missingFather
+                              ? "Father is missing"
+                              : "Mother is missing"}
+                        </p>
+                        <div className="flex gap-1.5">
+                          {missingFather && (
+                            <button
+                              onClick={() =>
+                                onAddRelative?.(member, "FATHER")
+                              }
+                              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-500/20 transition-colors"
+                            >
+                              + Add Father
+                            </button>
+                          )}
+                          {missingMother && (
+                            <button
+                              onClick={() =>
+                                onAddRelative?.(member, "MOTHER")
+                              }
+                              className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-pink-500/10 text-pink-700 dark:text-pink-400 hover:bg-pink-500/20 transition-colors"
+                            >
+                              + Add Mother
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Standard action buttons */}
+                <div className="flex items-center gap-2 p-3">
+                  <button
+                    onClick={() => onAddRelative?.(member)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Add Relative
+                  </button>
+                  <button
+                    onClick={() => onEditMember?.(member)}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Details
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
       </div>
     </div>
   );
