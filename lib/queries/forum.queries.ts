@@ -83,15 +83,8 @@ export async function getCategoryBySlug(slug: string) {
 
 // ─── Get paginated threads for a category ─────────────────────
 
-export async function getCategoryThreads(
-  options: ForumThreadListOptions
-) {
-  const {
-    page = 1,
-    pageSize = 15,
-    categorySlug,
-    sortBy = "latest",
-  } = options;
+export async function getCategoryThreads(options: ForumThreadListOptions) {
+  const { page = 1, pageSize = 15, categorySlug, sortBy = "latest" } = options;
 
   const category = await db.forumCategory.findUnique({
     where: { slug: categorySlug },
@@ -109,20 +102,12 @@ export async function getCategoryThreads(
           { replies: { _count: "desc" as const } },
         ]
       : sortBy === "unanswered"
-        ? [
-            { isPinned: "desc" as const },
-            { createdAt: "asc" as const },
-          ]
-        : [
-            { isPinned: "desc" as const },
-            { createdAt: "desc" as const },
-          ];
+        ? [{ isPinned: "desc" as const }, { createdAt: "asc" as const }]
+        : [{ isPinned: "desc" as const }, { createdAt: "desc" as const }];
 
   // For "unanswered", filter threads with 0 replies
   const unansweredFilter =
-    sortBy === "unanswered"
-      ? { replies: { none: {} } }
-      : {};
+    sortBy === "unanswered" ? { replies: { none: {} } } : {};
 
   const finalWhere = { ...where, ...unansweredFilter };
 
@@ -375,21 +360,25 @@ export async function getUserThreads(options: UserThreadOptions) {
 // ============================================================================
 // ADMIN POLLS
 // ============================================================================
-
-/**
 /**
  * Gets all admin polls with user-specific vote data (published and draft).
  * If userId is provided, includes vote records for that user on each option.
  */
 export async function getActiveAdminPollsForUser(userId?: string) {
   return await db.adminPoll.findMany({
+    where: { isPublished: true },
     orderBy: { createdAt: "desc" },
     include: {
       options: {
         include: {
           _count: { select: { votes: true } },
           ...(userId
-            ? { votes: { where: { userId }, select: { id: true, userId: true } } }
+            ? {
+                votes: {
+                  where: { userId },
+                  select: { id: true, userId: true },
+                },
+              }
             : {}),
         },
       },
@@ -412,6 +401,7 @@ export async function getUnvotedAdminPoll() {
 
   const poll = await db.adminPoll.findFirst({
     where: {
+      isPublished: true,
       createdById: { not: user.id }, // Don't show creator their own poll to vote on
       options: {
         none: {
@@ -425,7 +415,13 @@ export async function getUnvotedAdminPoll() {
     include: {
       options: true,
       createdBy: {
-        select: { id: true, firstName: true, lastName: true, avatar: true, _count: { select: { adminPolls: true } } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatar: true,
+          _count: { select: { adminPolls: true } },
+        },
       },
     },
   });
@@ -437,7 +433,7 @@ export async function getUnvotedAdminPoll() {
  */
 export async function getAdminPollsForAdmin() {
   const user = await requireRole("ADMIN"); // Ensure admin access
-  
+
   return await db.adminPoll.findMany({
     orderBy: { createdAt: "desc" },
     include: {
@@ -470,7 +466,12 @@ export async function getAdminPollWithVoters(pollId: string) {
           votes: {
             include: {
               user: {
-                select: { id: true, firstName: true, lastName: true, avatar: true },
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
               },
             },
             orderBy: { createdAt: "desc" },
@@ -484,4 +485,3 @@ export async function getAdminPollWithVoters(pollId: string) {
     },
   });
 }
-

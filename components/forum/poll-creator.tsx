@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
@@ -54,7 +54,7 @@ const optionVariants = {
 // ── Main Component ───────────────────────────────────────────
 
 export function PollCreator({ value, onChange }: PollCreatorProps) {
-  const [isOpen, setIsOpen] = useState(!!value);
+  const isOpen = !!value;
 
   const poll = value ?? {
     question: "",
@@ -62,13 +62,39 @@ export function PollCreator({ value, onChange }: PollCreatorProps) {
     isMultiChoice: false,
   };
 
+  const [internalOptions, setInternalOptions] = useState<
+    { id: string; text: string }[]
+  >(() => poll.options.map((text) => ({ id: crypto.randomUUID(), text })));
+
+  useEffect(() => {
+    setInternalOptions((prev) => {
+      // If parent strings exactly match our internal text strings, preserve IDs
+      if (
+        prev.length === poll.options.length &&
+        prev.every((opt, i) => opt.text === poll.options[i])
+      ) {
+        return prev;
+      }
+      // If it's an external reset to initial state, regenerate fresh pairs
+      if (poll.options.length === 2 && poll.options.every((o) => o === "")) {
+        return [
+          { id: crypto.randomUUID(), text: "" },
+          { id: crypto.randomUUID(), text: "" },
+        ];
+      }
+      // Otherwise, sync the latest text to our IDs or create new ones
+      return poll.options.map((text, i) => {
+        if (prev[i]) return { ...prev[i], text };
+        return { id: crypto.randomUUID(), text };
+      });
+    });
+  }, [poll.options]);
+
   const toggleOpen = () => {
     if (isOpen) {
       onChange(undefined);
-      setIsOpen(false);
     } else {
       onChange({ question: "", options: ["", ""], isMultiChoice: false });
-      setIsOpen(true);
     }
   };
 
@@ -76,21 +102,29 @@ export function PollCreator({ value, onChange }: PollCreatorProps) {
     onChange({ ...poll, question });
   };
 
-  const updateOption = (index: number, text: string) => {
-    const options = [...poll.options];
-    options[index] = text;
-    onChange({ ...poll, options });
+  const updateOption = (id: string, text: string) => {
+    const updated = internalOptions.map((o) =>
+      o.id === id ? { ...o, text } : o
+    );
+    setInternalOptions(updated);
+    onChange({ ...poll, options: updated.map((o) => o.text) });
   };
 
   const addOption = () => {
-    if (poll.options.length >= 10) return;
-    onChange({ ...poll, options: [...poll.options, ""] });
+    if (internalOptions.length >= 10) return;
+    const newOptions = [
+      ...internalOptions,
+      { id: crypto.randomUUID(), text: "" },
+    ];
+    setInternalOptions(newOptions);
+    onChange({ ...poll, options: newOptions.map((o) => o.text) });
   };
 
-  const removeOption = (index: number) => {
-    if (poll.options.length <= 2) return;
-    const options = poll.options.filter((_, i) => i !== index);
-    onChange({ ...poll, options });
+  const removeOption = (id: string) => {
+    if (internalOptions.length <= 2) return;
+    const newOptions = internalOptions.filter((o) => o.id !== id);
+    setInternalOptions(newOptions);
+    onChange({ ...poll, options: newOptions.map((o) => o.text) });
   };
 
   const toggleMultiChoice = () => {
@@ -157,12 +191,12 @@ export function PollCreator({ value, onChange }: PollCreatorProps) {
               {/* Options */}
               <div className="space-y-2">
                 <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground/40">
-                  Options ({poll.options.length}/10)
+                  Options ({internalOptions.length}/10)
                 </p>
                 <AnimatePresence mode="popLayout">
-                  {poll.options.map((option, index) => (
+                  {internalOptions.map((option, index) => (
                     <motion.div
-                      key={index}
+                      key={option.id}
                       variants={optionVariants}
                       initial="initial"
                       animate="animate"
@@ -175,14 +209,17 @@ export function PollCreator({ value, onChange }: PollCreatorProps) {
                       </span>
                       <Input
                         placeholder={`Option ${index + 1}`}
-                        value={option}
-                        onChange={(e) => updateOption(index, e.target.value)}
+                        value={option.text}
+                        onChange={(e) =>
+                          updateOption(option.id, e.target.value)
+                        }
                         className="rounded-xl border-border/40 bg-background/60 text-sm placeholder:text-muted-foreground/25 focus:border-violet-400/50 transition-colors"
                       />
-                      {poll.options.length > 2 && (
+                      {internalOptions.length > 2 && (
                         <button
                           type="button"
-                          onClick={() => removeOption(index)}
+                          onClick={() => removeOption(option.id)}
+                          aria-label={`Remove option ${index + 1}`}
                           className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 transition-all duration-200 shrink-0"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -192,7 +229,7 @@ export function PollCreator({ value, onChange }: PollCreatorProps) {
                   ))}
                 </AnimatePresence>
 
-                {poll.options.length < 10 && (
+                {internalOptions.length < 10 && (
                   <motion.button
                     type="button"
                     onClick={addOption}
@@ -210,6 +247,7 @@ export function PollCreator({ value, onChange }: PollCreatorProps) {
               <button
                 type="button"
                 onClick={toggleMultiChoice}
+                aria-pressed={poll.isMultiChoice}
                 className="flex items-center gap-3 py-2 group"
               >
                 {poll.isMultiChoice ? (

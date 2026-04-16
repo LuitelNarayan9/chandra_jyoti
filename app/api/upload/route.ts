@@ -8,19 +8,37 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const ALLOWED_TYPES = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+    if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "No file provided" },
+        { error: "File size exceeds 5MB limit" },
+        { status: 400 }
+      );
+    }
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: "File type not allowed" },
         { status: 400 }
       );
     }
 
-    const ext = file.name.split(".").pop();
-    const uniqueFilename = `${crypto.randomUUID()}.${ext}`;
+    const parts = file.name.split(".");
+    const ext = parts.length > 1 ? parts.pop() : "";
+    const uniqueFilename = ext
+      ? `${crypto.randomUUID()}.${ext}`
+      : crypto.randomUUID();
     const key = `blog-media/${uniqueFilename}`;
 
     const buffer = Buffer.from(await file.arrayBuffer());

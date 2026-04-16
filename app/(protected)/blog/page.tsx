@@ -45,10 +45,14 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   if (!user) redirect("/sign-in");
 
   const params = await searchParams;
-  const page = Number(params.page) || 1;
+  const parsedPage = parseInt(params.page ?? "", 10);
+  const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
   const search = params.search || "";
-  const sortBy = (params.sortBy as "latest" | "popular" | "oldest") || "latest";
-
+  const allowedSortValues = ["latest", "popular", "oldest"] as const;
+  type SortBy = (typeof allowedSortValues)[number];
+  const sortBy: SortBy = allowedSortValues.includes(params.sortBy as SortBy)
+    ? (params.sortBy as SortBy)
+    : "latest";
   const [{ posts, pagination }, featuredPosts, categories, tags] =
     await Promise.all([
       getBlogPosts({ page, search, sortBy }),

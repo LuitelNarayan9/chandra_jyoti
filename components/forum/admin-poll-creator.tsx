@@ -46,7 +46,10 @@ export function AdminPollCreator() {
     question: "",
     description: "",
     type: "NON_DISMISSIBLE" as "DISMISSIBLE" | "NON_DISMISSIBLE",
-    options: ["", ""],
+    options: [
+      { id: crypto.randomUUID(), text: "" },
+      { id: crypto.randomUUID(), text: "" },
+    ],
     isMultiChoice: false,
   });
 
@@ -54,30 +57,36 @@ export function AdminPollCreator() {
     setPoll((prev) => ({ ...prev, [field]: value }));
   };
 
-  const updateOption = (index: number, text: string) => {
-    const options = [...poll.options];
-    options[index] = text;
-    updateField("options", options);
+  const updateOption = (id: string, text: string) => {
+    setPoll((prev) => ({
+      ...prev,
+      options: prev.options.map((opt) => (opt.id === id ? { ...opt, text } : opt)),
+    }));
   };
 
   const addOption = () => {
     if (poll.options.length >= 10) return;
-    updateField("options", [...poll.options, ""]);
+    updateField("options", [...poll.options, { id: crypto.randomUUID(), text: "" }]);
   };
 
-  const removeOption = (index: number) => {
+  const removeOption = (id: string) => {
     if (poll.options.length <= 2) return;
-    const options = poll.options.filter((_, i) => i !== index);
-    updateField("options", options);
+    updateField(
+      "options",
+      poll.options.filter((opt) => opt.id !== id)
+    );
   };
 
   const onSubmit = (isPublished: boolean) => {
     // Basic validation
-    if (poll.question.length < 5) {
+    const trimmedQuestion = poll.question.trim();
+    if (trimmedQuestion.length < 5) {
       toast.error("Question must be at least 5 characters");
       return;
     }
-    const filledOptions = poll.options.filter((o) => o.trim().length > 0);
+    const filledOptions = poll.options
+      .map((o) => o.text.trim())
+      .filter((text) => text.length > 0);
     if (filledOptions.length < 2) {
       toast.error("At least 2 valid options are required");
       return;
@@ -85,7 +94,7 @@ export function AdminPollCreator() {
 
     startTransition(async () => {
       const result = await createAdminPoll({
-        question: poll.question,
+        question: trimmedQuestion,
         description: poll.description,
         type: poll.type,
         options: filledOptions,
@@ -100,11 +109,14 @@ export function AdminPollCreator() {
           question: "",
           description: "",
           type: "NON_DISMISSIBLE",
-          options: ["", ""],
+          options: [
+            { id: crypto.randomUUID(), text: "" },
+            { id: crypto.randomUUID(), text: "" },
+          ],
           isMultiChoice: false,
         });
       } else {
-        toast.error(result.error);
+        toast.error(result.error || "Failed to create poll");
       }
     });
   };
@@ -177,7 +189,7 @@ export function AdminPollCreator() {
                     <AnimatePresence mode="popLayout">
                       {poll.options.map((option, index) => (
                         <motion.div
-                          key={index}
+                          key={option.id}
                           variants={optionVariants}
                           initial="initial"
                           animate="animate"
@@ -190,9 +202,9 @@ export function AdminPollCreator() {
                           </div>
                           <Input
                             placeholder={`Option ${index + 1}`}
-                            value={option}
+                            value={option.text}
                             onChange={(e) =>
-                              updateOption(index, e.target.value)
+                              updateOption(option.id, e.target.value)
                             }
                             className="bg-background/50 border-emerald-500/10 focus-visible:ring-emerald-500/20"
                           />
@@ -201,7 +213,7 @@ export function AdminPollCreator() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => removeOption(index)}
+                              onClick={() => removeOption(option.id)}
                               className="text-muted-foreground hover:text-red-500 hover:bg-red-500/10 shrink-0"
                             >
                               <Trash2 className="h-4 w-4" />

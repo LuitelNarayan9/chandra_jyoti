@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   BarChart3,
@@ -42,8 +42,8 @@ export function ManagePollsDashboard({
   initialPolls,
   totalUsers,
 }: ManagePollsDashboardProps) {
-  // Use transition for publish & delete actions
-  const [isPending, startTransition] = useTransition();
+  // Track pending state per poll ID
+  const [pendingPollIds, setPendingPollIds] = useState<Set<string>>(new Set());
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedPollId, setSelectedPollId] = useState<string | null>(null);
@@ -60,25 +60,41 @@ export function ManagePollsDashboard({
   const drafted = initialPolls.filter((p) => !p.isPublished).length;
   const published = initialPolls.filter((p) => p.isPublished).length;
 
-  const handlePublish = (pollId: string) => {
-    startTransition(async () => {
+  const addPending = useCallback((id: string) => {
+    setPendingPollIds((prev) => new Set(prev).add(id));
+  }, []);
+
+  const removePending = useCallback((id: string) => {
+    setPendingPollIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const handlePublish = async (pollId: string) => {
+    addPending(pollId);
+    try {
       const res = await publishAdminPoll(pollId);
       if (res.success) {
         toast.success(res.message);
       } else {
         toast.error(res.error);
       }
-    });
+    } finally {
+      removePending(pollId);
+    }
   };
 
   const handleDelete = (pollId: string) => {
     setDeletePollId(pollId);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deletePollId) return;
 
-    startTransition(async () => {
+    addPending(deletePollId);
+    try {
       const res = await cancelAdminPoll(deletePollId);
       if (res.success) {
         toast.success(res.message);
@@ -90,7 +106,9 @@ export function ManagePollsDashboard({
       } else {
         toast.error(res.error);
       }
-    });
+    } finally {
+      removePending(deletePollId);
+    }
   };
 
   const handleViewDetails = async (pollId: string) => {
@@ -243,9 +261,18 @@ export function ManagePollsDashboard({
                       variant="outline"
                       className="flex-1 sm:flex-none gap-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/20"
                       onClick={() => handlePublish(poll.id)}
-                      disabled={isPending}
+                      disabled={pendingPollIds.has(poll.id)}
                     >
-                      <Send className="h-3.5 w-3.5" /> Publish
+                      {pendingPollIds.has(poll.id) ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />{" "}
+                          Publishing…
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-3.5 w-3.5" /> Publish
+                        </>
+                      )}
                     </Button>
                   )}
                   <Button
@@ -261,9 +288,9 @@ export function ManagePollsDashboard({
                     variant="outline"
                     className="shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 border-red-100 dark:border-red-500/20"
                     onClick={() => handleDelete(poll.id)}
-                    disabled={isPending}
+                    disabled={pendingPollIds.has(poll.id)}
                   >
-                    {isPending ? (
+                    {pendingPollIds.has(poll.id) ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Trash2 className="h-4 w-4" />
@@ -306,7 +333,7 @@ export function ManagePollsDashboard({
             <Button
               variant="outline"
               onClick={() => setDeletePollId(null)}
-              disabled={isPending}
+              disabled={deletePollId ? pendingPollIds.has(deletePollId) : false}
             >
               Cancel
             </Button>
@@ -314,9 +341,9 @@ export function ManagePollsDashboard({
               variant="destructive"
               className="bg-red-600 hover:bg-red-700"
               onClick={confirmDelete}
-              disabled={isPending}
+              disabled={deletePollId ? pendingPollIds.has(deletePollId) : false}
             >
-              {isPending ? (
+              {deletePollId && pendingPollIds.has(deletePollId) ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -384,7 +411,7 @@ export function ManagePollsDashboard({
                                 />
                               ) : (
                                 <span className="text-[10px] font-bold">
-                                  {vote.user.firstName[0]}
+                                  {vote.user.firstName?.[0] || "?"}
                                 </span>
                               )}
                             </div>

@@ -187,12 +187,16 @@ function buildTimeline(
     });
   }
 
+  // Sort marriage events chronologically and pair with spouses by index
+  let marriageIdx = 0;
+
   // Life events
   for (const e of evts) {
     const loc = e.location ? ` • ${e.location}` : "";
     let person: TLEvent["person"] = null;
     if (e.type === "MARRIAGE" && spouses.length > 0) {
-      const sp = spouses[0];
+      const sp = spouses[marriageIdx] ?? spouses[0];
+      marriageIdx++;
       person = {
         id: sp.id,
         name: `${sp.firstName} ${sp.lastName}`,
@@ -282,6 +286,7 @@ interface LSEvent {
   id: string;
   dateLabel: string;
   yearLabel: string;
+  sortDate: number;
   ageLabel: string | null;
   title: string;
   body: string | null;
@@ -316,6 +321,7 @@ function buildLifeStory(
       id: "synth-birth",
       dateLabel: dtLabel(d),
       yearLabel: d.getFullYear().toString(),
+      sortDate: d.getTime(),
       ageLabel: null,
       title: "Birth",
       body: `${fn} was born on ${format(d, "d MMMM yyyy")}.`,
@@ -325,6 +331,9 @@ function buildLifeStory(
     });
   }
 
+  // Sort marriage events chronologically and pair with spouses by index
+  let marriageIdx = 0;
+
   for (const e of evts) {
     const d = new Date(e.date);
     const a = age(dob, e.date);
@@ -333,7 +342,8 @@ function buildLifeStory(
     let body = e.description;
 
     if (e.type === "MARRIAGE" && spouses.length > 0) {
-      const sp = spouses[0];
+      const sp = spouses[marriageIdx] ?? spouses[0];
+      marriageIdx++;
       linked = {
         id: sp.id,
         initials: ini(sp.firstName, sp.lastName),
@@ -353,6 +363,7 @@ function buildLifeStory(
       id: e.id,
       dateLabel: dtLabel(d),
       yearLabel: d.getFullYear().toString(),
+      sortDate: d.getTime(),
       ageLabel: a ? `AGE ${a}` : null,
       title: evLabel(e.type),
       body,
@@ -374,6 +385,7 @@ function buildLifeStory(
       id: `child-${c.id}`,
       dateLabel: dtLabel(d),
       yearLabel: d.getFullYear().toString(),
+      sortDate: d.getTime(),
       ageLabel: a ? `AGE ${a}` : null,
       title: `Birth of ${gl}`,
       body: `${fn} welcomed ${pr.p} ${gl.toLowerCase()} ${c.firstName} ${c.lastName} on ${format(d, "d MMMM yyyy")}.`,
@@ -399,6 +411,7 @@ function buildLifeStory(
       id: `sp-death-${sp.id}`,
       dateLabel: dtLabel(d),
       yearLabel: d.getFullYear().toString(),
+      sortDate: d.getTime(),
       ageLabel: a ? `AGE ${a}` : null,
       title: `Death of ${gl}`,
       body: `${fn}'s ${gl.toLowerCase()} ${sp.firstName} ${sp.lastName} passed away on ${format(d, "d MMMM yyyy")}.`,
@@ -422,6 +435,7 @@ function buildLifeStory(
       id: "synth-death",
       dateLabel: dtLabel(d),
       yearLabel: d.getFullYear().toString(),
+      sortDate: d.getTime(),
       ageLabel: a ? `AGE ${a}` : null,
       title: "Death",
       body: `${fn} passed away on ${format(d, "d MMMM yyyy")}${a ? ` at the age of ${a}` : ""}.`,
@@ -431,11 +445,7 @@ function buildLifeStory(
     });
   }
 
-  out.sort((a, b) => {
-    const ya = parseInt(a.yearLabel) || 0;
-    const yb = parseInt(b.yearLabel) || 0;
-    return ya - yb;
-  });
+  out.sort((a, b) => a.sortDate - b.sortDate);
   return out;
 }
 
@@ -1377,7 +1387,16 @@ function ExplorePanel() {
 export default function PersonProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+
+  // Early return if no id
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-[#f5f4f0] flex items-center justify-center">
+        <p className="text-sm text-gray-500">Invalid profile ID</p>
+      </div>
+    );
+  }
 
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1389,9 +1408,10 @@ export default function PersonProfilePage() {
   // Fetch profile data
   useEffect(() => {
     if (!id) return;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
-    fetch(`/api/profile/${id}`)
+    fetch(`/api/profile/${id}`, { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -1404,9 +1424,11 @@ export default function PersonProfilePage() {
         setLoading(false);
       })
       .catch((err) => {
+        if (err.name === "AbortError") return;
         setError(err.message);
         setLoading(false);
       });
+    return () => controller.abort();
   }, [id]);
 
   // Scroll handling for sticky header

@@ -198,6 +198,9 @@ export function PollWidget({ poll, currentUserId }: PollWidgetProps) {
             <motion.button
               type="button"
               key={option.id}
+              role={poll.isMultiChoice ? "checkbox" : "radio"}
+              aria-checked={hasVoted ? isUserVoted : isSelected}
+              aria-label={`${option.text}${showResults ? `, ${percentage.toFixed(0)} percent, ${voteCount} votes` : ""}`}
               onClick={() => toggleOption(option.id)}
               disabled={hasVoted || isPending}
               initial={{ opacity: 0, x: -8 }}

@@ -278,7 +278,6 @@ export function ThreadEditor({
             if (result.success) {
               toast.success(result.message ?? "Thread updated!");
               router.push("/forum");
-              router.refresh();
             } else {
               toast.error(result.error ?? "Failed to update thread.");
             }
@@ -289,7 +288,6 @@ export function ThreadEditor({
               router.push(
                 `/forum/${result.data.categorySlug}/${result.data.slug}`
               );
-              router.refresh();
             } else {
               toast.error(result.error ?? "Failed to create thread.");
             }
@@ -559,6 +557,7 @@ export function ThreadEditor({
                           <button
                             type="button"
                             onClick={() => removeTag(tag.name)}
+                            aria-label={`Remove tag ${tag.name}`}
                             className="ml-0.5 h-4 w-4 rounded-full hover:bg-pink-500/20 flex items-center justify-center transition-colors"
                           >
                             <span className="text-[0.7rem] leading-none font-bold">

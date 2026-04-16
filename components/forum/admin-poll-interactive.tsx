@@ -62,7 +62,7 @@ export function AdminPollInteractive({ poll }: { poll: PollProps }) {
         toast.success("Thank you for participating!");
         setIsVisible(false);
       } else {
-        toast.error(result.error);
+        toast.error(result.error || "Failed to submit vote. Please try again.");
       }
     });
   };
@@ -214,7 +214,7 @@ export function AdminPollInteractive({ poll }: { poll: PollProps }) {
             exit={{ opacity: 0, scale: 0.5 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/30 flex items-center justify-center transition-colors"
+            className="relative w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/30 flex items-center justify-center transition-colors"
           >
             <MessageCircleQuestion className="w-6 h-6" />
 

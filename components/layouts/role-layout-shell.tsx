@@ -31,7 +31,7 @@ export function RoleLayoutShell({
   const isSuperAdmin = hasPermission(role, "SUPER_ADMIN");
   const isAdmin = !isSuperAdmin && hasPermission(role, "ADMIN");
   const pathname = usePathname();
-  const showFooter = !pathname.startsWith("/family-tree");
+  const showFooter = !pathname?.startsWith("/family-tree");
 
   if (isSuperAdmin) {
     return (

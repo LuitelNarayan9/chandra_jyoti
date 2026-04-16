@@ -120,7 +120,7 @@ function sanitiseAvatarSrc(src: string | null): string | null {
     return SAFE_PROTOCOLS.has(protocol) ? src : null;
   } catch {
     // URL constructor throws for relative paths — those are safe too
-    return src.startsWith("/") ? src : null;
+    return src.startsWith("/") && !src.startsWith("//") ? src : null;
   }
 }
 
@@ -241,7 +241,7 @@ export const WelcomeBanner = memo(function WelcomeBanner({
       aria-label={`Welcome banner for ${firstName} ${lastName}`}
       className="relative overflow-hidden rounded-2xl sm:rounded-3xl
         border border-white/20 dark:border-white/[0.08]
-        bg-gradient-to-br
+        bg-linear-to-br
         from-indigo-500/[0.11] via-violet-500/[0.07] to-emerald-500/[0.11]
         dark:from-indigo-500/[0.20] dark:via-violet-500/[0.11] dark:to-emerald-500/[0.20]
         backdrop-blur-2xl

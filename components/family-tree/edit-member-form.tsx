@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -74,10 +75,10 @@ export function EditMemberForm({
       lastName: member.lastName || "",
       gender: member.gender as "MALE" | "FEMALE" | "OTHER",
       dateOfBirth: member.dateOfBirth
-        ? new Date(member.dateOfBirth).toISOString().split("T")[0]
+        ? format(new Date(member.dateOfBirth), "yyyy-MM-dd")
         : "",
       dateOfDeath: member.dateOfDeath
-        ? new Date(member.dateOfDeath).toISOString().split("T")[0]
+        ? format(new Date(member.dateOfDeath), "yyyy-MM-dd")
         : "",
       familyClan: member.familyClan || "",
       bio: member.bio || "",
@@ -92,6 +93,33 @@ export function EditMemberForm({
       isAlive: member.isAlive !== false,
     },
   });
+
+  // Ensure form values stay perfectly synchronized if the member prop changes while mounted
+  useEffect(() => {
+    form.reset({
+      memberId: member.id,
+      firstName: member.firstName || "",
+      lastName: member.lastName || "",
+      gender: member.gender as "MALE" | "FEMALE" | "OTHER",
+      dateOfBirth: member.dateOfBirth
+        ? format(new Date(member.dateOfBirth), "yyyy-MM-dd")
+        : "",
+      dateOfDeath: member.dateOfDeath
+        ? format(new Date(member.dateOfDeath), "yyyy-MM-dd")
+        : "",
+      familyClan: member.familyClan || "",
+      bio: member.bio || "",
+      maritalStatus:
+        (member.maritalStatus as
+          | "SINGLE"
+          | "MARRIED"
+          | "DIVORCED"
+          | "WIDOWED") || "SINGLE",
+      bloodGroup: member.bloodGroup || "",
+      profession: member.profession || "",
+      isAlive: member.isAlive !== false,
+    });
+  }, [member, form]);
 
   const watchIsAlive = form.watch("isAlive");
 
@@ -214,7 +242,12 @@ export function EditMemberForm({
                     <FormControl>
                       <Switch
                         checked={field.value}
-                        onCheckedChange={field.onChange}
+                        onCheckedChange={(val) => {
+                          field.onChange(val);
+                          if (val) {
+                            form.setValue("dateOfDeath", "");
+                          }
+                        }}
                       />
                     </FormControl>
                   </FormItem>

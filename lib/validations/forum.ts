@@ -14,11 +14,13 @@ export const CreateThreadSchema = z.object({
     .optional(),
   poll: z
     .object({
-      question: z.string().min(5, "Poll question must be at least 5 characters."),
+      question: z
+        .string()
+        .min(5, "Poll question must be at least 5 characters."),
       options: z
-        .array(z.string().min(1, "Option cannot be empty."))
+        .array(z.string().min(1, "Option cannot be empty.").max(100))
         .min(2, "At least 2 options.")
-        .max(6, "At most 6 options."),
+        .max(10, "At most 10 options."),
       isMultiChoice: z.boolean().default(false),
     })
     .optional(),
@@ -37,6 +39,7 @@ export const UpdateThreadSchema = z.object({
   content: z
     .string()
     .min(20, "Content must be at least 20 characters.")
+    .max(10000, "Content must be at most 10000 characters.")
     .optional(),
   categoryId: z.string().optional(),
 });
@@ -52,7 +55,10 @@ export type DeleteThreadValues = z.infer<typeof DeleteThreadSchema>;
 
 // ─── Add Reply ────────────────────────────────────────────────
 export const AddReplySchema = z.object({
-  content: z.string().min(1, "Reply cannot be empty."),
+  content: z
+    .string()
+    .min(10, "Reply must be at least 10 characters.")
+    .max(5000, "Reply must be at most 5000 characters."),
   threadId: z.string().min(1, "Thread ID is required."),
   parentId: z.string().optional(),
 });
@@ -88,11 +94,22 @@ export type VotePollValues = z.infer<typeof VotePollSchema>;
 // ── Admin Poll ───────────────────────────────────────────────
 
 export const CreateAdminPollSchema = z.object({
-  question: z.string().min(5, "Question must be at least 5 characters"),
-  description: z.string().optional(),
+  question: z
+    .string()
+    .min(5, "Question must be at least 5 characters")
+    .max(200, "Question must be at most 200 characters"),
+  description: z
+    .string()
+    .max(1000, "Description must be at most 1000 characters")
+    .optional(),
   type: z.enum(["DISMISSIBLE", "NON_DISMISSIBLE"]).default("NON_DISMISSIBLE"),
   options: z
-    .array(z.string().min(1, "Option cannot be empty"))
+    .array(
+      z
+        .string()
+        .min(1, "Option cannot be empty")
+        .max(100, "Option must be at most 100 characters")
+    )
     .min(2, "At least 2 options are required")
     .max(10, "Maximum 10 options allowed"),
   isMultiChoice: z.boolean().default(false),

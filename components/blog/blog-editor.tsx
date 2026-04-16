@@ -259,11 +259,13 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
   const toggleTag = (tag: TagItem) => {
     setSelectedTags((prev) => {
       const isSelected = prev.some((t) => t.id === tag.id);
+      if (!isSelected && prev.length >= 5) {
+        toast.error("Maximum 5 tags allowed.");
+        return prev;
+      }
       const next = isSelected
         ? prev.filter((t) => t.id !== tag.id)
-        : prev.length < 5
-          ? [...prev, { id: tag.id, name: tag.name }]
-          : prev;
+        : [...prev, { id: tag.id, name: tag.name }];
       form.setValue("tags", next);
       return next;
     });
@@ -342,7 +344,11 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
                   ? "Post saved as draft."
                   : (result.message ?? "Post published!");
               toast.success(msg);
-              router.push(`/blog/${result.data?.slug}`);
+              if (result.data?.slug) {
+                router.push(`/blog/${result.data.slug}`);
+              } else {
+                router.push("/blog");
+              }
               router.refresh();
             } else {
               toast.error(result.error ?? "Failed to create post.");

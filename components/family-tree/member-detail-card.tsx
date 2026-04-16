@@ -8,6 +8,7 @@ import {
   CircleUser,
   Layers,
   Shield,
+  X,
 } from "lucide-react";
 import type { TreeNode, FamilyEdgeData } from "@/types/family-tree";
 import { getNodeColor, getInitials } from "@/lib/family-tree-utils";
@@ -221,15 +222,24 @@ export function MemberDetailCard({
         </svg>
 
         {/* Profile link button (top-right) — glass morphism */}
-        <button
-          onClick={() => {
-            window.location.href = `/profile/${member.id}`;
-          }}
-          className="absolute top-3.5 right-3.5 h-9 w-9 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 shadow-lg shadow-black/10 hover:scale-105 border border-white/20"
-          title="View full profile"
-        >
-          <ExternalLink className="h-4 w-4" />
-        </button>
+        <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-20">
+          <button
+            onClick={() => {
+              window.location.href = `/profile/${member.id}`;
+            }}
+            className="h-9 w-9 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 shadow-lg shadow-black/10 hover:scale-105 border border-white/20"
+            title="View full profile"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onClose}
+            className="h-9 w-9 rounded-xl bg-black/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-red-500/80 transition-all duration-300 shadow-lg shadow-black/10 hover:scale-105 border border-white/20"
+            title="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
         {/* Top-left Badges */}
         <div className="absolute top-3.5 left-3.5 flex flex-wrap items-center gap-2 max-w-[calc(100%-3rem)] z-10">
@@ -328,6 +338,15 @@ export function MemberDetailCard({
         />
       </div>
 
+      {/* ─── Related Members ─── */}
+      <div className="px-6 mt-5 grid grid-cols-2 gap-2">
+        {relations.fathers.map(p => <RelatedMemberRow key={p.id} node={p} relation="Father" onNavigate={onNavigateToMember} />)}
+        {relations.mothers.map(p => <RelatedMemberRow key={p.id} node={p} relation="Mother" onNavigate={onNavigateToMember} />)}
+        {relations.spouses.map(s => <RelatedMemberRow key={s.id} node={s} relation="Spouse" onNavigate={onNavigateToMember} />)}
+        {relations.siblings.map(s => <RelatedMemberRow key={s.id} node={s} relation="Sibling" onNavigate={onNavigateToMember} />)}
+        {relations.children.map(c => <RelatedMemberRow key={c.id} node={c} relation="Child" onNavigate={onNavigateToMember} />)}
+      </div>
+
       {/* ─── Bio ─── */}
       {member.bio && (
         <div className="px-6 mt-5 mb-1">
@@ -364,8 +383,8 @@ export function MemberDetailCard({
 
         <BottomPill
           label={member.isAlive ? "Living" : "Deceased"}
-          color={member.isAlive ? "#22c55e" : "#6b7280"}
-          bg={member.isAlive ? "#dcfce7" : "#f3f4f6"}
+          colorClass={member.isAlive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}
+          bgClass={member.isAlive ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-zinc-100 dark:bg-zinc-800/50"}
         >
           {member.isAlive ? (
             <HeartPulse className="h-4 w-4" />
@@ -377,15 +396,19 @@ export function MemberDetailCard({
         {member.generation !== null && member.generation !== undefined && (
           <BottomPill
             label={`Gen ${member.generation}`}
-            color="#f59e0b"
-            bg="#fef3c7"
+            colorClass="text-amber-600 dark:text-amber-400"
+            bgClass="bg-amber-100 dark:bg-amber-900/30"
           >
             <Layers className="h-4 w-4" />
           </BottomPill>
         )}
 
         {member.familyClan && (
-          <BottomPill label={member.familyClan} color="#8b5cf6" bg="#ede9fe">
+          <BottomPill 
+            label={member.familyClan} 
+            colorClass="text-violet-600 dark:text-violet-400" 
+            bgClass="bg-violet-100 dark:bg-violet-900/30"
+          >
             <Shield className="h-4 w-4" />
           </BottomPill>
         )}
@@ -395,6 +418,27 @@ export function MemberDetailCard({
 }
 
 /* ── Sub-components ── */
+
+function RelatedMemberRow({ node, relation, onNavigate }: { node: TreeNode; relation: string; onNavigate: (id: string) => void }) {
+  const c = getNodeColor(node.gender, node.isAlive);
+  return (
+    <button
+      onClick={() => onNavigate(node.id)}
+      className="flex items-center gap-2 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-zinc-100 dark:border-zinc-700/50 text-left"
+    >
+      <div
+        className="h-8 w-8 rounded-md flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+        style={{ background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})` }}
+      >
+        {getInitials(node.firstName, node.lastName)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{node.name}</p>
+        <p className="text-[9px] text-zinc-500 uppercase tracking-wider">{relation}</p>
+      </div>
+    </button>
+  );
+}
 
 function StatCard({
   value,
@@ -432,27 +476,31 @@ function BottomPill({
   label,
   color,
   bg,
+  colorClass,
+  bgClass,
 }: {
   children: React.ReactNode;
   label: string;
-  color: string;
-  bg: string;
+  color?: string;
+  bg?: string;
+  colorClass?: string;
+  bgClass?: string;
 }) {
   return (
     <div className="flex flex-col items-center gap-1.5 group">
       <div
-        className="h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-md"
-        style={{
+        className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-md ${bgClass || ""} ${colorClass || ""}`}
+        style={color && bg ? {
           background: `${bg}`,
           color: color,
           boxShadow: `0 2px 8px ${color}15`,
-        }}
+        } : undefined}
       >
         {children}
       </div>
       <span
-        className="text-[10px] font-bold uppercase tracking-wider"
-        style={{ color }}
+        className={`text-[10px] font-bold uppercase tracking-wider ${colorClass || ""}`}
+        style={color ? { color } : undefined}
       >
         {label}
       </span>

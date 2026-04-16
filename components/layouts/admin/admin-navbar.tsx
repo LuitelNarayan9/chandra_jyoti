@@ -237,6 +237,9 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setNotifOpen((v) => !v)}
+                aria-expanded={notifOpen}
+                aria-haspopup="true"
+                aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
                 className={cn(
                   "relative h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground",
                   "hover:bg-amber-500/[0.08] transition-all duration-200",

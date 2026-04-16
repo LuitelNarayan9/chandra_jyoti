@@ -99,52 +99,79 @@ export async function createThread(input: CreateThreadValues) {
     }
 
     const safeContent = sanitizeHtml(validated.content);
-    const slug = await generateUniqueSlug(validated.title);
 
-    const thread = await db.$transaction(async (tx) => {
-      const createdThread = await tx.forumThread.create({
-        data: {
-          title: validated.title,
-          slug,
-          content: safeContent,
-          author: { connect: { id: user.id } },
-          category: { connect: { id: category.id } },
-          ...(validated.tags && validated.tags.length > 0
-            ? {
-                tags: {
-                  create: validated.tags.map((tag) => {
-                    if (tag.id) return { tag: { connect: { id: tag.id } } };
-                    return {
-                      tag: {
-                        connectOrCreate: {
-                          where: { name: tag.name },
-                          create: { name: tag.name, slug: slugify(tag.name) },
-                        },
-                      },
-                    };
-                  }),
-                },
-              }
-            : {}),
-        },
-      });
+    // Retry loop to handle slug collisions (TOCTOU-safe)
+    const MAX_SLUG_RETRIES = 3;
+    let thread;
 
-      // Create poll if provided
-      if (validated.poll) {
-        await tx.forumPoll.create({
-          data: {
-            question: validated.poll.question,
-            isMultiChoice: validated.poll.isMultiChoice,
-            thread: { connect: { id: createdThread.id } },
-            options: {
-              create: validated.poll.options.map((text) => ({ text })),
+    for (let attempt = 0; attempt <= MAX_SLUG_RETRIES; attempt++) {
+      const slug = await generateUniqueSlug(validated.title);
+
+      try {
+        thread = await db.$transaction(async (tx) => {
+          const createdThread = await tx.forumThread.create({
+            data: {
+              title: validated.title,
+              slug,
+              content: safeContent,
+              author: { connect: { id: user.id } },
+              category: { connect: { id: category.id } },
+              ...(validated.tags && validated.tags.length > 0
+                ? {
+                    tags: {
+                      create: validated.tags.map((tag) => {
+                        if (tag.id) return { tag: { connect: { id: tag.id } } };
+                        return {
+                          tag: {
+                            connectOrCreate: {
+                              where: { name: tag.name },
+                              create: {
+                                name: tag.name,
+                                slug: slugify(tag.name),
+                              },
+                            },
+                          },
+                        };
+                      }),
+                    },
+                  }
+                : {}),
             },
-          },
-        });
-      }
+          });
 
-      return createdThread;
-    });
+          // Create poll if provided
+          if (validated.poll) {
+            await tx.forumPoll.create({
+              data: {
+                question: validated.poll.question,
+                isMultiChoice: validated.poll.isMultiChoice,
+                thread: { connect: { id: createdThread.id } },
+                options: {
+                  create: validated.poll.options.map((text) => ({ text })),
+                },
+              },
+            });
+          }
+
+          return createdThread;
+        });
+
+        break; // Success — exit retry loop
+      } catch (err: any) {
+        // Retry on slug collision, surface all other errors
+        if (err?.code === "P2002" && attempt < MAX_SLUG_RETRIES) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!thread) {
+      return {
+        success: false,
+        error: "Failed to create thread after retries.",
+      };
+    }
 
     revalidatePath("/forum");
     revalidatePath(`/forum/${category.slug}`);
@@ -200,7 +227,7 @@ export async function updateThread(input: UpdateThreadValues) {
 
     if (validated.title !== undefined) {
       updateData.title = validated.title;
-      updateData.slug = await generateUniqueSlug(validated.title);
+      // Slug is preserved on title updates to avoid breaking existing links
     }
     if (validated.content !== undefined) {
       updateData.content = sanitizeHtml(validated.content);
@@ -356,7 +383,10 @@ export async function incrementThreadViews(threadId: string) {
     try {
       cookieStore.set(cookieName, "1", { maxAge: 60 * 60 * 24 }); // 24 hours
     } catch (e) {
-      // Ignore errors when setting cookies outside a proper context
+      console.warn(
+        `Failed to set cookie "${cookieName}" for thread ${threadId}:`,
+        e
+      );
     }
     return { success: true };
   } catch (error: unknown) {
@@ -390,6 +420,25 @@ export async function addReply(input: AddReplyValues) {
 
     if (thread.isLocked) {
       return { success: false, error: "This thread is locked." };
+    }
+
+    // Verify parent reply belongs to the same thread
+    if (validated.parentId) {
+      const parentReply = await db.forumReply.findUnique({
+        where: { id: validated.parentId },
+        select: { threadId: true },
+      });
+
+      if (!parentReply) {
+        return { success: false, error: "Parent reply not found." };
+      }
+
+      if (parentReply.threadId !== thread.id) {
+        return {
+          success: false,
+          error: "Parent reply does not belong to this thread.",
+        };
+      }
     }
 
     const safeContent = sanitizeHtml(validated.content);
@@ -427,30 +476,32 @@ export async function voteReply(replyId: string, value: 1 | -1) {
   try {
     const user = await requireRole("MEMBER");
 
-    const existing = await db.forumVote.findUnique({
-      where: { userId_replyId: { userId: user.id, replyId } },
-    });
+    await db.$transaction(async (tx) => {
+      const existing = await tx.forumVote.findUnique({
+        where: { userId_replyId: { userId: user.id, replyId } },
+      });
 
-    if (existing) {
-      if (existing.value === value) {
-        // Same vote → remove it
-        await db.forumVote.delete({ where: { id: existing.id } });
+      if (existing) {
+        if (existing.value === value) {
+          // Same vote → remove it
+          await tx.forumVote.delete({ where: { id: existing.id } });
+        } else {
+          // Different vote → update
+          await tx.forumVote.update({
+            where: { id: existing.id },
+            data: { value },
+          });
+        }
       } else {
-        // Different vote → update
-        await db.forumVote.update({
-          where: { id: existing.id },
-          data: { value },
+        await tx.forumVote.create({
+          data: {
+            value,
+            user: { connect: { id: user.id } },
+            reply: { connect: { id: replyId } },
+          },
         });
       }
-    } else {
-      await db.forumVote.create({
-        data: {
-          value,
-          user: { connect: { id: user.id } },
-          reply: { connect: { id: replyId } },
-        },
-      });
-    }
+    });
 
     // Get the reply's thread slug for revalidation
     const reply = await db.forumReply.findUnique({
@@ -561,28 +612,30 @@ export async function voteThread(threadId: string, value: 1 | -1) {
   try {
     const user = await requireRole("MEMBER");
 
-    const existing = await db.forumThreadVote.findUnique({
-      where: { userId_threadId: { userId: user.id, threadId } },
-    });
+    await db.$transaction(async (tx) => {
+      const existing = await tx.forumThreadVote.findUnique({
+        where: { userId_threadId: { userId: user.id, threadId } },
+      });
 
-    if (existing) {
-      if (existing.value === value) {
-        await db.forumThreadVote.delete({ where: { id: existing.id } });
+      if (existing) {
+        if (existing.value === value) {
+          await tx.forumThreadVote.delete({ where: { id: existing.id } });
+        } else {
+          await tx.forumThreadVote.update({
+            where: { id: existing.id },
+            data: { value },
+          });
+        }
       } else {
-        await db.forumThreadVote.update({
-          where: { id: existing.id },
-          data: { value },
+        await tx.forumThreadVote.create({
+          data: {
+            value,
+            user: { connect: { id: user.id } },
+            thread: { connect: { id: threadId } },
+          },
         });
       }
-    } else {
-      await db.forumThreadVote.create({
-        data: {
-          value,
-          user: { connect: { id: user.id } },
-          thread: { connect: { id: threadId } },
-        },
-      });
-    }
+    });
 
     const thread = await db.forumThread.findUnique({
       where: { id: threadId },
@@ -709,25 +762,36 @@ export async function votePoll(input: VotePollValues) {
       };
     }
 
-    // Check if user already voted on any option in this poll
-    const existingVotes = await db.pollVote.findMany({
-      where: {
-        userId: user.id,
-        optionId: { in: validOptionIds },
-      },
+    // Atomic check-and-create to prevent duplicate votes under concurrency
+    const voteResult = await db.$transaction(async (tx) => {
+      // Re-check inside the transaction for atomicity
+      const existingVotes = await tx.pollVote.findMany({
+        where: {
+          userId: user.id,
+          optionId: { in: validOptionIds },
+        },
+      });
+
+      if (existingVotes.length > 0) {
+        return {
+          success: false as const,
+          error: "You have already voted in this poll.",
+        };
+      }
+
+      await tx.pollVote.createMany({
+        data: optionIds.map((optionId) => ({
+          userId: user.id,
+          optionId,
+        })),
+      });
+
+      return { success: true as const };
     });
 
-    if (existingVotes.length > 0) {
-      return { success: false, error: "You have already voted in this poll." };
+    if (!voteResult.success) {
+      return voteResult;
     }
-
-    // Create votes
-    await db.pollVote.createMany({
-      data: optionIds.map((optionId) => ({
-        userId: user.id,
-        optionId,
-      })),
-    });
 
     revalidatePath(`/forum/${poll.thread.category.slug}/${poll.thread.slug}`);
 
@@ -956,6 +1020,9 @@ export async function fetchAdminPollVoters(pollId: string) {
         },
       },
     });
+    if (!poll) {
+      return { success: false, error: "Poll not found" };
+    }
     return { success: true, data: poll };
   } catch (error) {
     console.error("[FETCH_ADMIN_POLL_VOTERS]", error);

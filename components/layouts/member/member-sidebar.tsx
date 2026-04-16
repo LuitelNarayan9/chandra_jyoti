@@ -89,10 +89,17 @@ export function MemberSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const [collapsed, setCollapsed] = useState(false);
-  const [expanded, setExpanded] = useState<ExpandMap>(() => ({
-    // Auto-open Blog submenu when on any /blog route
-    "/blog": pathname.startsWith("/blog"),
-  }));
+  const [expanded, setExpanded] = useState<ExpandMap>(() => {
+    const init: ExpandMap = {};
+    memberNavSections.forEach((sec) => {
+      sec.items.forEach((item) => {
+        if ("children" in item && Array.isArray((item as any).children)) {
+          if (pathname.startsWith(item.href)) init[item.href] = true;
+        }
+      });
+    });
+    return init;
+  });
   const toggleExpand = useCallback(
     (href: string) => setExpanded((p) => ({ ...p, [href]: !p[href] })),
     []
@@ -101,7 +108,7 @@ export function MemberSidebar() {
   const firstName = user?.firstName ?? "Member";
   const lastName = user?.lastName ?? "";
   const avatarUrl = user?.imageUrl ?? null;
-  let gi = 0;
+
 
   return (
     <aside
@@ -115,7 +122,7 @@ export function MemberSidebar() {
     >
       {/* ── Nav — flex-1 so profile is pushed to bottom ─────────────── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-none">
-        {memberNavSections.map((section) => (
+        {memberNavSections.map((section, sIdx) => (
           <div key={section.title} className="mb-5">
             <div
               className={cn(
@@ -130,9 +137,9 @@ export function MemberSidebar() {
             </div>
 
             <div className="space-y-0.5 px-3">
-              {section.items.map((item) => {
-                const pal = ICON_PALETTE[gi % ICON_PALETTE.length];
-                gi++;
+              {section.items.map((item, iIdx) => {
+                const globalIdx = memberNavSections.slice(0, sIdx).reduce((acc, s) => acc + s.items.length, 0) + iIdx;
+                const pal = ICON_PALETTE[globalIdx % ICON_PALETTE.length];
                 const isActive = item.children
                   ? // parent is active if on any child route
                     pathname === item.href ||

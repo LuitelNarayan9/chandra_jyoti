@@ -8,19 +8,13 @@ import {
   Search,
   Command,
   X,
-  ChevronRight,
   BookOpen,
   LayoutDashboard,
   Award,
   CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
@@ -231,183 +225,181 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
         <div className="flex-1" />
 
         {/* Right cluster */}
-        <TooltipProvider delayDuration={200}>
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-2.5">
-            {/* Search pill — sm+ */}
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="hidden sm:flex h-8 sm:h-9 items-center gap-2 rounded-xl border border-border/60 bg-muted/50 px-2.5 sm:px-3.5 text-muted-foreground/60 hover:bg-muted hover:text-muted-foreground hover:border-border transition-all duration-200 group"
-            >
-              <Search className="h-4 w-4 sm:h-[17px] sm:w-[17px] text-muted-foreground/50 group-hover:text-muted-foreground transition-colors shrink-0" />
-              <span className="hidden lg:inline text-[13px]">Search…</span>
-              <div className="hidden lg:flex items-center gap-0.5 rounded-md border border-border/70 bg-background px-1.5 py-0.5 shrink-0">
-                <Command className="h-3 w-3 text-muted-foreground/50" />
-                <span className="text-[10px] font-mono text-muted-foreground/50">
-                  K
-                </span>
-              </div>
-            </button>
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-2.5">
+          {/* Search pill — sm+ */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="hidden sm:flex h-8 sm:h-9 items-center gap-2 rounded-xl border border-border/60 bg-muted/50 px-2.5 sm:px-3.5 text-muted-foreground/60 hover:bg-muted hover:text-muted-foreground hover:border-border transition-all duration-200 group"
+          >
+            <Search className="h-4 w-4 sm:h-[17px] sm:w-[17px] text-muted-foreground/50 group-hover:text-muted-foreground transition-colors shrink-0" />
+            <span className="hidden lg:inline text-[13px]">Search…</span>
+            <div className="hidden lg:flex items-center gap-0.5 rounded-md border border-border/70 bg-background px-1.5 py-0.5 shrink-0">
+              <Command className="h-3 w-3 text-muted-foreground/50" />
+              <span className="text-[10px] font-mono text-muted-foreground/50">
+                K
+              </span>
+            </div>
+          </button>
 
-            {/* Search icon — mobile only */}
+          {/* Search icon — mobile only */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSearchOpen(true)}
+            className="sm:hidden h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-indigo-500/[0.08] transition-all duration-200"
+          >
+            <Search className="h-[17px] w-[17px]" />
+          </Button>
+
+          {/* Notifications */}
+          <div className="relative" ref={notifRef}>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSearchOpen(true)}
-              className="sm:hidden h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-indigo-500/[0.08] transition-all duration-200"
+              onClick={() => setNotifOpen((v) => !v)}
+              className={cn(
+                "relative h-10 w-10 rounded-xl text-muted-foreground/60 hover:text-foreground",
+                "hover:bg-indigo-500/[0.08] transition-all duration-200",
+                notifOpen && "bg-indigo-500/[0.10] text-foreground"
+              )}
             >
-              <Search className="h-[17px] w-[17px]" />
+              <Bell className="h-[17px] w-[17px]" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 flex h-[9px] w-[9px]">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-70" />
+                  <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-indigo-500 ring-2 ring-background" />
+                </span>
+              )}
             </Button>
 
-            {/* Notifications */}
-            <div className="relative" ref={notifRef}>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setNotifOpen((v) => !v)}
-                className={cn(
-                  "relative h-10 w-10 rounded-xl text-muted-foreground/60 hover:text-foreground",
-                  "hover:bg-indigo-500/[0.08] transition-all duration-200",
-                  notifOpen && "bg-indigo-500/[0.10] text-foreground"
-                )}
-              >
-                <Bell className="h-[17px] w-[17px]" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 flex h-[9px] w-[9px]">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-70" />
-                    <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-indigo-500 ring-2 ring-background" />
-                  </span>
-                )}
-              </Button>
-
-              {/*
+            {/*
                 Mobile: fixed full-width panel below navbar
                 sm+: absolute dropdown from button
               */}
-              <div
-                className={cn(
-                  "fixed inset-x-3 top-[68px] z-50 overflow-hidden rounded-2xl",
-                  "sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+10px)] sm:w-[340px]",
-                  "border border-border bg-card",
-                  "shadow-[0_4px_6px_rgba(0,0,0,0.07),0_20px_60px_-8px_rgba(0,0,0,0.22)]",
-                  "dark:shadow-[0_4px_6px_rgba(0,0,0,0.3),0_20px_60px_-8px_rgba(0,0,0,0.6)]",
-                  "transition-all duration-200 origin-top-right",
-                  notifOpen
-                    ? "opacity-100 scale-100 pointer-events-auto"
-                    : "opacity-0 scale-95 pointer-events-none"
-                )}
-              >
-                <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/70 to-transparent" />
+            <div
+              className={cn(
+                "fixed inset-x-3 top-[68px] z-50 overflow-hidden rounded-2xl",
+                "sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+10px)] sm:w-[340px]",
+                "border border-border bg-card",
+                "shadow-[0_4px_6px_rgba(0,0,0,0.07),0_20px_60px_-8px_rgba(0,0,0,0.22)]",
+                "dark:shadow-[0_4px_6px_rgba(0,0,0,0.3),0_20px_60px_-8px_rgba(0,0,0,0.6)]",
+                "transition-all duration-200 origin-top-right",
+                notifOpen
+                  ? "opacity-100 scale-100 pointer-events-auto"
+                  : "opacity-0 scale-95 pointer-events-none"
+              )}
+            >
+              <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/70 to-transparent" />
 
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border bg-muted/50">
-                  <div className="flex items-center gap-2.5">
-                    <Bell className="h-4 w-4 text-indigo-500" />
-                    <span className="text-sm font-semibold text-foreground">
-                      Notifications
-                    </span>
-                    {unreadCount > 0 && (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </div>
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border bg-muted/50">
+                <div className="flex items-center gap-2.5">
+                  <Bell className="h-4 w-4 text-indigo-500" />
+                  <span className="text-sm font-semibold text-foreground">
+                    Notifications
+                  </span>
                   {unreadCount > 0 && (
-                    <button
-                      onClick={markAllRead}
-                      className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 hover:text-indigo-400 transition-colors"
-                    >
-                      <CheckCheck className="h-3.5 w-3.5" />
-                      Mark all read
-                    </button>
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">
+                      {unreadCount}
+                    </span>
                   )}
                 </div>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 hover:text-indigo-400 transition-colors"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Mark all read
+                  </button>
+                )}
+              </div>
 
-                {/* Items */}
-                <div className="max-h-[300px] sm:max-h-[340px] overflow-y-auto overscroll-contain">
-                  {notifications.map((n) => {
-                    const Icon = n.icon;
-                    return (
+              {/* Items */}
+              <div className="max-h-[300px] sm:max-h-[340px] overflow-y-auto overscroll-contain">
+                {notifications.map((n) => {
+                  const Icon = n.icon;
+                  return (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        "flex items-start gap-3.5 px-4 sm:px-5 py-3.5 cursor-pointer border-b border-border/50 last:border-0 transition-colors",
+                        n.unread
+                          ? "bg-indigo-500/[0.05] hover:bg-indigo-500/[0.09]"
+                          : "bg-card hover:bg-muted/60"
+                      )}
+                    >
                       <div
-                        key={n.id}
                         className={cn(
-                          "flex items-start gap-3.5 px-4 sm:px-5 py-3.5 cursor-pointer border-b border-border/50 last:border-0 transition-colors",
+                          "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border",
                           n.unread
-                            ? "bg-indigo-500/[0.05] hover:bg-indigo-500/[0.09]"
-                            : "bg-card hover:bg-muted/60"
+                            ? "bg-indigo-500/10 border-indigo-500/20"
+                            : "bg-muted border-border"
                         )}
                       >
-                        <div
+                        <Icon
                           className={cn(
-                            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border",
+                            "h-4 w-4",
                             n.unread
-                              ? "bg-indigo-500/10 border-indigo-500/20"
-                              : "bg-muted border-border"
+                              ? "text-indigo-500 dark:text-indigo-400"
+                              : "text-muted-foreground/40"
+                          )}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={cn(
+                            "text-sm leading-snug",
+                            n.unread
+                              ? "font-semibold text-foreground"
+                              : "font-medium text-muted-foreground/80"
                           )}
                         >
-                          <Icon
-                            className={cn(
-                              "h-4 w-4",
-                              n.unread
-                                ? "text-indigo-500 dark:text-indigo-400"
-                                : "text-muted-foreground/40"
-                            )}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={cn(
-                              "text-sm leading-snug",
-                              n.unread
-                                ? "font-semibold text-foreground"
-                                : "font-medium text-muted-foreground/80"
-                            )}
-                          >
-                            {n.label}
-                          </p>
-                          <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">
-                            {n.desc}
-                          </p>
-                          <p className="text-[11px] font-medium text-indigo-500/60 dark:text-indigo-400/50 mt-1">
-                            {n.time}
-                          </p>
-                        </div>
-                        {n.unread && (
-                          <div className="mt-2 shrink-0 h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-indigo-500/20" />
-                        )}
+                          {n.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">
+                          {n.desc}
+                        </p>
+                        <p className="text-[11px] font-medium text-indigo-500/60 dark:text-indigo-400/50 mt-1">
+                          {n.time}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
+                      {n.unread && (
+                        <div className="mt-2 shrink-0 h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-indigo-500/20" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
-                {/* Footer */}
-                <div className="border-t border-border bg-muted/50 px-4 sm:px-5 py-3.5">
-                  <button className="w-full text-center text-xs font-semibold text-indigo-500 dark:text-indigo-400 hover:text-indigo-400 transition-colors">
-                    View all notifications →
-                  </button>
-                </div>
+              {/* Footer */}
+              <div className="border-t border-border bg-muted/50 px-4 sm:px-5 py-3.5">
+                <button className="w-full text-center text-xs font-semibold text-indigo-500 dark:text-indigo-400 hover:text-indigo-400 transition-colors">
+                  View all notifications →
+                </button>
               </div>
             </div>
-
-            {/* Divider */}
-            <div className="hidden sm:block h-6 w-0.5 bg-border/100 " />
-
-            <ThemeToggle />
-
-            {/* User avatar */}
-            <div className="relative group pl-3 flex items-center">
-              <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    avatarBox:
-                      "h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-border hover:ring-indigo-500/40 transition-all duration-200",
-                  },
-                }}
-              />
-            </div>
           </div>
-        </TooltipProvider>
+
+          {/* Divider */}
+          <div className="hidden sm:block h-6 w-0.5 bg-border/100 " />
+
+          <ThemeToggle />
+
+          {/* User avatar */}
+          <div className="relative group pl-3 flex items-center">
+            <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox:
+                    "h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-border hover:ring-indigo-500/40 transition-all duration-200",
+                },
+              }}
+            />
+          </div>
+        </div>
       </header>
 
       {/* Spacer */}

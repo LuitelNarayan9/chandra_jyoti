@@ -1,4 +1,8 @@
-import type { FamilyTreeMember, TreeNode, TreeFilter } from "@/types/family-tree";
+import type {
+  FamilyTreeMember,
+  TreeNode,
+  TreeFilter,
+} from "@/types/family-tree";
 
 /**
  * Convert flat DB members → TreeNode array
@@ -40,10 +44,7 @@ export function getMatchingNodeIds(
     nodes
       .filter((n) => {
         if (filter.clan && n.familyClan !== filter.clan) return false;
-        if (
-          filter.generation !== null &&
-          n.generation !== filter.generation
-        )
+        if (filter.generation !== null && n.generation !== filter.generation)
           return false;
         if (filter.gender && n.gender !== filter.gender) return false;
         if (!filter.showLiving && n.isAlive) return false;
@@ -57,10 +58,7 @@ export function getMatchingNodeIds(
 /**
  * Search nodes by name; returns matching IDs.
  */
-export function searchNodeIds(
-  nodes: TreeNode[],
-  query: string
-): Set<string> {
+export function searchNodeIds(nodes: TreeNode[], query: string): Set<string> {
   if (!query.trim()) return new Set(nodes.map((n) => n.id));
   const q = query.toLowerCase();
   return new Set(

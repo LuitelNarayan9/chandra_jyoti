@@ -74,75 +74,96 @@ export async function createPost(input: CreatePostValues) {
     // Sanitize HTML content to prevent XSS
     const safeContent = sanitizeHtml(validated.content);
 
-    const slug = await generateUniqueSlug(validated.title);
     const readingTime = estimateReadingTime(safeContent);
 
-    const post = await db.blogPost.create({
-      data: {
-        title: validated.title,
-        slug,
-        content: safeContent,
-        excerpt: validated.excerpt || "",
-        coverImage: validated.coverImage || null,
-        status: validated.status,
-        readingTime,
-        publishedAt: validated.status === "PUBLISHED" ? new Date() : null,
-        scheduledAt: validated.scheduledAt
-          ? new Date(validated.scheduledAt)
-          : null,
-        author: { connect: { id: user.id } },
-        ...(validated.category
-          ? {
-              category: validated.category.id
-                ? { connect: { id: validated.category.id } }
-                : {
-                    connectOrCreate: {
-                      where: { name: validated.category.name },
-                      create: {
-                        name: validated.category.name,
-                        slug: slugify(validated.category.name),
-                        color: [
-                          "#ef4444",
-                          "#f97316",
-                          "#f59e0b",
-                          "#84cc16",
-                          "#22c55e",
-                          "#10b981",
-                          "#14b8a6",
-                          "#06b6d4",
-                          "#0ea5e9",
-                          "#3b82f6",
-                          "#6366f1",
-                          "#8b5cf6",
-                          "#a855f7",
-                          "#d946ef",
-                          "#ec4899",
-                          "#f43f5e",
-                        ][Math.floor(Math.random() * 16)],
+    // Retry loop to handle slug collisions (TOCTOU-safe)
+    const MAX_SLUG_RETRIES = 3;
+    let post;
+
+    for (let attempt = 0; attempt <= MAX_SLUG_RETRIES; attempt++) {
+      const slug = await generateUniqueSlug(validated.title);
+
+      try {
+        post = await db.blogPost.create({
+          data: {
+            title: validated.title,
+            slug,
+            content: safeContent,
+            excerpt: validated.excerpt || "",
+            coverImage: validated.coverImage || null,
+            status: validated.status,
+            readingTime,
+            publishedAt: validated.status === "PUBLISHED" ? new Date() : null,
+            scheduledAt: validated.scheduledAt
+              ? new Date(validated.scheduledAt)
+              : null,
+            author: { connect: { id: user.id } },
+            ...(validated.category
+              ? {
+                  category: validated.category.id
+                    ? { connect: { id: validated.category.id } }
+                    : {
+                        connectOrCreate: {
+                          where: { name: validated.category.name },
+                          create: {
+                            name: validated.category.name,
+                            slug: slugify(validated.category.name),
+                            color: [
+                              "#ef4444",
+                              "#f97316",
+                              "#f59e0b",
+                              "#84cc16",
+                              "#22c55e",
+                              "#10b981",
+                              "#14b8a6",
+                              "#06b6d4",
+                              "#0ea5e9",
+                              "#3b82f6",
+                              "#6366f1",
+                              "#8b5cf6",
+                              "#a855f7",
+                              "#d946ef",
+                              "#ec4899",
+                              "#f43f5e",
+                            ][Math.floor(Math.random() * 16)],
+                          },
+                        },
                       },
-                    },
+                }
+              : {}),
+            ...(validated.tags && validated.tags.length > 0
+              ? {
+                  tags: {
+                    create: validated.tags.map((tag) => {
+                      if (tag.id) return { tag: { connect: { id: tag.id } } };
+                      return {
+                        tag: {
+                          connectOrCreate: {
+                            where: { name: tag.name },
+                            create: { name: tag.name, slug: slugify(tag.name) },
+                          },
+                        },
+                      };
+                    }),
                   },
-            }
-          : {}),
-        ...(validated.tags && validated.tags.length > 0
-          ? {
-              tags: {
-                create: validated.tags.map((tag) => {
-                  if (tag.id) return { tag: { connect: { id: tag.id } } };
-                  return {
-                    tag: {
-                      connectOrCreate: {
-                        where: { name: tag.name },
-                        create: { name: tag.name, slug: slugify(tag.name) },
-                      },
-                    },
-                  };
-                }),
-              },
-            }
-          : {}),
-      },
-    });
+                }
+              : {}),
+          },
+        });
+
+        break; // Success — exit retry loop
+      } catch (err: any) {
+        // Retry on slug collision, surface all other errors
+        if (err?.code === "P2002" && attempt < MAX_SLUG_RETRIES) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!post) {
+      return { success: false, error: "Failed to create post after retries." };
+    }
 
     revalidatePath("/blog");
     revalidatePath("/home");
@@ -202,8 +223,7 @@ export async function updatePost(input: UpdatePostValues) {
 
     if (validated.title !== undefined) {
       updateData.title = validated.title;
-      // Re-generate slug only if title changed
-      updateData.slug = await generateUniqueSlug(validated.title);
+      // Slug is preserved on title updates to avoid breaking existing links
     }
     if (validated.content !== undefined) {
       const safeContent = sanitizeHtml(validated.content);

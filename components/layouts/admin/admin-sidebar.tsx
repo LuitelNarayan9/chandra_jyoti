@@ -89,9 +89,17 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const [collapsed, setCollapsed] = useState(false);
-  const [expanded, setExpanded] = useState<ExpandMap>(() => ({
-    "/blog": pathname.startsWith("/blog"),
-  }));
+  const [expanded, setExpanded] = useState<ExpandMap>(() => {
+    const init: ExpandMap = {};
+    adminNavSections.forEach((sec) => {
+      sec.items.forEach((item) => {
+        if ("children" in item && Array.isArray((item as any).children)) {
+          if (pathname.startsWith(item.href)) init[item.href] = true;
+        }
+      });
+    });
+    return init;
+  });
   const toggleExpand = useCallback(
     (href: string) => setExpanded((p) => ({ ...p, [href]: !p[href] })),
     []
@@ -100,8 +108,6 @@ export function AdminSidebar() {
   const firstName = user?.firstName ?? "Admin";
   const lastName = user?.lastName ?? "";
   const avatarUrl = user?.imageUrl ?? null;
-  let gi = 0;
-
   return (
     <aside
       style={{ width: collapsed ? 88 : 272 }}
@@ -114,7 +120,7 @@ export function AdminSidebar() {
     >
       {/* ── Nav ─────────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-none">
-        {adminNavSections.map((section) => (
+        {adminNavSections.map((section, sIdx) => (
           <div key={section.title} className="mb-5">
             <div
               className={cn(
@@ -129,9 +135,12 @@ export function AdminSidebar() {
             </div>
 
             <div className="space-y-0.5 px-3">
-              {section.items.map((item) => {
-                const pal = ICON_PALETTE[gi % ICON_PALETTE.length];
-                gi++;
+              {section.items.map((item, iIdx) => {
+                const globalIdx =
+                  adminNavSections
+                    .slice(0, sIdx)
+                    .reduce((acc, s) => acc + s.items.length, 0) + iIdx;
+                const pal = ICON_PALETTE[globalIdx % ICON_PALETTE.length];
                 const isActive = item.children
                   ? pathname === item.href ||
                     item.children.some((c) => pathname.startsWith(c.href))
@@ -340,8 +349,8 @@ export function AdminSidebar() {
                 />
               ) : (
                 <div className="h-full w-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold select-none">
-                  {firstName[0]}
-                  {lastName[0]}
+                  {firstName?.[0] ?? ""}
+                  {lastName?.[0] ?? ""}
                 </div>
               )}
             </div>

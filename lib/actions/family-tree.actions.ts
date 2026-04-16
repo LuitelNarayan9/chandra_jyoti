@@ -48,6 +48,19 @@ function isAdmin(role: string) {
   return role === "ADMIN" || role === "SUPER_ADMIN";
 }
 
+/** Map known errors to safe user-facing strings; never expose raw internals. */
+function sanitizeError(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as any).code === "P2002"
+  ) {
+    return "A duplicate entry already exists.";
+  }
+  return "Something went wrong. Please try again.";
+}
+
 // ========================================
 // 1. Join Family Tree — Self-Registration
 // ========================================
@@ -60,7 +73,8 @@ export async function joinFamilyTree(rawData: JoinFamilyTreeInput) {
     if (!user.isResidentOfTuminDhanbari && !isAdmin(user.role)) {
       return {
         success: false,
-        error: "Only approved residents of Tumin Dhanbari can join the family tree.",
+        error:
+          "Only approved residents of Tumin Dhanbari can join the family tree.",
       };
     }
 
@@ -80,7 +94,9 @@ export async function joinFamilyTree(rawData: JoinFamilyTreeInput) {
     if (!parsed.success) {
       return {
         success: false,
-        error: parsed.error.issues.map((e: { message: string }) => e.message).join(", "),
+        error: parsed.error.issues
+          .map((e: { message: string }) => e.message)
+          .join(", "),
       };
     }
     const data = parsed.data;
@@ -121,8 +137,15 @@ export async function joinFamilyTree(rawData: JoinFamilyTreeInput) {
       },
     };
   } catch (error: any) {
+    // Handle race condition: concurrent insert hits unique constraint on linkedUserId
+    if (error?.code === "P2002") {
+      return {
+        success: false,
+        error: "You are already registered in the family tree.",
+      };
+    }
     console.error("Failed to join family tree:", error);
-    return { success: false, error: error.message || "Something went wrong" };
+    return { success: false, error: sanitizeError(error) };
   }
 }
 
@@ -139,7 +162,9 @@ export async function addRelative(rawData: AddRelativeInput) {
     if (!parsed.success) {
       return {
         success: false,
-        error: parsed.error.issues.map((e: { message: string }) => e.message).join(", "),
+        error: parsed.error.issues
+          .map((e: { message: string }) => e.message)
+          .join(", "),
       };
     }
     const data = parsed.data;
@@ -158,7 +183,10 @@ export async function addRelative(rawData: AddRelativeInput) {
 
     // For siblings, we need to find the target's parent to link the new node
     let parentNodeId: string | null = null;
-    if (data.relationshipType === "BROTHER" || data.relationshipType === "SISTER") {
+    if (
+      data.relationshipType === "BROTHER" ||
+      data.relationshipType === "SISTER"
+    ) {
       const parentEdge = await db.familyEdge.findFirst({
         where: {
           toNodeId: targetNode.id,
@@ -249,7 +277,10 @@ export async function addRelative(rawData: AddRelativeInput) {
       });
 
       // Auto-create SPOUSE edge when adding Father/Mother and the other parent already exists
-      if (data.relationshipType === "FATHER" || data.relationshipType === "MOTHER") {
+      if (
+        data.relationshipType === "FATHER" ||
+        data.relationshipType === "MOTHER"
+      ) {
         // Find if the child (targetNode) already has another parent
         const existingParentEdges = await tx.familyEdge.findMany({
           where: {
@@ -265,16 +296,30 @@ export async function addRelative(rawData: AddRelativeInput) {
           const existingSpouse = await tx.familyEdge.findFirst({
             where: {
               OR: [
-                { fromNodeId: newNode.id, toNodeId: parentEdge.fromNodeId, type: "SPOUSE" },
-                { fromNodeId: parentEdge.fromNodeId, toNodeId: newNode.id, type: "SPOUSE" },
+                {
+                  fromNodeId: newNode.id,
+                  toNodeId: parentEdge.fromNodeId,
+                  type: "SPOUSE",
+                },
+                {
+                  fromNodeId: parentEdge.fromNodeId,
+                  toNodeId: newNode.id,
+                  type: "SPOUSE",
+                },
               ],
             },
           });
 
           if (!existingSpouse) {
             // Create SPOUSE edge (standardize direction by alphabetical ID)
-            const spouseFrom = newNode.id < parentEdge.fromNodeId ? newNode.id : parentEdge.fromNodeId;
-            const spouseTo = newNode.id < parentEdge.fromNodeId ? parentEdge.fromNodeId : newNode.id;
+            const spouseFrom =
+              newNode.id < parentEdge.fromNodeId
+                ? newNode.id
+                : parentEdge.fromNodeId;
+            const spouseTo =
+              newNode.id < parentEdge.fromNodeId
+                ? parentEdge.fromNodeId
+                : newNode.id;
             await tx.familyEdge.create({
               data: {
                 fromNodeId: spouseFrom,
@@ -311,15 +356,25 @@ export async function addRelative(rawData: AddRelativeInput) {
           const existingSpouse = await tx.familyEdge.findFirst({
             where: {
               OR: [
-                { fromNodeId: targetNode.id, toNodeId: secondParent.id, type: "SPOUSE" },
-                { fromNodeId: secondParent.id, toNodeId: targetNode.id, type: "SPOUSE" },
+                {
+                  fromNodeId: targetNode.id,
+                  toNodeId: secondParent.id,
+                  type: "SPOUSE",
+                },
+                {
+                  fromNodeId: secondParent.id,
+                  toNodeId: targetNode.id,
+                  type: "SPOUSE",
+                },
               ],
             },
           });
 
           if (!existingSpouse) {
-            const spouseFrom = targetNode.id < secondParent.id ? targetNode.id : secondParent.id;
-            const spouseTo = targetNode.id < secondParent.id ? secondParent.id : targetNode.id;
+            const spouseFrom =
+              targetNode.id < secondParent.id ? targetNode.id : secondParent.id;
+            const spouseTo =
+              targetNode.id < secondParent.id ? secondParent.id : targetNode.id;
             await tx.familyEdge.create({
               data: {
                 fromNodeId: spouseFrom,
@@ -351,7 +406,7 @@ export async function addRelative(rawData: AddRelativeInput) {
     };
   } catch (error: any) {
     console.error("Failed to add relative:", error);
-    return { success: false, error: error.message || "Something went wrong" };
+    return { success: false, error: sanitizeError(error) };
   }
 }
 
@@ -367,7 +422,9 @@ export async function updateFamilyMember(rawData: UpdateFamilyMemberInput) {
     if (!parsed.success) {
       return {
         success: false,
-        error: parsed.error.issues.map((e: { message: string }) => e.message).join(", "),
+        error: parsed.error.issues
+          .map((e: { message: string }) => e.message)
+          .join(", "),
       };
     }
     const { memberId, ...data } = parsed.data;
@@ -412,7 +469,11 @@ export async function updateFamilyMember(rawData: UpdateFamilyMemberInput) {
         ...(data.profession !== undefined && { profession: data.profession }),
         ...(data.isAlive !== undefined && { isAlive: data.isAlive }),
         // Non-admin edits re-enter approval queue
-        ...(!autoApprove && { isApproved: false, approvedAt: null, approvedBy: null }),
+        ...(!autoApprove && {
+          isApproved: false,
+          approvedAt: null,
+          approvedBy: null,
+        }),
       },
     });
 
@@ -426,7 +487,7 @@ export async function updateFamilyMember(rawData: UpdateFamilyMemberInput) {
     };
   } catch (error: any) {
     console.error("Failed to update family member:", error);
-    return { success: false, error: error.message || "Something went wrong" };
+    return { success: false, error: sanitizeError(error) };
   }
 }
 
@@ -446,11 +507,12 @@ export async function deleteFamilyMember(memberId: string) {
     }
 
     // Only the person who added the node or admins can delete
-    const isOwner = member.addedByUserId === user.id || member.linkedUserId === user.id;
+    const isOwner =
+      member.addedByUserId === user.id || member.linkedUserId === user.id;
     if (!isOwner && !isAdmin(user.role)) {
       return {
         success: false,
-        error: "You can only delete members you added.",
+        error: "You can only delete members you added or your own profile.",
       };
     }
 
@@ -475,7 +537,7 @@ export async function deleteFamilyMember(memberId: string) {
     return { success: true, message: "Family member removed from the tree." };
   } catch (error: any) {
     console.error("Failed to delete family member:", error);
-    return { success: false, error: error.message || "Something went wrong" };
+    return { success: false, error: sanitizeError(error) };
   }
 }
 
@@ -547,7 +609,7 @@ export async function linkExistingParent(
     };
   } catch (error: any) {
     console.error("Failed to link existing parent:", error);
-    return { success: false, error: error.message || "Something went wrong" };
+    return { success: false, error: sanitizeError(error) };
   }
 }
 
@@ -582,7 +644,8 @@ export async function requestResidency(rawData: RequestResidencyInput) {
         to: adminEmail,
         subject: `Residency Verification Request - ${user.firstName} ${user.lastName}`,
         template: ResidencyRequestEmail({
-          userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
+          userName:
+            `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
           userEmail: adminEmail, // We don't have the user's email directly fetched in getAuthenticatedUser without modifying it, wait we can fetch it via Clerk or if it's in the DB.
           fatherName,
           motherName,
@@ -599,7 +662,7 @@ export async function requestResidency(rawData: RequestResidencyInput) {
     return { success: true };
   } catch (error: any) {
     console.error("Failed to request residency:", error);
-    return { success: false, error: error.message || "Something went wrong" };
+    return { success: false, error: sanitizeError(error) };
   }
 }
 
@@ -669,7 +732,7 @@ export async function approveResidencyRequest(targetUserId: string) {
     return { success: true };
   } catch (error: any) {
     console.error("Failed to approve residency:", error);
-    return { success: false, error: error.message || "Something went wrong" };
+    return { success: false, error: sanitizeError(error) };
   }
 }
 
@@ -715,6 +778,6 @@ export async function rejectResidencyRequest(targetUserId: string) {
     return { success: true };
   } catch (error: any) {
     console.error("Failed to reject residency:", error);
-    return { success: false, error: error.message || "Something went wrong" };
+    return { success: false, error: sanitizeError(error) };
   }
 }

@@ -73,9 +73,7 @@ export async function addComment(input: CreateCommentValues) {
     };
   } catch (error: unknown) {
     console.error("Error adding comment:", error);
-    const message =
-      error instanceof Error ? error.message : "Failed to add comment.";
-    return { success: false, error: message };
+    return { success: false, error: "Failed to add comment." };
   }
 }
 
@@ -179,7 +177,7 @@ export async function likeComment(commentId: string) {
     const user = await requireRole("MEMBER");
 
     const validated = LikeCommentSchema.parse({ commentId });
- 
+
     // Verify comment exists first
     const comment = await db.comment.findUnique({
       where: { id: validated.commentId },
@@ -190,21 +188,29 @@ export async function likeComment(commentId: string) {
       return { success: false, error: "Comment not found." };
     }
 
-    const existingLike = await db.like.findUnique({
-     where: { userId_commentId: { userId: user.id, commentId: validated.commentId } },
+    let liked = false;
+    await db.$transaction(async (tx) => {
+      const deleteResult = await tx.like.deleteMany({
+        where: {
+          userId: user.id,
+          commentId: validated.commentId,
+        },
+      });
+
+      if (deleteResult.count > 0) {
+        liked = false;
+      } else {
+        await tx.like.createMany({
+          data: [{ userId: user.id, commentId: validated.commentId }],
+          skipDuplicates: true,
+        });
+        liked = true;
+      }
     });
 
-    if (existingLike) {
-      await db.like.delete({ where: { id: existingLike.id } });
-     
-    } else {
-      await db.like.create({ data: { userId: user.id, commentId: validated.commentId } });
-    }
-
     revalidatePath(`/blog/${comment.post.slug}`);
-    
 
-    return { success: true, data: { liked: !existingLike } };
+    return { success: true, data: { liked } };
   } catch (error: unknown) {
     console.error("Error liking comment:", error);
     return { success: false, error: "Failed to toggle like." };

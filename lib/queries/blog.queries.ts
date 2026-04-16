@@ -20,8 +20,8 @@ export interface BlogPostListOptions {
 
 export async function getBlogPosts(options: BlogPostListOptions = {}) {
   const {
-    page = 1,
-    pageSize = 12,
+    page: rawPage = 1,
+    pageSize: rawPageSize = 12,
     status = "PUBLISHED",
     categorySlug,
     tagSlug,
@@ -29,6 +29,9 @@ export async function getBlogPosts(options: BlogPostListOptions = {}) {
     search,
     sortBy = "latest",
   } = options;
+
+  const page = Math.max(1, rawPage);
+  const pageSize = Math.max(1, rawPageSize);
 
   const where: Record<string, unknown> = { status };
 
@@ -219,7 +222,6 @@ export async function getUserBookmarks(userId: string) {
     orderBy: { createdAt: "desc" },
   });
 }
-
 
 // ─── Get related posts (same category, excluding current) ─────
 

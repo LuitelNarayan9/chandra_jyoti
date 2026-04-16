@@ -36,7 +36,8 @@ export async function uploadToS3(
 
   // MinIO public URL format (path style)
   const encodedKey = key.split("/").map(encodeURIComponent).join("/");
-  return `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_BUCKET_NAME}/${encodedKey}`;
+  const endpoint = process.env.MINIO_ENDPOINT!.replace(/\/+$/, "");
+  return `${endpoint}/${process.env.MINIO_BUCKET_NAME}/${encodedKey}`;
 }
 
 /**

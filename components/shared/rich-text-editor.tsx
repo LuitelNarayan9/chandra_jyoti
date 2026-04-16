@@ -52,13 +52,36 @@ function sanitizeHtml(html: string) {
     ]),
     allowedAttributes: {
       ...sanitizeHtmlLib.defaults.allowedAttributes,
-      "*": ["style", "class"],
+      "*": ["class"],
+      span: ["style"],
+      p: ["style"],
+      h1: ["style"],
+      h2: ["style"],
+      h3: ["style"],
       img: ["src", "alt", "title"],
       a: ["href", "target", "rel"],
       th: ["colspan", "rowspan", "colwidth"],
       td: ["colspan", "rowspan", "colwidth"],
       ul: ["data-type"],
       li: ["data-type", "data-checked"],
+    },
+    allowedStyles: {
+      span: {
+        color: [/^#[0-9a-fA-F]{3,6}$/, /^rgb\(/, /^inherit$/],
+        "background-color": [/^#[0-9a-fA-F]{3,6}$/, /^rgb\(/, /^transparent$/],
+      },
+      p: {
+        "text-align": [/^(left|center|right|justify)$/],
+      },
+      h1: {
+        "text-align": [/^(left|center|right|justify)$/],
+      },
+      h2: {
+        "text-align": [/^(left|center|right|justify)$/],
+      },
+      h3: {
+        "text-align": [/^(left|center|right|justify)$/],
+      },
     },
     allowedSchemes: ["http", "https", "mailto"],
   });
@@ -218,6 +241,7 @@ export function RichTextEditor({
   minHeight = 480,
 }: RichTextEditorProps) {
   const [linkUrl, setLinkUrl] = useState("");
+  const [linkError, setLinkError] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
@@ -262,7 +286,7 @@ export function RichTextEditor({
         Subscript,
         Superscript,
       ],
-      content: value || "",
+      content: sanitizeHtml(value || ""),
       editorProps: {
         attributes: {
           // ↓ "rte-editor" activates all shared styles from rte-styles.css
@@ -297,6 +321,7 @@ export function RichTextEditor({
     if (!editor) return;
     const prev = editor.getAttributes("link").href ?? "";
     setLinkUrl(prev);
+    setLinkError("");
     setLinkPopoverOpen(true);
   }, [editor]);
 
@@ -304,13 +329,17 @@ export function RichTextEditor({
     if (!editor) return;
     if (!linkUrl) {
       editor.chain().focus().unsetLink().run();
+      setLinkError("");
+      setLinkPopoverOpen(false);
+      setLinkUrl("");
+    } else if (isValidUrl(linkUrl)) {
+      editor.chain().focus().setLink({ href: linkUrl }).run();
+      setLinkError("");
+      setLinkPopoverOpen(false);
+      setLinkUrl("");
     } else {
-      if (isValidUrl(linkUrl)) {
-        editor.chain().focus().setLink({ href: linkUrl }).run();
-      }
+      setLinkError("Please enter a valid URL (http, https, or mailto).");
     }
-    setLinkPopoverOpen(false);
-    setLinkUrl("");
   }, [editor, linkUrl]);
 
   const removeLink = useCallback(() => {
@@ -749,11 +778,27 @@ export function RichTextEditor({
                 <Input
                   placeholder="https://example.com"
                   value={linkUrl}
-                  onChange={(e) => setLinkUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && applyLink()}
-                  className="rounded-lg text-sm h-8"
+                  onChange={(e) => {
+                    setLinkUrl(e.target.value);
+                    if (linkError) setLinkError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      applyLink();
+                    }
+                  }}
+                  className={cn(
+                    "rounded-lg text-sm h-8",
+                    linkError && "border-red-500 focus-visible:ring-red-500"
+                  )}
                   autoFocus
                 />
+                {linkError && (
+                  <p className="text-[11px] text-red-500 font-medium">
+                    {linkError}
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <Button
                     size="sm"
