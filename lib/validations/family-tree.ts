@@ -102,3 +102,17 @@ export const updateFamilyMemberSchema = z.object({
 });
 
 export type UpdateFamilyMemberInput = z.infer<typeof updateFamilyMemberSchema>;
+
+// ========================================
+// Request Residency Access
+// ========================================
+
+export const requestResidencySchema = z.object({
+  fatherName: z.string().min(2, "Father's name is required"),
+  motherName: z.string().min(2, "Mother's name is required"),
+  acknowledgement: z.literal(true, {
+    message: "You must acknowledge the guidelines.",
+  }),
+});
+
+export type RequestResidencyInput = z.infer<typeof requestResidencySchema>;

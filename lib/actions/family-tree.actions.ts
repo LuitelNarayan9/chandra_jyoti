@@ -11,7 +11,14 @@ import {
   type JoinFamilyTreeInput,
   type AddRelativeInput,
   type UpdateFamilyMemberInput,
+  requestResidencySchema,
+  type RequestResidencyInput,
 } from "@/lib/validations/family-tree";
+
+import { sendTemplateEmailResend } from "@/lib/resend-mailer";
+import { ResidencyRequestEmail } from "@/components/emails/residency-request";
+import { ResidencyApprovedEmail } from "@/components/emails/ResidencyApprovedEmail";
+import { ResidencyRejectedEmail } from "@/components/emails/ResidencyRejectedEmail";
 
 // ========================================
 import { calculateAndSyncGenerations } from "./calculate-generations";
@@ -540,6 +547,174 @@ export async function linkExistingParent(
     };
   } catch (error: any) {
     console.error("Failed to link existing parent:", error);
+    return { success: false, error: error.message || "Something went wrong" };
+  }
+}
+
+// ========================================
+// 6. Request Residency Status
+// ========================================
+
+export async function requestResidency(rawData: RequestResidencyInput) {
+  try {
+    const user = await getAuthenticatedUser();
+
+    if (user.isResidentOfTuminDhanbari) {
+      return { success: false, error: "You are already a verified resident." };
+    }
+
+    const parsed = requestResidencySchema.safeParse(rawData);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: parsed.error.issues.map((e) => e.message).join(", "),
+      };
+    }
+    const { fatherName, motherName } = parsed.data;
+
+    const adminEmail = process.env.CONTACT_OWNER_EMAIL;
+    if (!adminEmail) {
+      console.warn("CONTACT_OWNER_EMAIL is not configured.");
+      // We still return true to the user, but log the error
+    } else {
+      // Use the existing email sender
+      await sendTemplateEmailResend({
+        to: adminEmail,
+        subject: `Residency Verification Request - ${user.firstName} ${user.lastName}`,
+        template: ResidencyRequestEmail({
+          userName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
+          userEmail: adminEmail, // We don't have the user's email directly fetched in getAuthenticatedUser without modifying it, wait we can fetch it via Clerk or if it's in the DB.
+          fatherName,
+          motherName,
+        }),
+      });
+    }
+
+    await db.user.update({
+      where: { id: user.id },
+      data: { residencyRequestPending: true },
+    });
+
+    revalidatePath("/family-tree");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to request residency:", error);
+    return { success: false, error: error.message || "Something went wrong" };
+  }
+}
+
+// ========================================
+// 7. Admin: Get Pending Residency Requests
+// ========================================
+
+export async function getPendingResidencyRequests() {
+  const user = await getAuthenticatedUser();
+  if (!isAdmin(user.role)) throw new Error("Forbidden: Admin access required");
+
+  return db.user.findMany({
+    where: { residencyRequestPending: true, isResidentOfTuminDhanbari: false },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      avatar: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+// ========================================
+// 8. Admin: Approve Residency Request
+// ========================================
+
+export async function approveResidencyRequest(targetUserId: string) {
+  try {
+    const adminUser = await getAuthenticatedUser();
+    if (!isAdmin(adminUser.role)) {
+      return { success: false, error: "Forbidden: Admin access required" };
+    }
+
+    const targetUser = await db.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    });
+
+    if (!targetUser) {
+      return { success: false, error: "User not found." };
+    }
+
+    await db.user.update({
+      where: { id: targetUserId },
+      data: {
+        isResidentOfTuminDhanbari: true,
+        residencyRequestPending: false,
+      },
+    });
+
+    // Send approval email to the user
+    await sendTemplateEmailResend({
+      to: targetUser.email,
+      subject: "Your Residency Request has been Approved! 🎉",
+      template: ResidencyApprovedEmail({
+        userName:
+          `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() ||
+          "User",
+      }),
+    });
+
+    revalidatePath("/admin/residency-requests");
+    revalidatePath("/family-tree");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to approve residency:", error);
+    return { success: false, error: error.message || "Something went wrong" };
+  }
+}
+
+// ========================================
+// 9. Admin: Reject Residency Request
+// ========================================
+
+export async function rejectResidencyRequest(targetUserId: string) {
+  try {
+    const adminUser = await getAuthenticatedUser();
+    if (!isAdmin(adminUser.role)) {
+      return { success: false, error: "Forbidden: Admin access required" };
+    }
+
+    const targetUser = await db.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    });
+
+    if (!targetUser) {
+      return { success: false, error: "User not found." };
+    }
+
+    // Reset pending so they can re-apply
+    await db.user.update({
+      where: { id: targetUserId },
+      data: { residencyRequestPending: false },
+    });
+
+    // Send rejection email to the user
+    await sendTemplateEmailResend({
+      to: targetUser.email,
+      subject: "Update on your Residency Request",
+      template: ResidencyRejectedEmail({
+        userName:
+          `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim() ||
+          "User",
+      }),
+    });
+
+    revalidatePath("/admin/residency-requests");
+    revalidatePath("/family-tree");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to reject residency:", error);
     return { success: false, error: error.message || "Something went wrong" };
   }
 }

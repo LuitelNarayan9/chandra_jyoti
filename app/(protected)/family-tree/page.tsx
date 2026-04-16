@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ResidentVerification } from "@/components/family-tree/resident-verification";
 import { FamilyTreeView } from "@/components/family-tree/family-tree-view";
 import {
   getGlobalFamilyTree,
@@ -25,17 +26,24 @@ async function FamilyTreeContent() {
     isInTree: false,
     isAdmin: false,
     internalUserId: null as string | null,
+    requestPending: false,
   };
 
   if (userId) {
     const internalUser = await db.user.findUnique({
       where: { clerkId: userId },
-      select: { id: true, role: true, isResidentOfTuminDhanbari: true },
+      select: {
+        id: true,
+        role: true,
+        isResidentOfTuminDhanbari: true,
+        residencyRequestPending: true,
+      },
     });
 
     if (internalUser) {
       userState.internalUserId = internalUser.id;
       userState.isResident = internalUser.isResidentOfTuminDhanbari;
+      userState.requestPending = internalUser.residencyRequestPending;
       userState.isAdmin =
         internalUser.role === "ADMIN" || internalUser.role === "SUPER_ADMIN";
 
@@ -47,6 +55,14 @@ async function FamilyTreeContent() {
     }
   }
 
+  // ENFORCEMENT GATE: If not a resident and not an admin, block access and show verification UI
+  if (!userState.isResident && !userState.isAdmin) {
+    return (
+      <ResidentVerification initiallyRequested={userState.requestPending} />
+    );
+  }
+
+  // ONLY query the heavy tree data if they passed the gate
   const [{ nodes, edges }, clans, generationRange] = await Promise.all([
     getGlobalFamilyTree(),
     getUniqueFamilyClans(),
