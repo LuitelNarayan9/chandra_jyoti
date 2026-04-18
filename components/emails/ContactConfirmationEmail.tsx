@@ -8,7 +8,7 @@ import {
   Text,
   Hr,
   Preview,
-} from "@react-email/components";
+} from "react-email";
 
 interface ContactConfirmationEmailProps {
   name: string;

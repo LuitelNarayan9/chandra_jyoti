@@ -175,7 +175,6 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
           </div>
         </div>
       </div>
-
       {/* ── Navbar ─────────────────────────────────────── */}
       <header
         className={cn(
@@ -390,18 +389,15 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
           <div className="relative group pl-3 flex items-center">
             <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
             <UserButton
-              afterSignOutUrl="/"
               appearance={{
                 elements: {
                   avatarBox:
                     "h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-border hover:ring-indigo-500/40 transition-all duration-200",
                 },
-              }}
-            />
+              }} />
           </div>
         </div>
       </header>
-
       {/* Spacer */}
       <div className="h-[60px] sm:h-[68px]" />
     </>

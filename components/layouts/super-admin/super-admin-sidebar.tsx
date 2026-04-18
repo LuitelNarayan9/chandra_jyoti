@@ -138,7 +138,6 @@ export function SuperAdminSidebar() {
         </span>
         <div className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse shrink-0" />
       </div>
-
       {/* ── Nav ─────────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-none">
         {superAdminNavSections.map((section, sIdx) => (
@@ -192,7 +191,7 @@ export function SuperAdminSidebar() {
                   <div key={item.href}>
                     {hasChildren ? (
                       // Split row: Link navigates, chevron toggles submenu
-                      <div className={cn(rowClass, "pr-1")}>
+                      (<div className={cn(rowClass, "pr-1")}>
                         {isActive && !collapsed && (
                           <span
                             className={cn(
@@ -227,7 +226,7 @@ export function SuperAdminSidebar() {
                             />
                           </button>
                         )}
-                      </div>
+                      </div>)
                     ) : (
                       <Link href={item.href} className={rowClass}>
                         {isActive && !collapsed && (
@@ -306,7 +305,6 @@ export function SuperAdminSidebar() {
           </div>
         ))}
       </nav>
-
       {/* ── CTA card ─────────────────────────────────────────────────── */}
       <div
         className={cn(
@@ -335,7 +333,6 @@ export function SuperAdminSidebar() {
           </div>
         </div>
       </div>
-
       {/* ── Profile footer — bottom of sidebar ───────────────────────── */}
       <div
         className={cn(

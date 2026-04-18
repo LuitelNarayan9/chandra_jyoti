@@ -175,7 +175,7 @@ export function MemberSidebar() {
                   <div key={item.href}>
                     {hasChildren ? (
                       // Split row: Link navigates, chevron toggles submenu
-                      <div className={cn(rowClass, "pr-1")}>
+                      (<div className={cn(rowClass, "pr-1")}>
                         {isActive && !collapsed && (
                           <span
                             className={cn(
@@ -210,7 +210,7 @@ export function MemberSidebar() {
                             />
                           </button>
                         )}
-                      </div>
+                      </div>)
                     ) : (
                       <Link href={item.href} className={rowClass}>
                         {isActive && !collapsed && (
@@ -277,7 +277,6 @@ export function MemberSidebar() {
           </div>
         ))}
       </nav>
-
       {/* ── CTA card ─────────────────────────────────────────────────── */}
       <div
         className={cn(
@@ -306,7 +305,6 @@ export function MemberSidebar() {
           </div>
         </div>
       </div>
-
       {/* ── Profile footer — bottom of sidebar ───────────────────────── */}
       <div
         className={cn(

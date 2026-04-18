@@ -3,7 +3,7 @@ import { SendMailClient } from "zeptomail";
 const url = process.env.ZEPTOMAIL_API_URL!;
 const token = process.env.ZEPTOMAIL_TOKEN!;
 
-import { render } from "@react-email/components";
+import { render } from "react-email";
 
 export const mailClient = new SendMailClient({ url, token });
 
@@ -19,7 +19,7 @@ export async function sendTemplateEmail({
 }) {
   try {
     const htmlString = await render(template);
-    
+
     await mailClient.sendMail({
       from: {
         address: process.env.ZEPTOMAIL_FROM_EMAIL!,
@@ -36,7 +36,7 @@ export async function sendTemplateEmail({
       subject: subject,
       htmlbody: htmlString,
     });
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to send template email via ZeptoMail:", error);

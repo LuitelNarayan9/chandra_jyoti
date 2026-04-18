@@ -169,7 +169,7 @@ export function AdminMobileSidebar() {
                     <div key={item.href}>
                       {hasChildren ? (
                         // Split row: Link navigates, chevron toggles submenu
-                        <div className={cn(rowClass, "pr-1")}>
+                        (<div className={cn(rowClass, "pr-1")}>
                           {isActive && (
                             <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-l-full bg-gradient-to-b from-amber-400 to-orange-500" />
                           )}
@@ -196,7 +196,7 @@ export function AdminMobileSidebar() {
                               )}
                             />
                           </button>
-                        </div>
+                        </div>)
                       ) : (
                         <Link
                           href={item.href}

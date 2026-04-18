@@ -160,7 +160,6 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
           </div>
         </div>
       </div>
-
       {/* ── Navbar ─────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 flex h-[60px] sm:h-[68px] items-center border-b border-amber-500/[0.08] bg-background/90 backdrop-blur-2xl px-3 sm:px-5 md:px-8">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/[0.04] via-transparent to-orange-500/[0.025]" />
@@ -361,19 +360,16 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
             <div className="relative group flex items-center pl-3">
               <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-amber-400/20 to-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
               <UserButton
-                afterSignOutUrl="/"
                 appearance={{
                   elements: {
                     avatarBox:
                       "h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-border hover:ring-amber-500/40 transition-all duration-200",
                   },
-                }}
-              />
+                }} />
             </div>
           </div>
         </TooltipProvider>
       </header>
-
       {/* Spacer matching navbar height */}
       <div className="h-[60px] sm:h-[68px]" />
     </>

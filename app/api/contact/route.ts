@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { mailClient } from "@/lib/mailer";
-import { render } from "@react-email/render";
+import { render } from "react-email";
 import { ContactNotificationEmail } from "@/components/emails/ContactNotificationEmail";
 import { ContactConfirmationEmail } from "@/components/emails/ContactConfirmationEmail";
 import { resend } from "@/lib/resend-mailer";

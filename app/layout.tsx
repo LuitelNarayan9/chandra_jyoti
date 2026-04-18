@@ -33,10 +33,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${outfit.variable} ${inter.variable} font-(family-name:--font-inter) antialiased`}
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${outfit.variable} ${inter.variable} font-(family-name:--font-inter) antialiased`}
+      >
+        <ClerkProvider
+          afterSignOutUrl="/home"
+          appearance={{
+            options: {
+              showOptionalFields: true,
+            },
+          }}
         >
           <ThemeProvider
             attribute="class"
@@ -48,8 +55,8 @@ export default function RootLayout({
             <Toaster richColors position="bottom-right" />
             <AuthToast />
           </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

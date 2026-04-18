@@ -4,13 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs";
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -88,7 +82,7 @@ export function PublicNavbar() {
           {/* Visual divider */}
           <div className="h-5 w-px bg-stone-200 dark:bg-stone-700" />
 
-          <SignedOut>
+          <Show when="signed-out">
             <SignInButton>
               <Button
                 variant="ghost"
@@ -106,9 +100,9 @@ export function PublicNavbar() {
                 Register
               </Button>
             </SignUpButton>
-          </SignedOut>
+          </Show>
 
-          <SignedIn>
+          <Show when="signed-in">
             <Button
               variant="ghost"
               size="sm"
@@ -118,7 +112,7 @@ export function PublicNavbar() {
               <Link href="/home">Dashboard</Link>
             </Button>
             <UserButton />
-          </SignedIn>
+          </Show>
         </div>
 
         {/* ─── MOBILE: Theme toggle + Hamburger ────────────── */}
@@ -171,7 +165,7 @@ export function PublicNavbar() {
 
               {/* Auth buttons pinned to bottom */}
               <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-stone-100 dark:border-stone-900 flex flex-col gap-2 bg-stone-50 dark:bg-stone-950">
-                <SignedOut>
+                <Show when="signed-out">
                   <SignInButton>
                     <Button
                       variant="outline"
@@ -189,9 +183,9 @@ export function PublicNavbar() {
                       Register
                     </Button>
                   </SignUpButton>
-                </SignedOut>
+                </Show>
 
-                <SignedIn>
+                <Show when="signed-in">
                   <Button
                     variant="outline"
                     className="w-full rounded-full"
@@ -204,7 +198,7 @@ export function PublicNavbar() {
                   <div className="flex justify-center pt-1">
                     <UserButton />
                   </div>
-                </SignedIn>
+                </Show>
               </div>
             </SheetContent>
           </Sheet>
