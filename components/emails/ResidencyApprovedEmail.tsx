@@ -23,26 +23,22 @@ export const ResidencyApprovedEmail = ({
       <Body style={main}>
         <Container style={container}>
           <Heading style={h1}>Request Approved! 🎉</Heading>
-          
+
+          <Text style={text}>Hello {userName},</Text>
+
           <Text style={text}>
-            Hello {userName},
-          </Text>
-          
-          <Text style={text}>
-            Great news! The administrator of Chandra Jyoti Dhanbari has reviewed and <strong>approved</strong> your residency request.
-          </Text>
-          
-          <Text style={text}>
-            You now have full access to view, explore, and add members to the village's interactive Family Tree. 
+            Great news! The administrator of Chandra Jyoti Dhanbari has reviewed
+            and <strong>approved</strong> your residency request.
           </Text>
 
           <Text style={text}>
-            Log into your account to check it out!
+            You now have full access to view, explore, and add members to the
+            village's interactive Family Tree.
           </Text>
 
-          <Text style={footer}>
-            — The Chandra Jyoti Dhanbari Team
-          </Text>
+          <Text style={text}>Log into your account to check it out!</Text>
+
+          <Text style={footer}>— Chandra Jyoti Dhanbari Team</Text>
         </Container>
       </Body>
     </Html>

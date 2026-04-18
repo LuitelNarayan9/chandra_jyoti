@@ -59,6 +59,32 @@ interface EditMemberFormProps {
   member: TreeNode;
 }
 
+function getMemberDefaultValues(member: TreeNode): UpdateFamilyMemberInput {
+  return {
+    memberId: member.id,
+    firstName: member.firstName || "",
+    lastName: member.lastName || "",
+    gender: member.gender as "MALE" | "FEMALE" | "OTHER",
+    dateOfBirth: member.dateOfBirth
+      ? format(new Date(member.dateOfBirth), "yyyy-MM-dd")
+      : "",
+    dateOfDeath: member.dateOfDeath
+      ? format(new Date(member.dateOfDeath), "yyyy-MM-dd")
+      : "",
+    familyClan: member.familyClan || "",
+    bio: member.bio || "",
+    maritalStatus:
+      (member.maritalStatus as
+        | "SINGLE"
+        | "MARRIED"
+        | "DIVORCED"
+        | "WIDOWED") || "SINGLE",
+    bloodGroup: member.bloodGroup || "",
+    profession: member.profession || "",
+    isAlive: member.isAlive !== false,
+  };
+}
+
 export function EditMemberForm({
   open,
   onOpenChange,
@@ -69,57 +95,14 @@ export function EditMemberForm({
 
   const form = useForm<UpdateFamilyMemberInput>({
     resolver: zodResolver(updateFamilyMemberSchema),
-    defaultValues: {
-      memberId: member.id,
-      firstName: member.firstName || "",
-      lastName: member.lastName || "",
-      gender: member.gender as "MALE" | "FEMALE" | "OTHER",
-      dateOfBirth: member.dateOfBirth
-        ? format(new Date(member.dateOfBirth), "yyyy-MM-dd")
-        : "",
-      dateOfDeath: member.dateOfDeath
-        ? format(new Date(member.dateOfDeath), "yyyy-MM-dd")
-        : "",
-      familyClan: member.familyClan || "",
-      bio: member.bio || "",
-      maritalStatus:
-        (member.maritalStatus as
-          | "SINGLE"
-          | "MARRIED"
-          | "DIVORCED"
-          | "WIDOWED") || "SINGLE",
-      bloodGroup: member.bloodGroup || "",
-      profession: member.profession || "",
-      isAlive: member.isAlive !== false,
-    },
+    defaultValues: getMemberDefaultValues(member),
   });
 
   // Ensure form values stay perfectly synchronized if the member prop changes while mounted
   useEffect(() => {
-    form.reset({
-      memberId: member.id,
-      firstName: member.firstName || "",
-      lastName: member.lastName || "",
-      gender: member.gender as "MALE" | "FEMALE" | "OTHER",
-      dateOfBirth: member.dateOfBirth
-        ? format(new Date(member.dateOfBirth), "yyyy-MM-dd")
-        : "",
-      dateOfDeath: member.dateOfDeath
-        ? format(new Date(member.dateOfDeath), "yyyy-MM-dd")
-        : "",
-      familyClan: member.familyClan || "",
-      bio: member.bio || "",
-      maritalStatus:
-        (member.maritalStatus as
-          | "SINGLE"
-          | "MARRIED"
-          | "DIVORCED"
-          | "WIDOWED") || "SINGLE",
-      bloodGroup: member.bloodGroup || "",
-      profession: member.profession || "",
-      isAlive: member.isAlive !== false,
-    });
-  }, [member, form]);
+    form.reset(getMemberDefaultValues(member));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member.id, form]);
 
   const watchIsAlive = form.watch("isAlive");
 

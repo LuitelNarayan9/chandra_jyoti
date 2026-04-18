@@ -3,8 +3,9 @@ import { ResidencyRequestsTable } from "@/components/admin/residency-requests-ta
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { Metadata } from "next";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Residency Requests — Admin",
   description: "Review and manage pending village residency requests.",
 };

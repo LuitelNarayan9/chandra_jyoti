@@ -32,7 +32,11 @@ import {
 } from "@/lib/validations/family-tree";
 import { requestResidency } from "@/lib/actions/family-tree.actions";
 
-export function ResidentVerification({ initiallyRequested = false }: { initiallyRequested?: boolean }) {
+export function ResidentVerification({
+  initiallyRequested = false,
+}: {
+  initiallyRequested?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(initiallyRequested);
@@ -52,12 +56,14 @@ export function ResidentVerification({ initiallyRequested = false }: { initially
       const result = await requestResidency(data);
       if (result.success) {
         toast.success("Residency request submitted successfully.");
+        form.reset();
         setIsSubmitted(true);
         setIsOpen(false);
       } else {
         toast.error(result.error || "Failed to submit request.");
       }
     } catch (error) {
+      console.log("Residency request failed: ", error);
       toast.error("Something went wrong.");
     } finally {
       setIsPending(false);
@@ -97,8 +103,8 @@ export function ResidentVerification({ initiallyRequested = false }: { initially
                   <DialogHeader>
                     <DialogTitle>Request Residency Status</DialogTitle>
                     <DialogDescription>
-                      Please provide your parents' names to help the admins verify
-                      your connection to the village.
+                      Please provide your parents' names to help the admins
+                      verify your connection to the village.
                     </DialogDescription>
                   </DialogHeader>
 
@@ -114,7 +120,10 @@ export function ResidentVerification({ initiallyRequested = false }: { initially
                           <FormItem>
                             <FormLabel>Father's Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g. Ram Kumar Luitel" {...field} />
+                              <Input
+                                placeholder="e.g. Ram Kumar Luitel"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -128,7 +137,10 @@ export function ResidentVerification({ initiallyRequested = false }: { initially
                           <FormItem>
                             <FormLabel>Mother's Name</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g. Sita Devi Luitel" {...field} />
+                              <Input
+                                placeholder="e.g. Sita Devi Luitel"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -139,19 +151,25 @@ export function ResidentVerification({ initiallyRequested = false }: { initially
                         control={form.control}
                         name="acknowledgement"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-4 border rounded-md bg-muted/30">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel className="text-sm font-medium leading-snug">
-                                I confirm that I am a true resident of Tumin Dhanbari village and the provided parental details are accurate. I understand that submitting fraudulent claims violates community guidelines.
-                              </FormLabel>
+                          <FormItem className="p-4 border rounded-md bg-muted/30">
+                            <div className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel className="text-sm font-medium leading-snug">
+                                  I confirm that I am a true resident of Tumin
+                                  Dhanbari village and the provided parental
+                                  details are accurate. I understand that
+                                  submitting fraudulent claims violates community
+                                  guidelines.
+                                </FormLabel>
+                              </div>
                             </div>
-                            <FormMessage className="col-span-2 block" />
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -187,7 +205,10 @@ export function ResidentVerification({ initiallyRequested = false }: { initially
                 Request Sent Successfully
               </h2>
               <p className="text-muted-foreground text-center text-lg leading-relaxed max-w-md mx-auto">
-                Thank you for your request. The admin will verify and approve your request within <strong>12-24 hours</strong>. After approval, you will be able to view all village family trees and create your own.
+                Thank you for your request. The admin will verify and approve
+                your request within <strong>12-24 hours</strong>. After
+                approval, you will be able to view all village family trees and
+                create your own.
               </p>
             </div>
           )}

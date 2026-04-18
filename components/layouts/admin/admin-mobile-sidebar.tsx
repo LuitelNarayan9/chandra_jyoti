@@ -82,7 +82,10 @@ export function AdminMobileSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState<ExpandMap>(() => {
+  const [expanded, setExpanded] = useState<ExpandMap>({});
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  if (pathname !== prevPathname) {
     const init: ExpandMap = {};
     adminNavSections.forEach((sec) => {
       sec.items.forEach((item) => {
@@ -91,8 +94,10 @@ export function AdminMobileSidebar() {
         }
       });
     });
-    return init;
-  });
+    setPrevPathname(pathname);
+    setExpanded((prev) => ({ ...prev, ...init }));
+  }
+
   const toggleExpand = useCallback(
     (href: string) => setExpanded((p) => ({ ...p, [href]: !p[href] })),
     []

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart3,
@@ -66,29 +66,36 @@ export function PollCreator({ value, onChange }: PollCreatorProps) {
     { id: string; text: string }[]
   >(() => poll.options.map((text) => ({ id: crypto.randomUUID(), text })));
 
-  useEffect(() => {
-    setInternalOptions((prev) => {
-      // If parent strings exactly match our internal text strings, preserve IDs
-      if (
-        prev.length === poll.options.length &&
-        prev.every((opt, i) => opt.text === poll.options[i])
-      ) {
-        return prev;
-      }
-      // If it's an external reset to initial state, regenerate fresh pairs
-      if (poll.options.length === 2 && poll.options.every((o) => o === "")) {
-        return [
-          { id: crypto.randomUUID(), text: "" },
-          { id: crypto.randomUUID(), text: "" },
-        ];
-      }
-      // Otherwise, sync the latest text to our IDs or create new ones
-      return poll.options.map((text, i) => {
-        if (prev[i]) return { ...prev[i], text };
-        return { id: crypto.randomUUID(), text };
+  // Strict React 19: update state during render to avoid useEffect double-render flashes
+  const [prevValue, setPrevValue] = useState(value);
+
+  if (value !== prevValue) {
+    setPrevValue(value);
+    
+    if (value) {
+      setInternalOptions((prev) => {
+        // If parent strings exactly match our internal text strings, preserve IDs
+        if (
+          prev.length === value.options.length &&
+          prev.every((opt, i) => opt.text === value.options[i])
+        ) {
+          return prev;
+        }
+        // If it's an external reset to initial state, regenerate fresh pairs
+        if (value.options.length === 2 && value.options.every((o) => o === "")) {
+          return [
+            { id: crypto.randomUUID(), text: "" },
+            { id: crypto.randomUUID(), text: "" },
+          ];
+        }
+        // Otherwise, sync the latest text to our IDs or create new ones
+        return value.options.map((text, i) => {
+          if (prev[i]) return { ...prev[i], text };
+          return { id: crypto.randomUUID(), text };
+        });
       });
-    });
-  }, [poll.options]);
+    }
+  }
 
   const toggleOpen = () => {
     if (isOpen) {

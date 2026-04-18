@@ -187,22 +187,35 @@ function buildTimeline(
     });
   }
 
-  // Sort marriage events chronologically and pair with spouses by index
+  // Sort life events chronologically so marriages pair with spouses correctly
+  const sortedEvts = [...evts].sort((a, b) => {
+    const timeA = a.date ? new Date(a.date).getTime() : 0;
+    const timeB = b.date ? new Date(b.date).getTime() : 0;
+    return timeA - timeB;
+  });
+
   let marriageIdx = 0;
 
   // Life events
-  for (const e of evts) {
+  for (const e of sortedEvts) {
     const loc = e.location ? ` • ${e.location}` : "";
     let person: TLEvent["person"] = null;
+
     if (e.type === "MARRIAGE" && spouses.length > 0) {
-      const sp = spouses[marriageIdx] ?? spouses[0];
+      const sp = spouses[marriageIdx];
+      if (sp) {
+        person = {
+          id: sp.id,
+          name: `${sp.firstName} ${sp.lastName}`,
+          years: yrRange(sp.dateOfBirth, sp.dateOfDeath, sp.isAlive),
+          initials: ini(sp.firstName, sp.lastName),
+        };
+      } else {
+        console.warn(
+          `Marriage event without matching spouse at index ${marriageIdx}`
+        );
+      }
       marriageIdx++;
-      person = {
-        id: sp.id,
-        name: `${sp.firstName} ${sp.lastName}`,
-        years: yrRange(sp.dateOfBirth, sp.dateOfDeath, sp.isAlive),
-        initials: ini(sp.firstName, sp.lastName),
-      };
     }
     out.push({
       year: yr(e.date),

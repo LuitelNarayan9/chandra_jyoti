@@ -198,7 +198,6 @@ const messageBox: React.CSSProperties = {
   margin: "0",
   lineHeight: "1.6",
   border: "1px solid #eeeeee",
-  borderLeftWidth: "4px",
 };
 
 const footer: React.CSSProperties = {

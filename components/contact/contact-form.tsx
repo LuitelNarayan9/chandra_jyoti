@@ -136,8 +136,9 @@ export function ContactForm() {
                   <FormLabel>Phone Number (Optional)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="+91 123 456 7890"
                       type="tel"
+                      autoComplete="tel"
                       {...field}
                       className="bg-stone-50/50 dark:bg-stone-950/50"
                     />

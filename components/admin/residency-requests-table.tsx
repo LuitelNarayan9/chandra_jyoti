@@ -13,6 +13,17 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -145,7 +156,7 @@ function RequestRow({
       <TableCell>
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={request.avatar || ""} alt={fullName} />
+            {request.avatar && <AvatarImage src={request.avatar} alt={fullName} />}
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <span className="font-medium">{fullName}</span>
@@ -153,7 +164,7 @@ function RequestRow({
       </TableCell>
       <TableCell className="text-muted-foreground">{request.email}</TableCell>
       <TableCell className="text-muted-foreground text-sm">
-        {new Date(request.createdAt).toLocaleDateString("en-US", {
+        {new Date(request.createdAt).toLocaleDateString(undefined, {
           month: "short",
           day: "numeric",
           year: "numeric",
@@ -161,20 +172,37 @@ function RequestRow({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-800"
-            onClick={handleReject}
-            disabled={isLoading}
-          >
-            {rejecting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <XCircle className="h-4 w-4 mr-1" />
-            )}
-            Reject
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-800"
+                disabled={isLoading}
+              >
+                {rejecting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4 mr-1" />
+                )}
+                Reject
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reject Residency Request</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to reject the residency request for <strong>{fullName}</strong>? This action cannot be undone, though they can apply again later.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleReject} className="bg-red-600 text-white hover:bg-red-700">
+                  Yes, Reject
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             size="sm"
             className="bg-green-600 hover:bg-green-700 text-white"

@@ -81,6 +81,9 @@ export function ManagePollsDashboard({
       } else {
         toast.error(res.error);
       }
+    } catch (error) {
+      console.log("Failed to publish poll, ", error);
+      toast.error("Failed to publish poll");
     } finally {
       removePending(pollId);
     }

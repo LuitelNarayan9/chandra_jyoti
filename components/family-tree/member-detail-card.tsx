@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   HeartPulse,
   HeartOff,
@@ -28,6 +29,7 @@ export function MemberDetailCard({
   onClose,
   onNavigateToMember,
 }: MemberDetailCardProps) {
+  const router = useRouter();
   const colors = getNodeColor(member.gender, member.isAlive);
 
   /* ── Derive full relations from allNodes ── */
@@ -225,7 +227,7 @@ export function MemberDetailCard({
         <div className="absolute top-3.5 right-3.5 flex items-center gap-2 z-20">
           <button
             onClick={() => {
-              window.location.href = `/profile/${member.id}`;
+              router.push(`/profile/${member.id}`);
             }}
             className="h-9 w-9 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all duration-300 shadow-lg shadow-black/10 hover:scale-105 border border-white/20"
             title="View full profile"
@@ -340,11 +342,46 @@ export function MemberDetailCard({
 
       {/* ─── Related Members ─── */}
       <div className="px-6 mt-5 grid grid-cols-2 gap-2">
-        {relations.fathers.map(p => <RelatedMemberRow key={p.id} node={p} relation="Father" onNavigate={onNavigateToMember} />)}
-        {relations.mothers.map(p => <RelatedMemberRow key={p.id} node={p} relation="Mother" onNavigate={onNavigateToMember} />)}
-        {relations.spouses.map(s => <RelatedMemberRow key={s.id} node={s} relation="Spouse" onNavigate={onNavigateToMember} />)}
-        {relations.siblings.map(s => <RelatedMemberRow key={s.id} node={s} relation="Sibling" onNavigate={onNavigateToMember} />)}
-        {relations.children.map(c => <RelatedMemberRow key={c.id} node={c} relation="Child" onNavigate={onNavigateToMember} />)}
+        {relations.fathers.map((p) => (
+          <RelatedMemberRow
+            key={p.id}
+            node={p}
+            relation="Father"
+            onNavigate={onNavigateToMember}
+          />
+        ))}
+        {relations.mothers.map((p) => (
+          <RelatedMemberRow
+            key={p.id}
+            node={p}
+            relation="Mother"
+            onNavigate={onNavigateToMember}
+          />
+        ))}
+        {relations.spouses.map((s) => (
+          <RelatedMemberRow
+            key={s.id}
+            node={s}
+            relation="Spouse"
+            onNavigate={onNavigateToMember}
+          />
+        ))}
+        {relations.siblings.map((s) => (
+          <RelatedMemberRow
+            key={s.id}
+            node={s}
+            relation="Sibling"
+            onNavigate={onNavigateToMember}
+          />
+        ))}
+        {relations.children.map((c) => (
+          <RelatedMemberRow
+            key={c.id}
+            node={c}
+            relation="Child"
+            onNavigate={onNavigateToMember}
+          />
+        ))}
       </div>
 
       {/* ─── Bio ─── */}
@@ -383,8 +420,16 @@ export function MemberDetailCard({
 
         <BottomPill
           label={member.isAlive ? "Living" : "Deceased"}
-          colorClass={member.isAlive ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}
-          bgClass={member.isAlive ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-zinc-100 dark:bg-zinc-800/50"}
+          colorClass={
+            member.isAlive
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-zinc-500 dark:text-zinc-400"
+          }
+          bgClass={
+            member.isAlive
+              ? "bg-emerald-100 dark:bg-emerald-900/30"
+              : "bg-zinc-100 dark:bg-zinc-800/50"
+          }
         >
           {member.isAlive ? (
             <HeartPulse className="h-4 w-4" />
@@ -404,9 +449,9 @@ export function MemberDetailCard({
         )}
 
         {member.familyClan && (
-          <BottomPill 
-            label={member.familyClan} 
-            colorClass="text-violet-600 dark:text-violet-400" 
+          <BottomPill
+            label={member.familyClan}
+            colorClass="text-violet-600 dark:text-violet-400"
             bgClass="bg-violet-100 dark:bg-violet-900/30"
           >
             <Shield className="h-4 w-4" />
@@ -419,22 +464,37 @@ export function MemberDetailCard({
 
 /* ── Sub-components ── */
 
-function RelatedMemberRow({ node, relation, onNavigate }: { node: TreeNode; relation: string; onNavigate: (id: string) => void }) {
+function RelatedMemberRow({
+  node,
+  relation,
+  onNavigate,
+}: {
+  node: TreeNode;
+  relation: string;
+  onNavigate: (id: string) => void;
+}) {
   const c = getNodeColor(node.gender, node.isAlive);
   return (
     <button
       onClick={() => onNavigate(node.id)}
+      aria-label={`View ${node.name}, ${relation}`}
       className="flex items-center gap-2 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-zinc-100 dark:border-zinc-700/50 text-left"
     >
       <div
         className="h-8 w-8 rounded-md flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-        style={{ background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})` }}
+        style={{
+          background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})`,
+        }}
       >
         {getInitials(node.firstName, node.lastName)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-bold text-zinc-900 dark:text-zinc-100 truncate">{node.name}</p>
-        <p className="text-[9px] text-zinc-500 uppercase tracking-wider">{relation}</p>
+        <p className="text-[11px] font-bold text-zinc-900 dark:text-zinc-100 truncate">
+          {node.name}
+        </p>
+        <p className="text-[9px] text-zinc-500 uppercase tracking-wider">
+          {relation}
+        </p>
       </div>
     </button>
   );
@@ -490,11 +550,15 @@ function BottomPill({
     <div className="flex flex-col items-center gap-1.5 group">
       <div
         className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-md ${bgClass || ""} ${colorClass || ""}`}
-        style={color && bg ? {
-          background: `${bg}`,
-          color: color,
-          boxShadow: `0 2px 8px ${color}15`,
-        } : undefined}
+        style={
+          color && bg
+            ? {
+                background: `${bg}`,
+                color: color,
+                boxShadow: `0 2px 8px ${color}15`,
+              }
+            : undefined
+        }
       >
         {children}
       </div>

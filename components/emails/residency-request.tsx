@@ -30,11 +30,12 @@ export const ResidencyRequestEmail = ({
       <Body style={main}>
         <Container style={container}>
           <Heading style={h1}>New Residency Request</Heading>
-          
+
           <Text style={text}>
-            A new user has submitted a request to be verified as a resident of Tumin Dhanbari village to access the Family Tree features.
+            A new user has submitted a request to be verified as a resident of
+            Tumin Dhanbari village to access the Family Tree features.
           </Text>
-          
+
           <Section style={dataSection}>
             <Text style={text}>
               <strong>User Name:</strong> {userName}
@@ -51,11 +52,13 @@ export const ResidencyRequestEmail = ({
           </Section>
 
           <Text style={text}>
-            The user has electronically confirmed that the provided details are accurate and they understand the community guidelines.
+            The user has electronically confirmed that the provided details are
+            accurate and they understand the community guidelines.
           </Text>
 
           <Text style={footer}>
-            Please review this request in the admin panel and update their `isResidentOfTuminDhanbari` status if approved.
+            Please review this request in the admin panel and update their
+            <code>isResidentOfTuminDhanbari</code> status if approved.
           </Text>
         </Container>
       </Body>
@@ -97,7 +100,7 @@ const text = {
 };
 
 const dataSection = {
-  background: "#f4f4f4",
+  backgroundColor: "#f4f4f4",
   padding: "20px",
   marginLeft: "40px",
   marginRight: "40px",

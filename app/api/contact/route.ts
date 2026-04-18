@@ -60,6 +60,15 @@ export async function POST(req: Request) {
       );
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: "Please provide a valid email address." },
+        { status: 400 }
+      );
+    }
+
     const emailSubject = subject || "No Subject";
     const fromAddress = process.env.ZEPTOMAIL_FROM_EMAIL!;
     const fromName = process.env.ZEPTOMAIL_FROM_NAME!;
@@ -157,12 +166,8 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error("Contact form error:", error);
-    const details =
-      error && typeof error === "object"
-        ? JSON.stringify(error)
-        : String(error);
     return NextResponse.json(
-      { error: "Failed to send email. Please try again.", details },
+      { error: "Failed to send email. Please try again." },
       { status: 500 }
     );
   }

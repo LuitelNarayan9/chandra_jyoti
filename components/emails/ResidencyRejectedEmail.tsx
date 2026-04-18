@@ -24,7 +24,7 @@ export const ResidencyRejectedEmail = ({
         <Container style={container}>
           <Heading style={h1}>Request Update</Heading>
 
-          <Text style={text}>Hello {userName},</Text>
+          <Text style={text}>Hello {userName || "there"},</Text>
 
           <Text style={text}>
             Thank you for your interest in the Chandra Jyoti Dhanbari Family
@@ -35,7 +35,8 @@ export const ResidencyRejectedEmail = ({
           <Text style={text}>
             If you believe this was a mistake, you are welcome to submit a new
             request with updated details. Please ensure the information you
-            provide is accurate to help us verify your connection to the village.
+            provide is accurate to help us verify your connection to the
+            village.
           </Text>
 
           <Text style={text}>
@@ -50,13 +51,13 @@ export const ResidencyRejectedEmail = ({
 };
 
 // Styles
-const main = {
+const main: React.CSSProperties = {
   backgroundColor: "#f6f9fc",
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
 };
 
-const container = {
+const container: React.CSSProperties = {
   backgroundColor: "#ffffff",
   margin: "0 auto",
   padding: "20px 0 48px",
@@ -65,7 +66,7 @@ const container = {
   border: "1px solid #e6ebf1",
 };
 
-const h1 = {
+const h1: React.CSSProperties = {
   color: "#dc2626",
   fontSize: "24px",
   fontWeight: "bold",
@@ -74,7 +75,7 @@ const h1 = {
   padding: "0",
 };
 
-const text = {
+const text: React.CSSProperties = {
   color: "#333",
   fontSize: "16px",
   lineHeight: "24px",
@@ -82,7 +83,7 @@ const text = {
   marginRight: "40px",
 };
 
-const footer = {
+const footer: React.CSSProperties = {
   color: "#898989",
   fontSize: "14px",
   marginLeft: "40px",

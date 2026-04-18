@@ -31,14 +31,28 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, AlertTriangle, UserPlus, Link2, Search } from "lucide-react";
+import {
+  Loader2,
+  AlertTriangle,
+  UserPlus,
+  Link2,
+  Search,
+  Check,
+} from "lucide-react";
 import {
   addRelativeSchema,
   type AddRelativeInput,
 } from "@/lib/validations/family-tree";
-import { addRelative, linkExistingRelative } from "@/lib/actions/family-tree.actions";
+import {
+  addRelative,
+  linkExistingRelative,
+} from "@/lib/actions/family-tree.actions";
 import type { TreeNode, FamilyEdgeData } from "@/types/family-tree";
-import { getConnectedNodeIds, getNodeColor, getInitials } from "@/lib/family-tree-utils";
+import {
+  getConnectedNodeIds,
+  getNodeColor,
+  getInitials,
+} from "@/lib/family-tree-utils";
 
 interface AddRelativeFormProps {
   open: boolean;
@@ -47,7 +61,13 @@ interface AddRelativeFormProps {
   clans: string[];
   allNodes?: TreeNode[];
   edges?: FamilyEdgeData[];
-  preselectedRelationship?: "FATHER" | "MOTHER" | "SPOUSE" | "CHILD" | "BROTHER" | "SISTER";
+  preselectedRelationship?:
+    | "FATHER"
+    | "MOTHER"
+    | "SPOUSE"
+    | "CHILD"
+    | "BROTHER"
+    | "SISTER";
 }
 
 export function AddRelativeForm({
@@ -81,12 +101,11 @@ export function AddRelativeForm({
   // All possible second parents: same clan members (excluding the target itself + the new child being created)
   const secondParentCandidates = useMemo(() => {
     if (!allNodes.length) return [];
-    return allNodes.filter(
-      (n) => n.id !== targetNode.id
-    );
+    return allNodes.filter((n) => n.id !== targetNode.id);
   }, [allNodes, targetNode.id]);
 
-  const defaultSecondParentId = targetSpouses.length === 1 ? targetSpouses[0].id : "";
+  const defaultSecondParentId =
+    targetSpouses.length === 1 ? targetSpouses[0].id : "";
 
   const form = useForm<AddRelativeInput>({
     resolver: zodResolver(addRelativeSchema),
@@ -133,17 +152,25 @@ export function AddRelativeForm({
         endDate: "",
         notes: "",
       });
+      setMode("create");
+      setLinkSearch("");
+      setSelectedLinkId(null);
     }
-    setMode("create");
-    setLinkSearch("");
-    setSelectedLinkId(null);
-  }, [open, targetNode.id, targetNode.familyClan, form, preselectedRelationship, defaultSecondParentId]);
+  }, [
+    open,
+    targetNode.id,
+    targetNode.familyClan,
+    form,
+    preselectedRelationship,
+    defaultSecondParentId,
+  ]);
 
   const watchRelationship = form.watch("relationshipType");
   const watchIsAlive = form.watch("isAlive");
   const watchSecondParentId = form.watch("secondParentId");
   const [secondParentSearch, setSecondParentSearch] = useState("");
-  const [showSecondParentDropdown, setShowSecondParentDropdown] = useState(false);
+  const [showSecondParentDropdown, setShowSecondParentDropdown] =
+    useState(false);
 
   // Auto-set gender and marital status based on relationship type
   useEffect(() => {
@@ -184,7 +211,10 @@ export function AddRelativeForm({
       // Gender filter based on relationship
       if (watchRelationship === "FATHER" || watchRelationship === "BROTHER") {
         if (n.gender !== "MALE") return false;
-      } else if (watchRelationship === "MOTHER" || watchRelationship === "SISTER") {
+      } else if (
+        watchRelationship === "MOTHER" ||
+        watchRelationship === "SISTER"
+      ) {
         if (n.gender !== "FEMALE") return false;
       } else if (watchRelationship === "SPOUSE") {
         // Spouse should be opposite gender (or allow any for OTHER)
@@ -197,8 +227,8 @@ export function AddRelativeForm({
       // For MOTHER, SPOUSE, CHILD — any clan (mothers/spouses typically come from different clans)
       if (
         (watchRelationship === "FATHER" ||
-         watchRelationship === "BROTHER" ||
-         watchRelationship === "SISTER") &&
+          watchRelationship === "BROTHER" ||
+          watchRelationship === "SISTER") &&
         targetNode.familyClan &&
         n.familyClan !== targetNode.familyClan
       ) {
@@ -214,7 +244,14 @@ export function AddRelativeForm({
 
       return true;
     });
-  }, [allNodes, watchRelationship, connectedIds, targetNode.gender, targetNode.familyClan, linkSearch]);
+  }, [
+    allNodes,
+    watchRelationship,
+    connectedIds,
+    targetNode.gender,
+    targetNode.familyClan,
+    linkSearch,
+  ]);
 
   function onSubmit(data: AddRelativeInput) {
     startTransition(async () => {
@@ -241,6 +278,7 @@ export function AddRelativeForm({
         toast.success(result.data?.message || "Member linked!");
         onOpenChange(false);
         setSelectedLinkId(null);
+        setLinkSearch("");
       } else {
         toast.error(result.error || "Something went wrong.");
       }
@@ -310,7 +348,10 @@ export function AddRelativeForm({
               <div className="flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-1 gap-1">
                 <button
                   type="button"
-                  onClick={() => { setMode("create"); setSelectedLinkId(null); }}
+                  onClick={() => {
+                    setMode("create");
+                    setSelectedLinkId(null);
+                  }}
                   className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                     mode === "create"
                       ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
@@ -338,102 +379,272 @@ export function AddRelativeForm({
             {/* ═══ CREATE NEW MODE ═══ */}
             {mode === "create" && (
               <>
-            {/* Name */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>First Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="First name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Last Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Last name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                {/* Name */}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="First name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Last name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-            {/* Gender + DOB */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="gender"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gender *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="MALE">Male</SelectItem>
-                        <SelectItem value="FEMALE">Female</SelectItem>
-                        <SelectItem value="OTHER">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="dateOfBirth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date of Birth</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} value={field.value || ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                {/* Gender + DOB */}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="gender"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gender *</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="MALE">Male</SelectItem>
+                            <SelectItem value="FEMALE">Female</SelectItem>
+                            <SelectItem value="OTHER">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="dateOfBirth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date of Birth</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-            {/* Alive status + Death date */}
-            <div className="grid grid-cols-2 gap-4 items-end">
-              <FormField
-                control={form.control}
-                name="isAlive"
-                render={({ field }) => (
-                  <FormItem className="flex items-center gap-3">
-                    <FormLabel className="mt-0">Is Alive?</FormLabel>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              {!watchIsAlive && (
+                {/* Alive status + Death date */}
+                <div className="grid grid-cols-2 gap-4 items-end">
+                  <FormField
+                    control={form.control}
+                    name="isAlive"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-3">
+                        <FormLabel className="mt-0">Is Alive?</FormLabel>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  {!watchIsAlive && (
+                    <FormField
+                      control={form.control}
+                      name="dateOfDeath"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date of Death</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="date"
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
+                {/* Clan + Profession */}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="familyClan"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col justify-end relative">
+                        <FormLabel>Family Clan</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Type or select clan"
+                            {...field}
+                            value={field.value?.toString()}
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                              setOpenClanDropdown(true);
+                            }}
+                            onFocus={() => setOpenClanDropdown(true)}
+                            onBlur={() => {
+                              // Allow click events on dropdown items before closing
+                              setTimeout(() => setOpenClanDropdown(false), 200);
+                            }}
+                          />
+                        </FormControl>
+                        {openClanDropdown && (
+                          <div className="absolute top-[68px] z-100 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
+                            <div className="max-h-[200px] overflow-auto p-1">
+                              {clans
+                                .filter((clan) =>
+                                  clan
+                                    .toLowerCase()
+                                    .includes((field.value || "").toLowerCase())
+                                )
+                                .map((clan) => (
+                                  <div
+                                    key={clan}
+                                    className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                                    onClick={() => {
+                                      field.onChange(clan);
+                                      setOpenClanDropdown(false);
+                                    }}
+                                  >
+                                    {clan}
+                                  </div>
+                                ))}
+                              {clans.filter((clan) =>
+                                clan
+                                  .toLowerCase()
+                                  .includes((field.value || "").toLowerCase())
+                              ).length === 0 && (
+                                <div className="py-2 text-center text-sm text-muted-foreground">
+                                  No matches. Type to use custom.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="profession"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Profession</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. Farmer"
+                            {...field}
+                            value={field.value || ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Marital Status + Blood Group */}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="maritalStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Marital Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || "SINGLE"}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="SINGLE">Single</SelectItem>
+                            <SelectItem value="MARRIED">Married</SelectItem>
+                            <SelectItem value="DIVORCED">Divorced</SelectItem>
+                            <SelectItem value="WIDOWED">Widowed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="bloodGroup"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Blood Group (optional)</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value?.toString()}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select blood group" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="A+">A+</SelectItem>
+                            <SelectItem value="A-">A-</SelectItem>
+                            <SelectItem value="B+">B+</SelectItem>
+                            <SelectItem value="B-">B-</SelectItem>
+                            <SelectItem value="AB+">AB+</SelectItem>
+                            <SelectItem value="AB-">AB-</SelectItem>
+                            <SelectItem value="O+">O+</SelectItem>
+                            <SelectItem value="O-">O-</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Bio */}
                 <FormField
                   control={form.control}
-                  name="dateOfDeath"
+                  name="bio"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Date of Death</FormLabel>
+                      <FormLabel>Bio (optional)</FormLabel>
                       <FormControl>
-                        <Input
-                          type="date"
+                        <Textarea
+                          placeholder="A short note about this person..."
+                          className="resize-none"
+                          rows={2}
                           {...field}
                           value={field.value || ""}
                         />
@@ -442,357 +653,213 @@ export function AddRelativeForm({
                     </FormItem>
                   )}
                 />
-              )}
-            </div>
 
-            {/* Clan + Profession */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="familyClan"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col justify-end relative">
-                    <FormLabel>Family Clan</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Type or select clan"
-                        {...field}
-                        value={field.value?.toString()}
-                        onChange={(e) => {
-                          field.onChange(e.target.value);
-                          setOpenClanDropdown(true);
-                        }}
-                        onFocus={() => setOpenClanDropdown(true)}
-                        onBlur={() => {
-                          // Allow click events on dropdown items before closing
-                          setTimeout(() => setOpenClanDropdown(false), 200);
-                        }}
-                      />
-                    </FormControl>
-                    {openClanDropdown && (
-                      <div className="absolute top-[68px] z-100 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
-                        <div className="max-h-[200px] overflow-auto p-1">
-                          {clans
-                            .filter((clan) =>
-                              clan
-                                .toLowerCase()
-                                .includes((field.value || "").toLowerCase())
-                            )
-                            .map((clan) => (
-                              <div
-                                key={clan}
-                                className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                                onClick={() => {
-                                  field.onChange(clan);
-                                  setOpenClanDropdown(false);
-                                }}
-                              >
-                                {clan}
-                              </div>
-                            ))}
-                          {clans.filter((clan) =>
-                            clan
+                {/* Second Parent (when adding a CHILD) */}
+                {watchRelationship === "CHILD" &&
+                  secondParentCandidates.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name="secondParentId"
+                      render={({ field }) => {
+                        const selectedParent = allNodes.find(
+                          (n) => n.id === field.value
+                        );
+                        const filteredCandidates =
+                          secondParentCandidates.filter((c) =>
+                            `${c.firstName} ${c.lastName}`
                               .toLowerCase()
-                              .includes((field.value || "").toLowerCase())
-                          ).length === 0 && (
-                            <div className="py-2 text-center text-sm text-muted-foreground">
-                              No matches. Type to use custom.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="profession"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Profession</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="e.g. Farmer"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                              .includes(secondParentSearch.toLowerCase())
+                          );
 
-            {/* Marital Status + Blood Group */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="maritalStatus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Marital Status</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value || "SINGLE"}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="SINGLE">Single</SelectItem>
-                        <SelectItem value="MARRIED">Married</SelectItem>
-                        <SelectItem value="DIVORCED">Divorced</SelectItem>
-                        <SelectItem value="WIDOWED">Widowed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="bloodGroup"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Blood Group (optional)</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value?.toString()}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select blood group" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="A+">A+</SelectItem>
-                        <SelectItem value="A-">A-</SelectItem>
-                        <SelectItem value="B+">B+</SelectItem>
-                        <SelectItem value="B-">B-</SelectItem>
-                        <SelectItem value="AB+">AB+</SelectItem>
-                        <SelectItem value="AB-">AB-</SelectItem>
-                        <SelectItem value="O+">O+</SelectItem>
-                        <SelectItem value="O-">O-</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                        return (
+                          <FormItem className="relative">
+                            <FormLabel className="flex items-center gap-1">
+                              Second Parent (Other Parent)
+                              <span className="text-xs text-muted-foreground font-normal">
+                                — optional
+                              </span>
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  placeholder="Search for second parent..."
+                                  value={
+                                    showSecondParentDropdown
+                                      ? secondParentSearch
+                                      : selectedParent
+                                        ? `${selectedParent.firstName} ${selectedParent.lastName}`
+                                        : ""
+                                  }
+                                  onChange={(e) => {
+                                    setSecondParentSearch(e.target.value);
+                                    setShowSecondParentDropdown(true);
+                                    // Clear the current selection if typing
+                                    if (field.value) {
+                                      field.onChange("");
+                                    }
+                                  }}
+                                  onFocus={() => {
+                                    setShowSecondParentDropdown(true);
+                                    setSecondParentSearch("");
+                                  }}
+                                  onBlur={() => {
+                                    setTimeout(
+                                      () => setShowSecondParentDropdown(false),
+                                      200
+                                    );
+                                  }}
+                                />
+                                {field.value && (
+                                  <button
+                                    type="button"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-destructive"
+                                    onClick={() => {
+                                      field.onChange("");
+                                      setSecondParentSearch("");
+                                    }}
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            </FormControl>
+                            {showSecondParentDropdown && (
+                              <div className="absolute top-[68px] z-[100] w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
+                                <div className="max-h-[200px] overflow-auto p-1">
+                                  {/* Show target's spouse(s) first with a label */}
+                                  {targetSpouses.length > 0 && (
+                                    <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                      Spouse of {targetName}
+                                    </div>
+                                  )}
+                                  {targetSpouses
+                                    .filter((sp) =>
+                                      `${sp.firstName} ${sp.lastName}`
+                                        .toLowerCase()
+                                        .includes(
+                                          secondParentSearch.toLowerCase()
+                                        )
+                                    )
+                                    .map((sp) => (
+                                      <div
+                                        key={sp.id}
+                                        className={`relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
+                                          field.value === sp.id
+                                            ? "bg-accent"
+                                            : ""
+                                        }`}
+                                        onClick={() => {
+                                          field.onChange(sp.id);
+                                          setShowSecondParentDropdown(false);
+                                          setSecondParentSearch("");
+                                        }}
+                                      >
+                                        <span className="mr-2 text-xs">💍</span>
+                                        {sp.firstName} {sp.lastName}
+                                        {sp.familyClan ? (
+                                          <span className="ml-auto text-xs text-muted-foreground">
+                                            {sp.familyClan}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    ))}
 
-            {/* Bio */}
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bio (optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="A short note about this person..."
-                      className="resize-none"
-                      rows={2}
-                      {...field}
-                      value={field.value || ""}
+                                  {/* Divider */}
+                                  {targetSpouses.length > 0 &&
+                                    filteredCandidates.length > 0 && (
+                                      <div className="my-1 border-t border-border" />
+                                    )}
+
+                                  {/* Other members */}
+                                  {filteredCandidates
+                                    .filter(
+                                      (c) =>
+                                        !targetSpouses.some(
+                                          (sp) => sp.id === c.id
+                                        )
+                                    )
+                                    .slice(0, 20)
+                                    .map((candidate) => (
+                                      <div
+                                        key={candidate.id}
+                                        className={`relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
+                                          field.value === candidate.id
+                                            ? "bg-accent"
+                                            : ""
+                                        }`}
+                                        onClick={() => {
+                                          field.onChange(candidate.id);
+                                          setShowSecondParentDropdown(false);
+                                          setSecondParentSearch("");
+                                        }}
+                                      >
+                                        {candidate.firstName}{" "}
+                                        {candidate.lastName}
+                                        {candidate.familyClan ? (
+                                          <span className="ml-auto text-xs text-muted-foreground">
+                                            {candidate.familyClan}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    ))}
+
+                                  {filteredCandidates.length === 0 && (
+                                    <div className="py-2 text-center text-sm text-muted-foreground">
+                                      No members found.
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            <FormMessage />
+
+                            {/* Warning if no second parent selected */}
+                            {!watchSecondParentId && (
+                              <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                                  No second parent selected. You can add one
+                                  later via the member&apos;s profile.
+                                </p>
+                              </div>
+                            )}
+                          </FormItem>
+                        );
+                      }}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  )}
 
-            {/* Second Parent (when adding a CHILD) */}
-            {watchRelationship === "CHILD" && secondParentCandidates.length > 0 && (
-              <FormField
-                control={form.control}
-                name="secondParentId"
-                render={({ field }) => {
-                  const selectedParent = allNodes.find((n) => n.id === field.value);
-                  const filteredCandidates = secondParentCandidates.filter((c) =>
-                    `${c.firstName} ${c.lastName}`
-                      .toLowerCase()
-                      .includes(secondParentSearch.toLowerCase())
-                  );
-
-                  return (
-                    <FormItem className="relative">
-                      <FormLabel className="flex items-center gap-1">
-                        Second Parent (Other Parent)
-                        <span className="text-xs text-muted-foreground font-normal">
-                          — optional
-                        </span>
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
+                {/* Marriage date (only for spouse) */}
+                {watchRelationship === "SPOUSE" && (
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Marriage Date</FormLabel>
+                        <FormControl>
                           <Input
-                            placeholder="Search for second parent..."
-                            value={
-                              showSecondParentDropdown
-                                ? secondParentSearch
-                                : selectedParent
-                                  ? `${selectedParent.firstName} ${selectedParent.lastName}`
-                                  : ""
-                            }
-                            onChange={(e) => {
-                              setSecondParentSearch(e.target.value);
-                              setShowSecondParentDropdown(true);
-                              // Clear the current selection if typing
-                              if (field.value) {
-                                field.onChange("");
-                              }
-                            }}
-                            onFocus={() => {
-                              setShowSecondParentDropdown(true);
-                              setSecondParentSearch("");
-                            }}
-                            onBlur={() => {
-                              setTimeout(() => setShowSecondParentDropdown(false), 200);
-                            }}
+                            type="date"
+                            {...field}
+                            value={field.value || ""}
                           />
-                          {field.value && (
-                            <button
-                              type="button"
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                field.onChange("");
-                                setSecondParentSearch("");
-                              }}
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </div>
-                      </FormControl>
-                      {showSecondParentDropdown && (
-                        <div className="absolute top-[68px] z-[100] w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
-                          <div className="max-h-[200px] overflow-auto p-1">
-                            {/* Show target's spouse(s) first with a label */}
-                            {targetSpouses.length > 0 && (
-                              <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                Spouse of {targetName}
-                              </div>
-                            )}
-                            {targetSpouses
-                              .filter((sp) =>
-                                `${sp.firstName} ${sp.lastName}`
-                                  .toLowerCase()
-                                  .includes(secondParentSearch.toLowerCase())
-                              )
-                              .map((sp) => (
-                                <div
-                                  key={sp.id}
-                                  className={`relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
-                                    field.value === sp.id ? "bg-accent" : ""
-                                  }`}
-                                  onClick={() => {
-                                    field.onChange(sp.id);
-                                    setShowSecondParentDropdown(false);
-                                    setSecondParentSearch("");
-                                  }}
-                                >
-                                  <span className="mr-2 text-xs">💍</span>
-                                  {sp.firstName} {sp.lastName}
-                                  {sp.familyClan ? (
-                                    <span className="ml-auto text-xs text-muted-foreground">
-                                      {sp.familyClan}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              ))}
-
-                            {/* Divider */}
-                            {targetSpouses.length > 0 && filteredCandidates.length > 0 && (
-                              <div className="my-1 border-t border-border" />
-                            )}
-
-                            {/* Other members */}
-                            {filteredCandidates
-                              .filter(
-                                (c) =>
-                                  !targetSpouses.some((sp) => sp.id === c.id)
-                              )
-                              .slice(0, 20)
-                              .map((candidate) => (
-                                <div
-                                  key={candidate.id}
-                                  className={`relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
-                                    field.value === candidate.id
-                                      ? "bg-accent"
-                                      : ""
-                                  }`}
-                                  onClick={() => {
-                                    field.onChange(candidate.id);
-                                    setShowSecondParentDropdown(false);
-                                    setSecondParentSearch("");
-                                  }}
-                                >
-                                  {candidate.firstName} {candidate.lastName}
-                                  {candidate.familyClan ? (
-                                    <span className="ml-auto text-xs text-muted-foreground">
-                                      {candidate.familyClan}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              ))}
-
-                            {filteredCandidates.length === 0 && (
-                              <div className="py-2 text-center text-sm text-muted-foreground">
-                                No members found.
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      <FormMessage />
-
-                      {/* Warning if no second parent selected */}
-                      {!watchSecondParentId && (
-                        <div className="flex items-start gap-1.5 mt-1.5 p-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                          <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                            No second parent selected. You can add one later via
-                            the member&apos;s profile.
-                          </p>
-                        </div>
-                      )}
-                    </FormItem>
-                  );
-                }}
-              />
-            )}
-
-            {/* Marriage date (only for spouse) */}
-            {watchRelationship === "SPOUSE" && (
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Marriage Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} value={field.value || ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-              />
-            )}
 
-            <Button type="submit" className="w-full" disabled={isPending}>
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit for Approval"
-              )}
-            </Button>
+                <Button type="submit" className="w-full" disabled={isPending}>
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit for Approval"
+                  )}
+                </Button>
               </>
             )}
 
@@ -806,6 +873,11 @@ export function AddRelativeForm({
                     placeholder="Search by name..."
                     value={linkSearch}
                     onChange={(e) => setLinkSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                      }
+                    }}
                     className="pl-9"
                   />
                 </div>
@@ -823,14 +895,19 @@ export function AddRelativeForm({
                     </div>
                   ) : (
                     linkCandidates.slice(0, 50).map((candidate) => {
-                      const c = getNodeColor(candidate.gender, candidate.isAlive);
+                      const c = getNodeColor(
+                        candidate.gender,
+                        candidate.isAlive
+                      );
                       const isSelected = selectedLinkId === candidate.id;
 
                       return (
                         <button
                           key={candidate.id}
                           type="button"
-                          onClick={() => setSelectedLinkId(isSelected ? null : candidate.id)}
+                          onClick={() =>
+                            setSelectedLinkId(isSelected ? null : candidate.id)
+                          }
                           className={`w-full flex items-center gap-3 p-2.5 rounded-lg border-2 transition-all text-left ${
                             isSelected
                               ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm"
@@ -844,7 +921,10 @@ export function AddRelativeForm({
                               background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})`,
                             }}
                           >
-                            {getInitials(candidate.firstName, candidate.lastName)}
+                            {getInitials(
+                              candidate.firstName,
+                              candidate.lastName
+                            )}
                           </div>
 
                           {/* Info */}
@@ -864,7 +944,11 @@ export function AddRelativeForm({
                                 </span>
                               )}
                               <span className="text-[10px] text-zinc-400">
-                                {candidate.gender === "MALE" ? "♂" : candidate.gender === "FEMALE" ? "♀" : ""}
+                                {candidate.gender === "MALE"
+                                  ? "♂"
+                                  : candidate.gender === "FEMALE"
+                                    ? "♀"
+                                    : ""}
                               </span>
                               {!candidate.isAlive && (
                                 <span className="text-[10px] text-zinc-400">
@@ -883,9 +967,10 @@ export function AddRelativeForm({
                             }`}
                           >
                             {isSelected && (
-                              <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                              </svg>
+                              <Check
+                                className="h-3 w-3 text-white"
+                                strokeWidth={3}
+                              />
                             )}
                           </div>
                         </button>

@@ -45,6 +45,7 @@ export function MissingParentPicker({
   const [isPending, startTransition] = useTransition();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [clanSearch, setClanSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(30);
 
   // Find the existing parent (the one that IS present)
   const existingParent = useMemo(() => {
@@ -92,7 +93,7 @@ export function MissingParentPicker({
   );
 
   // Clan candidates: same-clan members from OTHER trees, filtered by gender
-  const clanCandidates = useMemo(() => {
+  const baseClanCandidates = useMemo(() => {
     const genderFilter = missingType === "MOTHER" ? "FEMALE" : "MALE";
     return allNodes.filter((n) => {
       if (connectedIds.has(n.id)) return false;
@@ -100,13 +101,17 @@ export function MissingParentPicker({
       // For MOTHER: show all clans (mothers come from different clans)
       // For FATHER: same clan only
       if (missingType === "FATHER" && member.familyClan && n.familyClan !== member.familyClan) return false;
-      if (clanSearch) {
-        const q = clanSearch.toLowerCase();
-        if (!`${n.firstName} ${n.lastName}`.toLowerCase().includes(q)) return false;
-      }
       return true;
     });
-  }, [allNodes, connectedIds, missingType, member.familyClan, clanSearch]);
+  }, [allNodes, connectedIds, missingType, member.familyClan]);
+
+  const filteredClanCandidates = useMemo(() => {
+    if (!clanSearch) return baseClanCandidates;
+    const q = clanSearch.toLowerCase();
+    return baseClanCandidates.filter((n) =>
+      `${n.firstName} ${n.lastName}`.toLowerCase().includes(q)
+    );
+  }, [baseClanCandidates, clanSearch]);
 
   function handleLink() {
     if (!selectedId) return;
@@ -157,63 +162,15 @@ export function MissingParentPicker({
                 const isSelected = selectedId === spouse.id;
 
                 return (
-                  <button
+                  <CandidateButton
                     key={spouse.id}
-                    type="button"
-                    onClick={() => setSelectedId(isSelected ? null : spouse.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
-                      isSelected
-                        ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                    }`}
-                  >
-                    {/* Avatar */}
-                    <div
-                      className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0"
-                      style={{
-                        background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})`,
-                      }}
-                    >
-                      {getInitials(spouse.firstName, spouse.lastName)}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                        {spouse.firstName} {spouse.lastName}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {spouse.familyClan && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium">
-                            {spouse.familyClan}
-                          </span>
-                        )}
-                        {spouse.birthYear && (
-                          <span className="text-[10px] text-zinc-400">
-                            b. {spouse.birthYear}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-zinc-400">
-                          {spouse.gender === "MALE" ? "♂" : spouse.gender === "FEMALE" ? "♀" : ""}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Selection indicator */}
-                    <div
-                      className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        isSelected
-                          ? "border-emerald-500 bg-emerald-500"
-                          : "border-zinc-300 dark:border-zinc-600"
-                      }`}
-                    >
-                      {isSelected && (
-                        <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                      )}
-                    </div>
-                  </button>
+                    candidate={spouse}
+                    isSelected={isSelected}
+                    onToggle={() => setSelectedId(isSelected ? null : spouse.id)}
+                    className="p-3"
+                    avatarSize="md"
+                    showGender
+                  />
                 );
               })}
             </div>
@@ -251,7 +208,7 @@ export function MissingParentPicker({
           </button>
 
           {/* Other clan members from separate trees */}
-          {clanCandidates.length > 0 && (
+          {baseClanCandidates.length > 0 && (
             <>
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
@@ -276,54 +233,36 @@ export function MissingParentPicker({
                 </div>
 
                 <div className="max-h-[180px] overflow-y-auto space-y-1">
-                  {clanCandidates.slice(0, 30).map((candidate) => {
-                    const c = getNodeColor(candidate.gender, candidate.isAlive);
-                    const isSelected = selectedId === candidate.id;
+                  {filteredClanCandidates.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-zinc-500">
+                      No members found matching your search.
+                    </div>
+                  ) : (
+                    filteredClanCandidates.slice(0, visibleCount).map((candidate) => {
+                      const c = getNodeColor(candidate.gender, candidate.isAlive);
+                      const isSelected = selectedId === candidate.id;
 
-                    return (
-                      <button
-                        key={candidate.id}
-                        type="button"
-                        onClick={() => setSelectedId(isSelected ? null : candidate.id)}
-                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl border-2 transition-all text-left ${
-                          isSelected
-                            ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm"
-                            : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                        }`}
-                      >
-                        <div
-                          className="h-9 w-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0"
-                          style={{ background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})` }}
-                        >
-                          {getInitials(candidate.firstName, candidate.lastName)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                            {candidate.firstName} {candidate.lastName}
-                          </p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {candidate.familyClan && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium">
-                                {candidate.familyClan}
-                              </span>
-                            )}
-                            {candidate.birthYear && (
-                              <span className="text-[10px] text-zinc-400">b. {candidate.birthYear}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                          isSelected ? "border-emerald-500 bg-emerald-500" : "border-zinc-300 dark:border-zinc-600"
-                        }`}>
-                          {isSelected && (
-                            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                            </svg>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                      return (
+                        <CandidateButton
+                          key={candidate.id}
+                          candidate={candidate}
+                          isSelected={isSelected}
+                          onToggle={() => setSelectedId(isSelected ? null : candidate.id)}
+                          className="p-2.5"
+                          avatarSize="sm"
+                        />
+                      );
+                    })
+                  )}
+                  {filteredClanCandidates.length > visibleCount && (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((prev) => prev + 30)}
+                      className="w-full p-2 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                    >
+                      Showing {visibleCount} of {filteredClanCandidates.length} results — Show more
+                    </button>
+                  )}
                 </div>
               </div>
             </>
@@ -359,5 +298,86 @@ export function MissingParentPicker({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CandidateButton({
+  candidate,
+  isSelected,
+  onToggle,
+  className = "",
+  avatarSize = "md",
+  showGender = false,
+}: {
+  candidate: TreeNode;
+  isSelected: boolean;
+  onToggle: () => void;
+  className?: string;
+  avatarSize?: "sm" | "md";
+  showGender?: boolean;
+}) {
+  const c = getNodeColor(candidate.gender, candidate.isAlive);
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`w-full flex items-center gap-3 rounded-xl border-2 transition-all text-left ${
+        isSelected
+          ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm"
+          : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+      } ${className}`}
+    >
+      {/* Avatar */}
+      <div
+        className={`rounded-lg flex items-center justify-center text-white font-bold shadow-sm shrink-0 ${
+          avatarSize === "md" ? "h-10 w-10 text-sm" : "h-9 w-9 text-xs"
+        }`}
+        style={{
+          background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})`,
+        }}
+      >
+        {getInitials(candidate.firstName, candidate.lastName)}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+          {candidate.firstName} {candidate.lastName}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          {candidate.familyClan && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium">
+              {candidate.familyClan}
+            </span>
+          )}
+          {candidate.birthYear && (
+            <span className="text-[10px] text-zinc-400">
+              b. {candidate.birthYear}
+            </span>
+          )}
+          {showGender && (
+            <span className="text-[10px] text-zinc-400">
+              {candidate.gender === "MALE" ? "♂" : candidate.gender === "FEMALE" ? "♀" : ""}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Selection indicator */}
+      <div
+        className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+          isSelected
+            ? "border-emerald-500 bg-emerald-500"
+            : "border-zinc-300 dark:border-zinc-600"
+        }`}
+      >
+        {isSelected && (
+          <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        )}
+      </div>
+    </button>
   );
 }
