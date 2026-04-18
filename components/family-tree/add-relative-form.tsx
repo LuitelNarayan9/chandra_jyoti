@@ -31,13 +31,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, UserPlus, Link2, Search } from "lucide-react";
 import {
   addRelativeSchema,
   type AddRelativeInput,
 } from "@/lib/validations/family-tree";
-import { addRelative } from "@/lib/actions/family-tree.actions";
+import { addRelative, linkExistingRelative } from "@/lib/actions/family-tree.actions";
 import type { TreeNode, FamilyEdgeData } from "@/types/family-tree";
+import { getConnectedNodeIds, getNodeColor, getInitials } from "@/lib/family-tree-utils";
 
 interface AddRelativeFormProps {
   open: boolean;
@@ -60,6 +61,9 @@ export function AddRelativeForm({
 }: AddRelativeFormProps) {
   const [isPending, startTransition] = useTransition();
   const [openClanDropdown, setOpenClanDropdown] = useState(false);
+  const [mode, setMode] = useState<"create" | "link">("create");
+  const [linkSearch, setLinkSearch] = useState("");
+  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
 
   // Find target's spouse(s) for auto-suggesting the second parent
   const targetSpouses = useMemo(() => {
@@ -130,6 +134,9 @@ export function AddRelativeForm({
         notes: "",
       });
     }
+    setMode("create");
+    setLinkSearch("");
+    setSelectedLinkId(null);
   }, [open, targetNode.id, targetNode.familyClan, form, preselectedRelationship, defaultSecondParentId]);
 
   const watchRelationship = form.watch("relationshipType");
@@ -160,6 +167,55 @@ export function AddRelativeForm({
     }
   }, [watchRelationship, form]);
 
+  // BFS: compute connected tree IDs (excludes these from link candidates)
+  const connectedIds = useMemo(
+    () => getConnectedNodeIds(targetNode.id, edges),
+    [targetNode.id, edges]
+  );
+
+  // Link existing candidates: same clan, correct gender, not in connected tree
+  const linkCandidates = useMemo(() => {
+    if (!allNodes.length || !watchRelationship) return [];
+
+    return allNodes.filter((n) => {
+      // Exclude members already in the target's connected tree
+      if (connectedIds.has(n.id)) return false;
+
+      // Gender filter based on relationship
+      if (watchRelationship === "FATHER" || watchRelationship === "BROTHER") {
+        if (n.gender !== "MALE") return false;
+      } else if (watchRelationship === "MOTHER" || watchRelationship === "SISTER") {
+        if (n.gender !== "FEMALE") return false;
+      } else if (watchRelationship === "SPOUSE") {
+        // Spouse should be opposite gender (or allow any for OTHER)
+        if (targetNode.gender === "MALE" && n.gender !== "FEMALE") return false;
+        if (targetNode.gender === "FEMALE" && n.gender !== "MALE") return false;
+      }
+      // CHILD: no gender filter
+
+      // For FATHER, BROTHER, SISTER — same clan only
+      // For MOTHER, SPOUSE, CHILD — any clan (mothers/spouses typically come from different clans)
+      if (
+        (watchRelationship === "FATHER" ||
+         watchRelationship === "BROTHER" ||
+         watchRelationship === "SISTER") &&
+        targetNode.familyClan &&
+        n.familyClan !== targetNode.familyClan
+      ) {
+        return false;
+      }
+
+      // Search filter
+      if (linkSearch) {
+        const q = linkSearch.toLowerCase();
+        const fullName = `${n.firstName} ${n.lastName}`.toLowerCase();
+        if (!fullName.includes(q)) return false;
+      }
+
+      return true;
+    });
+  }, [allNodes, watchRelationship, connectedIds, targetNode.gender, targetNode.familyClan, linkSearch]);
+
   function onSubmit(data: AddRelativeInput) {
     startTransition(async () => {
       const result = await addRelative(data);
@@ -167,6 +223,24 @@ export function AddRelativeForm({
         toast.success(result.data?.message || "Relative added!");
         onOpenChange(false);
         form.reset();
+      } else {
+        toast.error(result.error || "Something went wrong.");
+      }
+    });
+  }
+
+  function handleLinkExisting() {
+    if (!selectedLinkId || !watchRelationship) return;
+    startTransition(async () => {
+      const result = await linkExistingRelative({
+        targetNodeId: targetNode.id,
+        existingNodeId: selectedLinkId,
+        relationshipType: watchRelationship,
+      });
+      if (result.success) {
+        toast.success(result.data?.message || "Member linked!");
+        onOpenChange(false);
+        setSelectedLinkId(null);
       } else {
         toast.error(result.error || "Something went wrong.");
       }
@@ -231,6 +305,39 @@ export function AddRelativeForm({
               )}
             />
 
+            {/* Mode toggle: Create New vs Link Existing */}
+            {watchRelationship && linkCandidates.length > 0 && (
+              <div className="flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => { setMode("create"); setSelectedLinkId(null); }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    mode === "create"
+                      ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Create New
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("link")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    mode === "link"
+                      ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  Link Existing ({linkCandidates.length})
+                </button>
+              </div>
+            )}
+
+            {/* ═══ CREATE NEW MODE ═══ */}
+            {mode === "create" && (
+              <>
             {/* Name */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -686,6 +793,128 @@ export function AddRelativeForm({
                 "Submit for Approval"
               )}
             </Button>
+              </>
+            )}
+
+            {/* ═══ LINK EXISTING MODE ═══ */}
+            {mode === "link" && watchRelationship && (
+              <div className="space-y-3">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                  <Input
+                    placeholder="Search by name..."
+                    value={linkSearch}
+                    onChange={(e) => setLinkSearch(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                {/* Candidate list */}
+                <div className="max-h-[280px] overflow-y-auto space-y-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 p-2">
+                  {linkCandidates.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        No matching members found from other family trees.
+                      </p>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+                        Try a different search or create a new member instead.
+                      </p>
+                    </div>
+                  ) : (
+                    linkCandidates.slice(0, 50).map((candidate) => {
+                      const c = getNodeColor(candidate.gender, candidate.isAlive);
+                      const isSelected = selectedLinkId === candidate.id;
+
+                      return (
+                        <button
+                          key={candidate.id}
+                          type="button"
+                          onClick={() => setSelectedLinkId(isSelected ? null : candidate.id)}
+                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg border-2 transition-all text-left ${
+                            isSelected
+                              ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm"
+                              : "border-transparent hover:border-zinc-200 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                          }`}
+                        >
+                          {/* Avatar */}
+                          <div
+                            className="h-9 w-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0"
+                            style={{
+                              background: `linear-gradient(135deg, ${c.fill}, ${c.stroke})`,
+                            }}
+                          >
+                            {getInitials(candidate.firstName, candidate.lastName)}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                              {candidate.firstName} {candidate.lastName}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {candidate.familyClan && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium">
+                                  {candidate.familyClan}
+                                </span>
+                              )}
+                              {candidate.birthYear && (
+                                <span className="text-[10px] text-zinc-400">
+                                  b. {candidate.birthYear}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-zinc-400">
+                                {candidate.gender === "MALE" ? "♂" : candidate.gender === "FEMALE" ? "♀" : ""}
+                              </span>
+                              {!candidate.isAlive && (
+                                <span className="text-[10px] text-zinc-400">
+                                  (deceased)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Selection indicator */}
+                          <div
+                            className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected
+                                ? "border-emerald-500 bg-emerald-500"
+                                : "border-zinc-300 dark:border-zinc-600"
+                            }`}
+                          >
+                            {isSelected && (
+                              <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Link button */}
+                <Button
+                  type="button"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  disabled={!selectedLinkId || isPending}
+                  onClick={handleLinkExisting}
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Linking...
+                    </>
+                  ) : (
+                    <>
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Link Selected Member
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </form>
         </Form>
       </DialogContent>

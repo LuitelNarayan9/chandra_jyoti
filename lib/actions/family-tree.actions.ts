@@ -8,9 +8,11 @@ import {
   joinFamilyTreeSchema,
   addRelativeSchema,
   updateFamilyMemberSchema,
+  linkExistingRelativeSchema,
   type JoinFamilyTreeInput,
   type AddRelativeInput,
   type UpdateFamilyMemberInput,
+  type LinkExistingRelativeInput,
   requestResidencySchema,
   type RequestResidencyInput,
 } from "@/lib/validations/family-tree";
@@ -614,7 +616,185 @@ export async function linkExistingParent(
 }
 
 // ========================================
-// 6. Request Residency Status
+// 6. Link Existing Member as Relative
+// ========================================
+
+export async function linkExistingRelative(rawData: LinkExistingRelativeInput) {
+  try {
+    const user = await getAuthenticatedUser();
+
+    // Validate input
+    const parsed = linkExistingRelativeSchema.safeParse(rawData);
+    if (!parsed.success) {
+      return {
+        success: false,
+        error: parsed.error.issues.map((e) => e.message).join(", "),
+      };
+    }
+    const data = parsed.data;
+
+    const autoApprove = isAdmin(user.role);
+
+    // Verify both members exist
+    const [targetNode, existingNode] = await Promise.all([
+      db.familyMember.findUnique({ where: { id: data.targetNodeId } }),
+      db.familyMember.findUnique({ where: { id: data.existingNodeId } }),
+    ]);
+
+    if (!targetNode) {
+      return { success: false, error: "Target family member not found." };
+    }
+    if (!existingNode) {
+      return { success: false, error: "Selected family member not found." };
+    }
+
+    // Prevent linking to self
+    if (data.targetNodeId === data.existingNodeId) {
+      return { success: false, error: "Cannot link a member to themselves." };
+    }
+
+    // For siblings, find the target's parent
+    let parentNodeId: string | null = null;
+    if (data.relationshipType === "BROTHER" || data.relationshipType === "SISTER") {
+      const parentEdge = await db.familyEdge.findFirst({
+        where: { toNodeId: targetNode.id, type: "PARENT_CHILD" },
+        select: { fromNodeId: true },
+      });
+      if (!parentEdge) {
+        return {
+          success: false,
+          error: `Cannot add a sibling — ${targetNode.firstName} has no parent in the tree yet. Please add a parent first.`,
+        };
+      }
+      parentNodeId = parentEdge.fromNodeId;
+    }
+
+    // Transaction: create edge(s) atomically
+    const result = await db.$transaction(async (tx) => {
+      // Determine edge direction
+      let fromNodeId: string;
+      let toNodeId: string;
+      let edgeType: EdgeType = "PARENT_CHILD";
+
+      switch (data.relationshipType) {
+        case "FATHER":
+        case "MOTHER":
+          // existingNode is the parent → targetNode is the child
+          fromNodeId = existingNode.id;
+          toNodeId = targetNode.id;
+          edgeType = "PARENT_CHILD";
+          break;
+        case "CHILD":
+          // targetNode is the parent → existingNode is the child
+          fromNodeId = targetNode.id;
+          toNodeId = existingNode.id;
+          edgeType = "PARENT_CHILD";
+          break;
+        case "BROTHER":
+        case "SISTER":
+          // Link existingNode as child of targetNode's parent
+          fromNodeId = parentNodeId!;
+          toNodeId = existingNode.id;
+          edgeType = "PARENT_CHILD";
+          break;
+        case "SPOUSE":
+          // Standardize direction (alphabetical ID order)
+          if (targetNode.id < existingNode.id) {
+            fromNodeId = targetNode.id;
+            toNodeId = existingNode.id;
+          } else {
+            fromNodeId = existingNode.id;
+            toNodeId = targetNode.id;
+          }
+          edgeType = "SPOUSE";
+          break;
+        default:
+          throw new Error("Invalid relationship type");
+      }
+
+      // Check if this edge already exists
+      const existingEdge = await tx.familyEdge.findFirst({
+        where: { fromNodeId, toNodeId, type: edgeType },
+      });
+      if (existingEdge) {
+        throw new Error("This relationship already exists.");
+      }
+
+      const newEdge = await tx.familyEdge.create({
+        data: {
+          fromNodeId,
+          toNodeId,
+          type: edgeType,
+          isApproved: autoApprove,
+          addedByUserId: user.id,
+        },
+      });
+
+      // Auto-create SPOUSE edge when linking Father/Mother (same as addRelative)
+      if (data.relationshipType === "FATHER" || data.relationshipType === "MOTHER") {
+        const existingParentEdges = await tx.familyEdge.findMany({
+          where: {
+            toNodeId: targetNode.id,
+            type: "PARENT_CHILD",
+            fromNodeId: { not: existingNode.id },
+          },
+          select: { fromNodeId: true },
+        });
+
+        for (const parentEdge of existingParentEdges) {
+          const existingSpouse = await tx.familyEdge.findFirst({
+            where: {
+              OR: [
+                { fromNodeId: existingNode.id, toNodeId: parentEdge.fromNodeId, type: "SPOUSE" },
+                { fromNodeId: parentEdge.fromNodeId, toNodeId: existingNode.id, type: "SPOUSE" },
+              ],
+            },
+          });
+
+          if (!existingSpouse) {
+            const spouseFrom = existingNode.id < parentEdge.fromNodeId ? existingNode.id : parentEdge.fromNodeId;
+            const spouseTo = existingNode.id < parentEdge.fromNodeId ? parentEdge.fromNodeId : existingNode.id;
+            await tx.familyEdge.create({
+              data: {
+                fromNodeId: spouseFrom,
+                toNodeId: spouseTo,
+                type: "SPOUSE",
+                isApproved: autoApprove,
+                addedByUserId: user.id,
+              },
+            });
+          }
+        }
+      }
+
+      return newEdge;
+    });
+
+    await calculateAndSyncGenerations();
+    revalidatePath("/family-tree");
+    revalidatePath("/admin/family-tree");
+
+    return {
+      success: true,
+      data: {
+        edgeId: result.id,
+        isApproved: autoApprove,
+        message: autoApprove
+          ? "Member linked successfully!"
+          : "Link submitted for admin approval.",
+      },
+    };
+  } catch (error: any) {
+    console.error("Failed to link existing relative:", error);
+    if (error?.message === "This relationship already exists.") {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: sanitizeError(error) };
+  }
+}
+
+// ========================================
+// 7. Request Residency Status
 // ========================================
 
 export async function requestResidency(rawData: RequestResidencyInput) {
@@ -667,7 +847,7 @@ export async function requestResidency(rawData: RequestResidencyInput) {
 }
 
 // ========================================
-// 7. Admin: Get Pending Residency Requests
+// 8. Admin: Get Pending Residency Requests
 // ========================================
 
 export async function getPendingResidencyRequests() {
@@ -689,7 +869,7 @@ export async function getPendingResidencyRequests() {
 }
 
 // ========================================
-// 8. Admin: Approve Residency Request
+// 9. Admin: Approve Residency Request
 // ========================================
 
 export async function approveResidencyRequest(targetUserId: string) {
@@ -737,7 +917,7 @@ export async function approveResidencyRequest(targetUserId: string) {
 }
 
 // ========================================
-// 9. Admin: Reject Residency Request
+// 10. Admin: Reject Residency Request
 // ========================================
 
 export async function rejectResidencyRequest(targetUserId: string) {

@@ -116,3 +116,17 @@ export const requestResidencySchema = z.object({
 });
 
 export type RequestResidencyInput = z.infer<typeof requestResidencySchema>;
+
+// ========================================
+// Link Existing Member as Relative
+// ========================================
+
+export const linkExistingRelativeSchema = z.object({
+  targetNodeId: z.string().min(1, "Target member is required"),
+  existingNodeId: z.string().min(1, "Existing member is required"),
+  relationshipType: z.enum(["FATHER", "MOTHER", "SPOUSE", "CHILD", "BROTHER", "SISTER"], {
+    message: "Please select a relationship type",
+  }),
+});
+
+export type LinkExistingRelativeInput = z.infer<typeof linkExistingRelativeSchema>;

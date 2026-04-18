@@ -1,5 +1,6 @@
 import type {
   FamilyTreeMember,
+  FamilyEdgeData,
   TreeNode,
   TreeFilter,
 } from "@/types/family-tree";
@@ -108,4 +109,36 @@ export function getNodeColor(gender: string, isAlive: boolean) {
     default:
       return NODE_COLORS.other;
   }
+}
+
+/**
+ * BFS traversal: returns the set of all node IDs reachable from `startNodeId`
+ * through any edge (PARENT_CHILD, SPOUSE, ADOPTION, DIVORCED_SPOUSE).
+ *
+ * Used to compute a member's "connected tree" so we can exclude them
+ * when offering candidates for linking existing members.
+ */
+export function getConnectedNodeIds(
+  startNodeId: string,
+  edges: FamilyEdgeData[]
+): Set<string> {
+  const visited = new Set<string>();
+  const queue = [startNodeId];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+
+    for (const edge of edges) {
+      if (edge.fromNodeId === current && !visited.has(edge.toNodeId)) {
+        queue.push(edge.toNodeId);
+      }
+      if (edge.toNodeId === current && !visited.has(edge.fromNodeId)) {
+        queue.push(edge.fromNodeId);
+      }
+    }
+  }
+
+  return visited;
 }
