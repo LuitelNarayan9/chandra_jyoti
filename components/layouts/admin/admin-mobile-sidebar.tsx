@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, ChevronDown, Plus, ShieldCheck } from "lucide-react";
@@ -85,6 +85,16 @@ export function AdminMobileSidebar() {
   const [expanded, setExpanded] = useState<ExpandMap>({});
   const [prevPathname, setPrevPathname] = useState(pathname);
 
+  // Precompute section offsets to avoid O(N^2) work in the render loop.
+  const sectionOffsets = useMemo(() => {
+    let currentOffset = 0;
+    return adminNavSections.map((section) => {
+      const offset = currentOffset;
+      currentOffset += section.items.length;
+      return offset;
+    });
+  }, []);
+
   if (pathname !== prevPathname) {
     const init: ExpandMap = {};
     adminNavSections.forEach((sec) => {
@@ -135,7 +145,7 @@ export function AdminMobileSidebar() {
               </p>
               <div className="space-y-0.5 px-3">
                 {section.items.map((item, iIdx) => {
-                  const globalIdx = adminNavSections.slice(0, sIdx).reduce((acc, s) => acc + s.items.length, 0) + iIdx;
+                  const globalIdx = sectionOffsets[sIdx] + iIdx;
                   const pal = ICON_PALETTE[globalIdx % ICON_PALETTE.length];
                   const isActive = item.children
                     ? pathname === item.href ||

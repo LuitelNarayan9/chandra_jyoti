@@ -181,6 +181,30 @@ export async function addRelative(rawData: AddRelativeInput) {
       return { success: false, error: "Target family member not found." };
     }
 
+    // Server-side DOB age validation (defense-in-depth)
+    if (data.dateOfBirth && targetNode.dateOfBirth) {
+      const newDob = new Date(data.dateOfBirth);
+      const targetDob = new Date(targetNode.dateOfBirth);
+
+      if (
+        (data.relationshipType === "FATHER" || data.relationshipType === "MOTHER") &&
+        newDob >= targetDob
+      ) {
+        const label = data.relationshipType === "FATHER" ? "Father" : "Mother";
+        return {
+          success: false,
+          error: `${label} must be older than ${targetNode.firstName}. The provided date of birth is not before ${targetNode.firstName}'s.`,
+        };
+      }
+
+      if (data.relationshipType === "CHILD" && newDob <= targetDob) {
+        return {
+          success: false,
+          error: `A child must be younger than ${targetNode.firstName}. The provided date of birth is not after ${targetNode.firstName}'s.`,
+        };
+      }
+    }
+
     // BROTHER/SISTER — same generation as the target
 
     // For siblings, we need to find the target's parent to link the new node

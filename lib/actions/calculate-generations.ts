@@ -51,14 +51,17 @@ export async function calculateAndSyncGenerations(): Promise<boolean> {
 
       // Initialize roots at Generation 1
       const queue: string[] = [];
+      const queueSet = new Set<string>();
       for (const r of roots) {
         generationMap.set(r.id, 1);
         queue.push(r.id);
+        queueSet.add(r.id);
       }
       
       // Longest Path evaluation
       while (queue.length > 0) {
         const id = queue.shift()!;
+        queueSet.delete(id);
         const myGen = generationMap.get(id)!;
 
         const children = childIdsOf.get(id) || [];
@@ -71,8 +74,9 @@ export async function calculateAndSyncGenerations(): Promise<boolean> {
           // If this path yields a deeper generation, update it and push to queue to propagate
           if (newGen > currentChildGen) {
             generationMap.set(cid, newGen);
-            if (!queue.includes(cid)) {
+            if (!queueSet.has(cid)) {
               queue.push(cid);
+              queueSet.add(cid);
             }
           }
         }
@@ -85,8 +89,9 @@ export async function calculateAndSyncGenerations(): Promise<boolean> {
           // The true bloodline ( deeper generation ) overwrites the default Gen 1 root of the married-in spouse
           if (myGen > currentSpouseGen) {
             generationMap.set(sid, myGen);
-            if (!queue.includes(sid)) {
+            if (!queueSet.has(sid)) {
               queue.push(sid);
+              queueSet.add(sid);
             }
           }
         }

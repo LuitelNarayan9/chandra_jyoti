@@ -332,7 +332,7 @@ export function TreeCanvas({
 
         while (queue.length > 0) {
           const curr = queue.shift()!;
-          const found = allNodes.find((an) => an.id === curr);
+          const found = nodesMap.get(curr);
           if (found) component.push(found);
 
           (spouseAdj.get(curr) || []).forEach((neighbor) => {
@@ -413,8 +413,8 @@ export function TreeCanvas({
 
     edges.forEach((e) => {
       if (e.type === "PARENT_CHILD" || e.type === "ADOPTION") {
-        const parentNode = allNodes.find((n) => n.id === e.fromNodeId);
-        const childNode = allNodes.find((n) => n.id === e.toNodeId);
+        const parentNode = nodesMap.get(e.fromNodeId);
+        const childNode = nodesMap.get(e.toNodeId);
 
         // If parent and child are from different clans, store as cross-clan edge
         if (
@@ -444,7 +444,11 @@ export function TreeCanvas({
 
     // 3. Separate into isolated Clans (Connected Components of UNITS)
     const unitAdj = new Map<string, string[]>();
-    units.forEach((u) => unitAdj.set(u.id, []));
+    const unitsMap = new Map<string, FamilyUnit>();
+    units.forEach((u) => {
+      unitAdj.set(u.id, []);
+      unitsMap.set(u.id, u);
+    });
     units.forEach((u) => {
       u.parentIds.forEach((pid) => {
         unitAdj.get(u.id)!.push(pid);
@@ -462,7 +466,7 @@ export function TreeCanvas({
         clanVisited.add(u.id);
         while (q.length > 0) {
           const curr = q.shift()!;
-          const currUnit = units.find((un) => un.id === curr)!;
+          const currUnit = unitsMap.get(curr)!;
           clan.push(currUnit);
           unitAdj.get(curr)!.forEach((neighbor) => {
             if (!clanVisited.has(neighbor)) {
@@ -524,19 +528,30 @@ export function TreeCanvas({
 
           // Attempt to align this clan with an already placed connecting clan
           if (allDagNodes.length > 0) {
+            // Build a reverse index: nodeId -> dagNode, for O(1) lookups
+            const placedNodeIndex = new Map<string, any>();
+            for (const dn of allDagNodes) {
+              for (const nd of dn.data.nodes) {
+                placedNodeIndex.set(nd.id, dn);
+              }
+            }
+
+            // Build a local index for this clan's dag nodes (once, outside the loop)
+            const clanNodesArr = Array.from(clanDag.nodes()) as any[];
+            const clanNodeIndex = new Map<string, any>();
+            for (const cn of clanNodesArr) {
+              for (const nd of cn.data.nodes) {
+                clanNodeIndex.set(nd.id, cn);
+              }
+            }
+
             for (const edge of crossClanEdges) {
-              const fromInClan = Array.from(clanDag.nodes()).find((n: any) =>
-                n.data.nodes.some((nd: any) => nd.id === edge.fromNodeId)
-              ) as any;
-              const toInClan = Array.from(clanDag.nodes()).find((n: any) =>
-                n.data.nodes.some((nd: any) => nd.id === edge.toNodeId)
-              ) as any;
+              const fromInClan = clanNodeIndex.get(edge.fromNodeId) ?? null;
+              const toInClan = clanNodeIndex.get(edge.toNodeId) ?? null;
 
               if (fromInClan && !toInClan) {
                 // current clan has 'from', find 'to' in placed nodes
-                const placedTo = allDagNodes.find((dn: any) =>
-                  dn.data.nodes.some((n: any) => n.id === edge.toNodeId)
-                );
+                const placedTo = placedNodeIndex.get(edge.toNodeId);
                 if (
                   placedTo &&
                   placedTo.y !== undefined &&
@@ -555,9 +570,7 @@ export function TreeCanvas({
                 }
               } else if (!fromInClan && toInClan) {
                 // current clan has 'to', find 'from' in placed nodes
-                const placedFrom = allDagNodes.find((dn: any) =>
-                  dn.data.nodes.some((n: any) => n.id === edge.fromNodeId)
-                );
+                const placedFrom = placedNodeIndex.get(edge.fromNodeId);
                 if (
                   placedFrom &&
                   placedFrom.y !== undefined &&
@@ -636,23 +649,40 @@ export function TreeCanvas({
         n.y = undefined;
       });
 
+      // Build index: nodeId -> crossClanEdge for O(1) lookup
+      const crossClanEdgeByNode = new Map<string, CrossClanEdge>();
+      for (const cce of crossClanEdges) {
+        if (!crossClanEdgeByNode.has(cce.fromNodeId)) crossClanEdgeByNode.set(cce.fromNodeId, cce);
+        if (!crossClanEdgeByNode.has(cce.toNodeId)) crossClanEdgeByNode.set(cce.toNodeId, cce);
+      }
+
+      // Build index: nodeId -> dagNode for O(1) lookup into placed DAG nodes
+      const dagNodeByMemberId = new Map<string, any>();
+      for (const dn of allDagNodes) {
+        for (const nd of dn.data.nodes) {
+          dagNodeByMemberId.set(nd.id, dn);
+        }
+      }
+
+      // Build index: nodeId -> isolated node for O(1) lookup
+      const crossClanIsoMap = new Map<string, any>();
+      for (const iso of crossClanIsolated) {
+        crossClanIsoMap.set(iso.id, iso);
+      }
+
       while (unplaced.length > 0) {
         let placedAny = false;
 
         for (let i = unplaced.length - 1; i >= 0; i--) {
           const node = unplaced[i];
-          const ccEdge = crossClanEdges.find(
-            (e) => e.fromNodeId === node.id || e.toNodeId === node.id
-          );
+          const ccEdge = crossClanEdgeByNode.get(node.id);
 
           if (ccEdge) {
             const connectedId =
               ccEdge.fromNodeId === node.id
                 ? ccEdge.toNodeId
                 : ccEdge.fromNodeId;
-            const connectedDagNode = allDagNodes.find((dn: any) =>
-              dn.data.nodes.some((n: any) => n.id === connectedId)
-            );
+            const connectedDagNode = dagNodeByMemberId.get(connectedId);
 
             if (connectedDagNode) {
               const isParent = ccEdge.fromNodeId === node.id;
@@ -667,16 +697,15 @@ export function TreeCanvas({
             }
 
             // Check if connected node is another isolated node that was ALREADY placed
-            const connectedIso = crossClanIsolated.find(
-              (n) => n.id === connectedId && n.y !== undefined
-            );
-            if (connectedIso) {
+            const connectedIso = crossClanIsoMap.get(connectedId);
+            const connectedIsoPlaced = connectedIso?.y !== undefined ? connectedIso : undefined;
+            if (connectedIsoPlaced) {
               const isParent = ccEdge.fromNodeId === node.id;
               // Inherit the exact same X to ensure a perfectly straight vertical line
-              node.x = connectedIso.x;
+              node.x = connectedIsoPlaced.x;
               node.y = isParent
-                ? connectedIso.y - (NODE_H + V_SPACING)
-                : connectedIso.y + (NODE_H + V_SPACING);
+                ? connectedIsoPlaced.y - (NODE_H + V_SPACING)
+                : connectedIsoPlaced.y + (NODE_H + V_SPACING);
               unplaced.splice(i, 1);
               placedAny = true;
               // Do not increment offset here, they are stacked vertically
@@ -789,7 +818,7 @@ export function TreeCanvas({
     ) {
       if (nodeData.isUnion) return;
 
-      const node = allNodes.find((n) => n.id === nodeData.id);
+      const node = nodesMap.get(nodeData.id);
       if (!node) return;
 
       // Only show relationship labels from the logged-in tree member's perspective
@@ -1038,7 +1067,7 @@ export function TreeCanvas({
               (e.type === "PARENT_CHILD" || e.type === "ADOPTION") &&
               e.toNodeId === cNode.id &&
               e.fromNodeId === pNode.id
-          );
+          ); // Note: This .find is bounded by edges×unitNodes (small constant), not O(N²)
           if (childEdge) {
             if (specificChildIndex === -1) {
               specificChildIndex = i;
@@ -1143,7 +1172,7 @@ export function TreeCanvas({
               (e.type === "SPOUSE" || e.type === "DIVORCED_SPOUSE") &&
               ((e.fromNodeId === person.id && e.toNodeId === nextPerson.id) ||
                 (e.fromNodeId === nextPerson.id && e.toNodeId === person.id))
-          );
+          ); // Note: This .find is bounded by edges×unit pairs (small constant), not O(N²)
           if (spouseEdge) spouseType = spouseEdge.type;
 
           const strokeColor =

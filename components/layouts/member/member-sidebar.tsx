@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -89,7 +89,21 @@ export function MemberSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const [collapsed, setCollapsed] = useState(false);
-  const [expanded, setExpanded] = useState<ExpandMap>(() => {
+  const [expanded, setExpanded] = useState<ExpandMap>({});
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  // Precompute section offsets to avoid O(N^2) work in the render loop.
+  const sectionOffsets = useMemo(() => {
+    let currentOffset = 0;
+    return memberNavSections.map((section) => {
+      const offset = currentOffset;
+      currentOffset += section.items.length;
+      return offset;
+    });
+  }, []);
+
+  // React 19 update-during-render pattern for syncing expanded state with route
+  if (pathname !== prevPathname) {
     const init: ExpandMap = {};
     memberNavSections.forEach((sec) => {
       sec.items.forEach((item) => {
@@ -98,8 +112,9 @@ export function MemberSidebar() {
         }
       });
     });
-    return init;
-  });
+    setPrevPathname(pathname);
+    setExpanded((prev) => ({ ...prev, ...init }));
+  }
   const toggleExpand = useCallback(
     (href: string) => setExpanded((p) => ({ ...p, [href]: !p[href] })),
     []
@@ -138,7 +153,7 @@ export function MemberSidebar() {
 
             <div className="space-y-0.5 px-3">
               {section.items.map((item, iIdx) => {
-                const globalIdx = memberNavSections.slice(0, sIdx).reduce((acc, s) => acc + s.items.length, 0) + iIdx;
+                const globalIdx = sectionOffsets[sIdx] + iIdx;
                 const pal = ICON_PALETTE[globalIdx % ICON_PALETTE.length];
                 const isActive = item.children
                   ? // parent is active if on any child route

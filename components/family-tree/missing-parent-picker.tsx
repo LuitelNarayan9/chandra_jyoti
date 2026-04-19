@@ -49,14 +49,15 @@ export function MissingParentPicker({
 
   // Find the existing parent (the one that IS present)
   const existingParent = useMemo(() => {
+    const nodeMap = new Map(allNodes.map((n) => [n.id, n]));
     const parentEdges = edges.filter(
       (e) =>
         e.toNodeId === member.id &&
         (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
     );
     const parentNodes = parentEdges
-      .map((e) => allNodes.find((n) => n.id === e.fromNodeId))
-      .filter(Boolean) as TreeNode[];
+      .map((e) => nodeMap.get(e.fromNodeId))
+      .filter((n): n is TreeNode => Boolean(n));
 
     // The existing parent is the one whose gender is opposite to what's missing
     if (missingType === "MOTHER") {

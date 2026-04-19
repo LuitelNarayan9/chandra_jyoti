@@ -294,6 +294,12 @@ export function MemberProfileView({
     [member, allNodes, edges]
   );
 
+  // O(1) lookup map for parent resolution in render phase
+  const nodesMap = useMemo(
+    () => new Map(allNodes.map((n) => [n.id, n])),
+    [allNodes]
+  );
+
   // Close on Escape key
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -331,7 +337,7 @@ export function MemberProfileView({
                 (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
             );
             const parentNodes = parentEdges
-              .map((e) => allNodes.find((n) => n.id === e.fromNodeId))
+              .map((e) => nodesMap.get(e.fromNodeId))
               .filter(Boolean);
             const hasFather = parentNodes.some((p) => p?.gender === "MALE");
             const hasMother = parentNodes.some((p) => p?.gender === "FEMALE");

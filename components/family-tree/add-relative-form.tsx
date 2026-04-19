@@ -38,6 +38,13 @@ import {
   Link2,
   Search,
   Check,
+  User,
+  Calendar,
+  Briefcase,
+  FileText,
+  Heart,
+  Droplets,
+  Users,
 } from "lucide-react";
 import {
   addRelativeSchema,
@@ -84,6 +91,31 @@ export function AddRelativeForm({
   const [mode, setMode] = useState<"create" | "link">("create");
   const [linkSearch, setLinkSearch] = useState("");
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
+  const [linkAliveFilter, setLinkAliveFilter] = useState<"all" | "alive" | "deceased">("all");
+
+  // O(1) lookup map for node resolution
+  const nodesMap = useMemo(
+    () => new Map(allNodes.map((n) => [n.id, n])),
+    [allNodes]
+  );
+
+  // Determine which parents already exist for this member
+  const { hasFather, hasMother } = useMemo(() => {
+    if (!edges.length || !allNodes.length) return { hasFather: false, hasMother: false };
+    const parentEdges = edges.filter(
+      (e) =>
+        e.toNodeId === targetNode.id &&
+        (e.type === "PARENT_CHILD" || e.type === "ADOPTION")
+    );
+    let father = false;
+    let mother = false;
+    for (const pe of parentEdges) {
+      const parent = nodesMap.get(pe.fromNodeId);
+      if (parent?.gender === "MALE") father = true;
+      if (parent?.gender === "FEMALE") mother = true;
+    }
+    return { hasFather: father, hasMother: mother };
+  }, [targetNode.id, edges, allNodes.length, nodesMap]);
 
   // Find target's spouse(s) for auto-suggesting the second parent
   const targetSpouses = useMemo(() => {
@@ -155,6 +187,7 @@ export function AddRelativeForm({
       setMode("create");
       setLinkSearch("");
       setSelectedLinkId(null);
+      setLinkAliveFilter("all");
     }
   }, [
     open,
@@ -235,6 +268,25 @@ export function AddRelativeForm({
         return false;
       }
 
+      // Alive/Deceased filter
+      if (linkAliveFilter === "alive" && !n.isAlive) return false;
+      if (linkAliveFilter === "deceased" && n.isAlive) return false;
+
+      // Age/DOB filter based on relationship (only when both DOBs are available)
+      if (targetNode.dateOfBirth && n.dateOfBirth) {
+        const targetDob = new Date(targetNode.dateOfBirth);
+        const candidateDob = new Date(n.dateOfBirth);
+
+        if (watchRelationship === "FATHER" || watchRelationship === "MOTHER") {
+          // Parent must be older (born before the target)
+          if (candidateDob >= targetDob) return false;
+        } else if (watchRelationship === "CHILD") {
+          // Child must be younger (born after the target)
+          if (candidateDob <= targetDob) return false;
+        }
+        // SPOUSE, BROTHER, SISTER — no age restriction
+      }
+
       // Search filter
       if (linkSearch) {
         const q = linkSearch.toLowerCase();
@@ -250,10 +302,38 @@ export function AddRelativeForm({
     connectedIds,
     targetNode.gender,
     targetNode.familyClan,
+    targetNode.dateOfBirth,
+    linkAliveFilter,
     linkSearch,
   ]);
 
   function onSubmit(data: AddRelativeInput) {
+    // Client-side DOB age validation (only when both DOBs are available)
+    if (data.dateOfBirth && targetNode.dateOfBirth) {
+      const newDob = new Date(data.dateOfBirth);
+      const targetDob = new Date(targetNode.dateOfBirth);
+
+      if (data.relationshipType === "FATHER" || data.relationshipType === "MOTHER") {
+        // Parent must be born BEFORE the child
+        if (newDob >= targetDob) {
+          const label = data.relationshipType === "FATHER" ? "Father" : "Mother";
+          toast.error(
+            `${label} must be older than ${targetName}. The date of birth you entered (${data.dateOfBirth}) is not before ${targetName}'s date of birth (${targetNode.dateOfBirth}).`
+          );
+          return;
+        }
+      } else if (data.relationshipType === "CHILD") {
+        // Child must be born AFTER the parent
+        if (newDob <= targetDob) {
+          toast.error(
+            `A child must be younger than ${targetName}. The date of birth you entered (${data.dateOfBirth}) is not after ${targetName}'s date of birth (${targetNode.dateOfBirth}).`
+          );
+          return;
+        }
+      }
+      // SPOUSE, BROTHER, SISTER — no age restriction
+    }
+
     startTransition(async () => {
       const result = await addRelative(data);
       if (result.success) {
@@ -290,40 +370,52 @@ export function AddRelativeForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add Relative</DialogTitle>
-          <DialogDescription>
-            Add a family member related to <strong>{targetName}</strong>. The
-            submission will be reviewed by an admin.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border-zinc-200 dark:border-zinc-700/80 shadow-2xl p-0">
+        {/* Header with gradient accent */}
+        <div className="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent dark:from-emerald-500/15 dark:via-teal-500/10 px-6 pt-6 pb-4">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-400/10 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold tracking-tight flex items-center gap-2">
+              <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              Add Relative
+            </DialogTitle>
+            <DialogDescription className="text-zinc-500 dark:text-zinc-400">
+              Add a family member related to <strong className="text-zinc-700 dark:text-zinc-200">{targetName}</strong>. The submission will be reviewed by an admin.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 pb-6 space-y-5">
             {/* Relationship Type */}
             <FormField
               control={form.control}
               name="relationshipType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Relationship to {targetName} *</FormLabel>
+                  <FormLabel className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-2">
+                    <Heart className="h-3.5 w-3.5" /> Relationship to {targetName}
+                  </FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="rounded-xl h-11">
                         <SelectValue placeholder="Select relationship" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="FATHER">
-                        Father of {targetName}
-                      </SelectItem>
-                      <SelectItem value="MOTHER">
-                        Mother of {targetName}
-                      </SelectItem>
+                    <SelectContent className="rounded-xl">
+                      {!hasFather && (
+                        <SelectItem value="FATHER">
+                          Father of {targetName}
+                        </SelectItem>
+                      )}
+                      {!hasMother && (
+                        <SelectItem value="MOTHER">
+                          Mother of {targetName}
+                        </SelectItem>
+                      )}
                       <SelectItem value="CHILD">
                         Child of {targetName}
                       </SelectItem>
@@ -344,33 +436,33 @@ export function AddRelativeForm({
             />
 
             {/* Mode toggle: Create New vs Link Existing */}
-            {watchRelationship && linkCandidates.length > 0 && (
-              <div className="flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-1 gap-1">
+            {watchRelationship && (
+              <div className="flex rounded-xl bg-zinc-100 dark:bg-zinc-800 p-1 gap-1">
                 <button
                   type="button"
                   onClick={() => {
                     setMode("create");
                     setSelectedLinkId(null);
                   }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                     mode === "create"
                       ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
                       : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
                   }`}
                 >
-                  <UserPlus className="h-3.5 w-3.5" />
+                  <UserPlus className="h-4 w-4" />
                   Create New
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("link")}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                     mode === "link"
                       ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
                       : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
                   }`}
                 >
-                  <Link2 className="h-3.5 w-3.5" />
+                  <Link2 className="h-4 w-4" />
                   Link Existing ({linkCandidates.length})
                 </button>
               </div>
@@ -379,16 +471,21 @@ export function AddRelativeForm({
             {/* ═══ CREATE NEW MODE ═══ */}
             {mode === "create" && (
               <>
+                {/* ── Section: Identity ── */}
+                <fieldset className="space-y-3">
+                <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                  <User className="h-3.5 w-3.5" /> Identity
+                </legend>
                 {/* Name */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First Name *</FormLabel>
+                        <FormLabel className="text-xs font-medium">First Name *</FormLabel>
                         <FormControl>
-                          <Input placeholder="First name" {...field} />
+                          <Input className="rounded-xl h-10" placeholder="First name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -399,9 +496,9 @@ export function AddRelativeForm({
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last Name *</FormLabel>
+                        <FormLabel className="text-xs font-medium">Last Name *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Last name" {...field} />
+                          <Input className="rounded-xl h-10" placeholder="Last name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -410,23 +507,23 @@ export function AddRelativeForm({
                 </div>
 
                 {/* Gender + DOB */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="gender"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Gender *</FormLabel>
+                        <FormLabel className="text-xs font-medium">Gender *</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="rounded-xl h-10">
                               <SelectValue placeholder="Select gender" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl">
                             <SelectItem value="MALE">Male</SelectItem>
                             <SelectItem value="FEMALE">Female</SelectItem>
                             <SelectItem value="OTHER">Other</SelectItem>
@@ -441,10 +538,11 @@ export function AddRelativeForm({
                     name="dateOfBirth"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Date of Birth</FormLabel>
+                        <FormLabel className="text-xs font-medium">Date of Birth</FormLabel>
                         <FormControl>
                           <Input
                             type="date"
+                            className="rounded-xl h-10"
                             {...field}
                             value={field.value || ""}
                           />
@@ -454,21 +552,34 @@ export function AddRelativeForm({
                     )}
                   />
                 </div>
+                </fieldset>
 
-                {/* Alive status + Death date */}
-                <div className="grid grid-cols-2 gap-4 items-end">
+                <div className="border-t border-zinc-100 dark:border-zinc-800" />
+
+                {/* ── Section: Timeline ── */}
+                <fieldset className="space-y-3">
+                <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                  <Calendar className="h-3.5 w-3.5" /> Timeline
+                </legend>
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="isAlive"
                     render={({ field }) => (
-                      <FormItem className="flex items-center gap-3">
-                        <FormLabel className="mt-0">Is Alive?</FormLabel>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
+                      <FormItem>
+                        <FormLabel className="text-xs font-medium">Status</FormLabel>
+                        <div className="flex items-center gap-3 h-10 px-3 rounded-xl border border-input bg-background">
+                          <span className={`text-sm ${field.value ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400"}`}>
+                            {field.value ? "♥ Alive" : "✝ Deceased"}
+                          </span>
+                          <FormControl>
+                            <Switch
+                              className="ml-auto"
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </div>
                       </FormItem>
                     )}
                   />
@@ -478,10 +589,11 @@ export function AddRelativeForm({
                       name="dateOfDeath"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Date of Death</FormLabel>
+                          <FormLabel className="text-xs font-medium">Date of Death</FormLabel>
                           <FormControl>
                             <Input
                               type="date"
+                              className="rounded-xl h-10"
                               {...field}
                               value={field.value || ""}
                             />
@@ -492,9 +604,17 @@ export function AddRelativeForm({
                     />
                   )}
                 </div>
+                </fieldset>
 
+                <div className="border-t border-zinc-100 dark:border-zinc-800" />
+
+                {/* ── Section: Details ── */}
+                <fieldset className="space-y-3">
+                <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                  <Briefcase className="h-3.5 w-3.5" /> Details
+                </legend>
                 {/* Clan + Profession */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="familyClan"
@@ -503,6 +623,7 @@ export function AddRelativeForm({
                         <FormLabel>Family Clan</FormLabel>
                         <FormControl>
                           <Input
+                            className="rounded-xl h-10"
                             placeholder="Type or select clan"
                             {...field}
                             value={field.value?.toString()}
@@ -512,13 +633,12 @@ export function AddRelativeForm({
                             }}
                             onFocus={() => setOpenClanDropdown(true)}
                             onBlur={() => {
-                              // Allow click events on dropdown items before closing
                               setTimeout(() => setOpenClanDropdown(false), 200);
                             }}
                           />
                         </FormControl>
                         {openClanDropdown && (
-                          <div className="absolute top-[68px] z-100 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95">
+                          <div className="absolute top-[68px] z-100 w-full rounded-xl border bg-popover text-popover-foreground shadow-lg outline-none animate-in fade-in-0 zoom-in-95">
                             <div className="max-h-[200px] overflow-auto p-1">
                               {clans
                                 .filter((clan) =>
@@ -559,9 +679,10 @@ export function AddRelativeForm({
                     name="profession"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Profession</FormLabel>
+                        <FormLabel className="text-xs font-medium">Profession</FormLabel>
                         <FormControl>
                           <Input
+                            className="rounded-xl h-10"
                             placeholder="e.g. Farmer"
                             {...field}
                             value={field.value || ""}
@@ -574,23 +695,25 @@ export function AddRelativeForm({
                 </div>
 
                 {/* Marital Status + Blood Group */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="maritalStatus"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Marital Status</FormLabel>
+                        <FormLabel className="text-xs font-medium flex items-center gap-1.5">
+                          <Heart className="h-3 w-3 text-rose-400" /> Marital Status
+                        </FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || "SINGLE"}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="rounded-xl h-10">
                               <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl">
                             <SelectItem value="SINGLE">Single</SelectItem>
                             <SelectItem value="MARRIED">Married</SelectItem>
                             <SelectItem value="DIVORCED">Divorced</SelectItem>
@@ -606,17 +729,19 @@ export function AddRelativeForm({
                     name="bloodGroup"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Blood Group (optional)</FormLabel>
+                        <FormLabel className="text-xs font-medium flex items-center gap-1.5">
+                          <Droplets className="h-3 w-3 text-red-400" /> Blood Group
+                        </FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value?.toString()}
                         >
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select blood group" />
+                            <SelectTrigger className="rounded-xl h-10">
+                              <SelectValue placeholder="Select" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl">
                             <SelectItem value="A+">A+</SelectItem>
                             <SelectItem value="A-">A-</SelectItem>
                             <SelectItem value="B+">B+</SelectItem>
@@ -632,18 +757,24 @@ export function AddRelativeForm({
                     )}
                   />
                 </div>
+                </fieldset>
 
-                {/* Bio */}
+                <div className="border-t border-zinc-100 dark:border-zinc-800" />
+
+                {/* ── Section: Bio ── */}
+                <fieldset className="space-y-3">
+                <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                  <FileText className="h-3.5 w-3.5" /> Bio
+                </legend>
                 <FormField
                   control={form.control}
                   name="bio"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bio (optional)</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="A short note about this person..."
-                          className="resize-none"
+                          className="resize-none rounded-xl"
                           rows={2}
                           {...field}
                           value={field.value || ""}
@@ -653,6 +784,7 @@ export function AddRelativeForm({
                     </FormItem>
                   )}
                 />
+                </fieldset>
 
                 {/* Second Parent (when adding a CHILD) */}
                 {watchRelationship === "CHILD" &&
@@ -836,10 +968,11 @@ export function AddRelativeForm({
                     name="startDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Marriage Date</FormLabel>
+                        <FormLabel className="text-xs font-medium">Marriage Date</FormLabel>
                         <FormControl>
                           <Input
                             type="date"
+                            className="rounded-xl h-10"
                             {...field}
                             value={field.value || ""}
                           />
@@ -850,7 +983,11 @@ export function AddRelativeForm({
                   />
                 )}
 
-                <Button type="submit" className="w-full" disabled={isPending}>
+                <Button
+                  type="submit"
+                  className="w-full rounded-xl h-11 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/20 transition-all"
+                  disabled={isPending}
+                >
                   {isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -866,6 +1003,34 @@ export function AddRelativeForm({
             {/* ═══ LINK EXISTING MODE ═══ */}
             {mode === "link" && watchRelationship && (
               <div className="space-y-3">
+                {/* Alive / Deceased filter */}
+                <div className="flex rounded-xl bg-zinc-100 dark:bg-zinc-800 p-1 gap-1">
+                  {(["all", "alive", "deceased"] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setLinkAliveFilter(filter)}
+                      className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-all ${
+                        linkAliveFilter === filter
+                          ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                          : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300"
+                      }`}
+                    >
+                      {filter === "all" && "All"}
+                      {filter === "alive" && (
+                        <>
+                          <span className="text-emerald-500">♥</span> Alive
+                        </>
+                      )}
+                      {filter === "deceased" && (
+                        <>
+                          <span className="text-zinc-400">✝</span> Deceased
+                        </>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -878,12 +1043,12 @@ export function AddRelativeForm({
                         e.preventDefault();
                       }
                     }}
-                    className="pl-9"
+                    className="pl-9 rounded-xl h-10"
                   />
                 </div>
 
                 {/* Candidate list */}
-                <div className="max-h-[280px] overflow-y-auto space-y-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 p-2">
+                <div className="max-h-[280px] overflow-y-auto space-y-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700 p-2">
                   {linkCandidates.length === 0 ? (
                     <div className="py-8 text-center">
                       <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -982,7 +1147,7 @@ export function AddRelativeForm({
                 {/* Link button */}
                 <Button
                   type="button"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="w-full rounded-xl h-11 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/20 transition-all"
                   disabled={!selectedLinkId || isPending}
                   onClick={handleLinkExisting}
                 >
