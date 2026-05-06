@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import { createAdminPoll } from "@/lib/actions/forum.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +105,7 @@ export function AdminPollCreator() {
 
       if (result.success) {
         toast.success(result.message);
+        posthog.capture("forum_poll_created", { isPublished, type: poll.type });
         setIsOpen(false);
         setPoll({
           question: "",

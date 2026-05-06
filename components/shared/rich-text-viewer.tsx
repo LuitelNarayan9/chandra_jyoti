@@ -18,7 +18,8 @@ import TableHeader from "@tiptap/extension-table-header";
 import Typography from "@tiptap/extension-typography";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { sanitizeRichTextHtml } from "@/lib/sanitize-html";
 
 interface RichTextViewerProps {
   content: string;
@@ -31,6 +32,8 @@ interface RichTextViewerProps {
 }
 
 export function RichTextViewer({ content, className }: RichTextViewerProps) {
+  const safeContent = useMemo(() => sanitizeRichTextHtml(content), [content]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -66,7 +69,7 @@ export function RichTextViewer({ content, className }: RichTextViewerProps) {
       Subscript,
       Superscript,
     ],
-    content,
+    content: safeContent,
     editable: false,
     immediatelyRender: false,
     editorProps: {
@@ -86,10 +89,10 @@ export function RichTextViewer({ content, className }: RichTextViewerProps) {
   });
 
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+    if (editor && safeContent !== editor.getHTML()) {
+      editor.commands.setContent(safeContent);
     }
-  }, [content, editor]);
+  }, [safeContent, editor]);
 
   if (!editor) return null;
 

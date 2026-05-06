@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { auth } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +11,39 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const member = await db.familyMember.findUnique({
-      where: { id },
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUser = await db.user.findUnique({
+      where: { clerkId: userId },
+      select: {
+        id: true,
+        role: true,
+        isResidentOfTuminDhanbari: true,
+      },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const isAdmin =
+      currentUser.role === "ADMIN" || currentUser.role === "SUPER_ADMIN";
+
+    const member = await db.familyMember.findFirst({
+      where: {
+        id,
+        ...(isAdmin
+          ? {}
+          : {
+              OR: [
+                { isApproved: true },
+                { linkedUserId: currentUser.id },
+              ],
+            }),
+      },
       include: {
         edgesAsFrom: {
           where: { isApproved: true },
@@ -57,6 +89,11 @@ export async function GET(
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
+    const canViewSensitive =
+      isAdmin ||
+      currentUser.isResidentOfTuminDhanbari ||
+      member.linkedUserId === currentUser.id;
+
     // Derive relations
     const parents = member.edgesAsTo
       .filter((e) => e.type === "PARENT_CHILD" || e.type === "ADOPTION")
@@ -66,6 +103,8 @@ export async function GET(
     const directChildren = member.edgesAsFrom
       .filter((e) => e.type === "PARENT_CHILD" || e.type === "ADOPTION")
       .map((e) => e.toNode);
+
+    type RelativeNode = (typeof parents)[number];
 
     const spouseMap = new Map<
       string,
@@ -81,7 +120,10 @@ export async function GET(
 
     // Get children of spouses (since edges often only connect from one parent)
     const spouseIds = spouses.map((s) => s.id);
-    let spouseChildrenEdges: any[] = [];
+    let spouseChildrenEdges: Array<{
+      fromNodeId: string;
+      toNode: RelativeNode;
+    }> = [];
     if (spouseIds.length > 0) {
       spouseChildrenEdges = await db.familyEdge.findMany({
         where: {
@@ -108,7 +150,7 @@ export async function GET(
     }
 
     // Combine all unique children
-    const childrenMap = new Map<string, any>();
+    const childrenMap = new Map<string, RelativeNode>();
     directChildren.forEach((c) => childrenMap.set(c.id, c));
     spouseChildrenEdges.forEach((e) => childrenMap.set(e.toNode.id, e.toNode));
     const children = Array.from(childrenMap.values());
@@ -174,7 +216,10 @@ export async function GET(
     }
 
     // Group children by spouse
-    const spouseChildGroups = spouses.map((spouse) => {
+    const spouseChildGroups: Array<{
+      spouse: RelativeNode | null;
+      children: RelativeNode[];
+    }> = spouses.map((spouse) => {
       // Find children that belong to this spouse
       const childrenOfThisSpouse = spouseChildrenEdges
         .filter((e) => e.fromNodeId === spouse.id)
@@ -197,7 +242,7 @@ export async function GET(
       directChildren.forEach((dc) => {
         // Only add if not already present in the group and not present in ANY other spouse group's children
         const isInAnyGroup = spouseChildGroups.some((g) =>
-          g.children.some((c: any) => c.id === dc.id)
+          g.children.some((c) => c.id === dc.id)
         );
         if (!isInAnyGroup && !existingChildIds.has(dc.id)) {
           firstGroup.children.push(dc);
@@ -208,7 +253,7 @@ export async function GET(
     // If no spouses but has children, group them under "No spouse"
     if (spouses.length === 0 && children.length > 0) {
       spouseChildGroups.push({
-        spouse: null as any,
+        spouse: null,
         children,
       });
     }
@@ -227,11 +272,14 @@ export async function GET(
     const linkedIds = [
       ...(member.linkedUserId && !member.photo ? [member.linkedUserId] : []),
       ...allRelatives
-        .filter((r: any) => !r.photo && r.linkedUserId)
-        .map((r: any) => r.linkedUserId as string),
+        .filter(
+          (r): r is RelativeNode & { linkedUserId: string } =>
+            !r.photo && Boolean(r.linkedUserId)
+        )
+        .map((r) => r.linkedUserId),
     ];
 
-    let avatarMap = new Map<string, string>();
+    const avatarMap = new Map<string, string>();
     if (linkedIds.length > 0) {
       const users = await db.user.findMany({
         where: { id: { in: [...new Set(linkedIds)] } },
@@ -242,12 +290,17 @@ export async function GET(
       }
     }
 
-    const resolvePhoto = (node: any) => ({
-      ...node,
+    const resolveRelative = (node: RelativeNode) => ({
+      id: node.id,
+      firstName: node.firstName,
+      lastName: node.lastName,
+      gender: node.gender,
+      isAlive: node.isAlive,
+      dateOfBirth: canViewSensitive ? node.dateOfBirth : null,
+      dateOfDeath: canViewSensitive ? node.dateOfDeath : null,
       photo:
         node.photo ||
         (node.linkedUserId ? (avatarMap.get(node.linkedUserId) ?? null) : null),
-      linkedUserId: undefined, // strip from response
     });
 
     const memberPhoto =
@@ -261,27 +314,30 @@ export async function GET(
         id: member.id,
         firstName: member.firstName,
         lastName: member.lastName,
-        dateOfBirth: member.dateOfBirth,
-        dateOfDeath: member.dateOfDeath,
+        dateOfBirth: canViewSensitive ? member.dateOfBirth : null,
+        dateOfDeath: canViewSensitive ? member.dateOfDeath : null,
         gender: member.gender,
         photo: memberPhoto,
-        bio: member.bio,
+        bio: canViewSensitive ? member.bio : null,
         familyClan: member.familyClan,
         generation: member.generation,
         isAlive: member.isAlive,
-        maritalStatus: derivedMaritalStatus,
-        bloodGroup: member.bloodGroup,
-        profession: member.profession,
+        maritalStatus: canViewSensitive ? derivedMaritalStatus : null,
+        bloodGroup: canViewSensitive ? member.bloodGroup : null,
+        profession: canViewSensitive ? member.profession : null,
       },
-      parents: parents.map(resolvePhoto),
-      children: children.map(resolvePhoto),
-      spouses: spouses.map(resolvePhoto),
-      siblings: siblings.map(resolvePhoto),
+      parents: parents.map(resolveRelative),
+      children: children.map(resolveRelative),
+      spouses: spouses.map(resolveRelative),
+      siblings: siblings.map(resolveRelative),
       spouseChildGroups: spouseChildGroups.map((g) => ({
-        spouse: g.spouse ? resolvePhoto(g.spouse) : null,
-        children: g.children.map(resolvePhoto),
+        spouse: g.spouse ? resolveRelative(g.spouse) : null,
+        children: g.children.map(resolveRelative),
       })),
-      lifeEvents: member.lifeEvents,
+      lifeEvents: canViewSensitive ? member.lifeEvents : [],
+      permissions: {
+        canViewSensitive,
+      },
     });
   } catch (error) {
     console.error("Error fetching profile:", error);

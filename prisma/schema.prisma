@@ -513,18 +513,22 @@ model AdminPollVote {
 // =============================================
 
 model NewsArticle {
-  id         String       @id @default(cuid())
-  title      String
-  slug       String       @unique
-  content    String?      @db.Text
-  excerpt    String?      @db.VarChar(500)
-  coverImage String?
-  source     NewsSource
-  sourceUrl  String?
-  sourceName String?
-  category   NewsCategory
-  isFeatured Boolean      @default(false)
-  views      Int          @default(0)
+  id            String        @id @default(cuid())
+  title         String
+  slug          String        @unique
+  content       String?       @db.Text
+  excerpt       String?       @db.VarChar(500)
+  coverImage    String?
+  galleryImages String?       @db.Text // JSON array of image URLs, max 5
+  source        NewsSource
+  sourceUrl     String?
+  sourceName    String?
+  category      NewsCategory
+  localTag      LocalNewsTag?
+  location      String?       @db.VarChar(200)
+  urgency       NewsUrgency   @default(NORMAL)
+  isFeatured    Boolean       @default(false)
+  views         Int           @default(0)
 
   bookmarks NewsBookmark[]
 
@@ -534,6 +538,7 @@ model NewsArticle {
 
   @@index([category, publishedAt])
   @@index([source])
+  @@index([urgency, publishedAt])
 }
 
 model NewsBookmark {
@@ -557,6 +562,21 @@ enum NewsCategory {
   STATE
   NATIONAL
   INTERNATIONAL
+}
+
+enum LocalNewsTag {
+  GPU_MEETING
+  WARD_UPDATE
+  NOTICE
+  EVENT
+  DEVELOPMENT
+  EMERGENCY
+}
+
+enum NewsUrgency {
+  NORMAL
+  FEATURED
+  URGENT
 }
 
 // =============================================

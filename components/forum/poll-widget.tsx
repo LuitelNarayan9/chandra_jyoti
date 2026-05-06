@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { votePoll } from "@/lib/actions/forum.actions";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 
 import { Button } from "@/components/ui/button";
 
@@ -143,6 +144,7 @@ export function PollWidget({ poll, currentUserId }: PollWidgetProps) {
 
       if (result.success) {
         toast.success(result.message ?? "Vote recorded!");
+        posthog.capture("forum_poll_voted", { pollId: poll.id, pollType: "STANDARD" });
       } else {
         toast.error(result.error ?? "Failed to vote.");
       }

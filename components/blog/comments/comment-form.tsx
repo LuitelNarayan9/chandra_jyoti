@@ -8,6 +8,7 @@ import {
   CreateCommentValues,
 } from "@/lib/validations/comment";
 import { addComment } from "@/lib/actions/comment.actions";
+import posthog from "posthog-js";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -200,6 +201,10 @@ export function CommentForm({
         const result = await addComment(values);
         if (result.success) {
           toast.success(result.message);
+          posthog.capture("blog_comment_posted", {
+            post_id: postId,
+            is_reply: !!parentId,
+          });
           editor?.commands.clearContent();
           form.reset();
           setCharCount(0);

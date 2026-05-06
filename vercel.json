@@ -1,5 +1,11 @@
 {
   "devCommand": "next dev --port $PORT",
   "buildCommand": "next build",
-  "installCommand": "bun install"
+  "installCommand": "bun install",
+  "crons": [
+    {
+      "path": "/api/cron/news-refresh",
+      "schedule": "0 */3 * * *"
+    }
+  ]
 }

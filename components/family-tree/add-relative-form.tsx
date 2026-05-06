@@ -60,6 +60,7 @@ import {
   getNodeColor,
   getInitials,
 } from "@/lib/family-tree-utils";
+import posthog from "posthog-js";
 
 interface AddRelativeFormProps {
   open: boolean;
@@ -91,7 +92,9 @@ export function AddRelativeForm({
   const [mode, setMode] = useState<"create" | "link">("create");
   const [linkSearch, setLinkSearch] = useState("");
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
-  const [linkAliveFilter, setLinkAliveFilter] = useState<"all" | "alive" | "deceased">("all");
+  const [linkAliveFilter, setLinkAliveFilter] = useState<
+    "all" | "alive" | "deceased"
+  >("all");
 
   // O(1) lookup map for node resolution
   const nodesMap = useMemo(
@@ -101,7 +104,8 @@ export function AddRelativeForm({
 
   // Determine which parents already exist for this member
   const { hasFather, hasMother } = useMemo(() => {
-    if (!edges.length || !allNodes.length) return { hasFather: false, hasMother: false };
+    if (!edges.length || !allNodes.length)
+      return { hasFather: false, hasMother: false };
     const parentEdges = edges.filter(
       (e) =>
         e.toNodeId === targetNode.id &&
@@ -313,10 +317,14 @@ export function AddRelativeForm({
       const newDob = new Date(data.dateOfBirth);
       const targetDob = new Date(targetNode.dateOfBirth);
 
-      if (data.relationshipType === "FATHER" || data.relationshipType === "MOTHER") {
+      if (
+        data.relationshipType === "FATHER" ||
+        data.relationshipType === "MOTHER"
+      ) {
         // Parent must be born BEFORE the child
         if (newDob >= targetDob) {
-          const label = data.relationshipType === "FATHER" ? "Father" : "Mother";
+          const label =
+            data.relationshipType === "FATHER" ? "Father" : "Mother";
           toast.error(
             `${label} must be older than ${targetName}. The date of birth you entered (${data.dateOfBirth}) is not before ${targetName}'s date of birth (${targetNode.dateOfBirth}).`
           );
@@ -338,6 +346,10 @@ export function AddRelativeForm({
       const result = await addRelative(data);
       if (result.success) {
         toast.success(result.data?.message || "Relative added!");
+        posthog.capture("family_tree_member_added", {
+          targetId: result.data?.nodeId,
+          relationship: data.relationshipType,
+        });
         onOpenChange(false);
         form.reset();
       } else {
@@ -356,6 +368,10 @@ export function AddRelativeForm({
       });
       if (result.success) {
         toast.success(result.data?.message || "Member linked!");
+        posthog.capture("family_tree_member_linked", {
+          targetId: selectedLinkId,
+          relationship: watchRelationship,
+        });
         onOpenChange(false);
         setSelectedLinkId(null);
         setLinkSearch("");
@@ -380,13 +396,20 @@ export function AddRelativeForm({
               Add Relative
             </DialogTitle>
             <DialogDescription className="text-zinc-500 dark:text-zinc-400">
-              Add a family member related to <strong className="text-zinc-700 dark:text-zinc-200">{targetName}</strong>. The submission will be reviewed by an admin.
+              Add a family member related to{" "}
+              <strong className="text-zinc-700 dark:text-zinc-200">
+                {targetName}
+              </strong>
+              . The submission will be reviewed by an admin.
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="px-6 pb-6 space-y-5">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="px-6 pb-6 space-y-5"
+          >
             {/* Relationship Type */}
             <FormField
               control={form.control}
@@ -394,7 +417,8 @@ export function AddRelativeForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-2">
-                    <Heart className="h-3.5 w-3.5" /> Relationship to {targetName}
+                    <Heart className="h-3.5 w-3.5" /> Relationship to{" "}
+                    {targetName}
                   </FormLabel>
                   <Select
                     onValueChange={field.onChange}
@@ -473,123 +497,88 @@ export function AddRelativeForm({
               <>
                 {/* ── Section: Identity ── */}
                 <fieldset className="space-y-3">
-                <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
-                  <User className="h-3.5 w-3.5" /> Identity
-                </legend>
-                {/* Name */}
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-medium">First Name *</FormLabel>
-                        <FormControl>
-                          <Input className="rounded-xl h-10" placeholder="First name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-medium">Last Name *</FormLabel>
-                        <FormControl>
-                          <Input className="rounded-xl h-10" placeholder="Last name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Gender + DOB */}
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-medium">Gender *</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="rounded-xl h-10">
-                              <SelectValue placeholder="Select gender" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="rounded-xl">
-                            <SelectItem value="MALE">Male</SelectItem>
-                            <SelectItem value="FEMALE">Female</SelectItem>
-                            <SelectItem value="OTHER">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="dateOfBirth"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-medium">Date of Birth</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            className="rounded-xl h-10"
-                            {...field}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                </fieldset>
-
-                <div className="border-t border-zinc-100 dark:border-zinc-800" />
-
-                {/* ── Section: Timeline ── */}
-                <fieldset className="space-y-3">
-                <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
-                  <Calendar className="h-3.5 w-3.5" /> Timeline
-                </legend>
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="isAlive"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-medium">Status</FormLabel>
-                        <div className="flex items-center gap-3 h-10 px-3 rounded-xl border border-input bg-background">
-                          <span className={`text-sm ${field.value ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400"}`}>
-                            {field.value ? "♥ Alive" : "✝ Deceased"}
-                          </span>
-                          <FormControl>
-                            <Switch
-                              className="ml-auto"
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                  {!watchIsAlive && (
+                  <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                    <User className="h-3.5 w-3.5" /> Identity
+                  </legend>
+                  {/* Name */}
+                  <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
-                      name="dateOfDeath"
+                      name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Date of Death</FormLabel>
+                          <FormLabel className="text-xs font-medium">
+                            First Name *
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              className="rounded-xl h-10"
+                              placeholder="First name"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-medium">
+                            Last Name *
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              className="rounded-xl h-10"
+                              placeholder="Last name"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Gender + DOB */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-medium">
+                            Gender *
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="rounded-xl h-10">
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="MALE">Male</SelectItem>
+                              <SelectItem value="FEMALE">Female</SelectItem>
+                              <SelectItem value="OTHER">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="dateOfBirth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-medium">
+                            Date of Birth
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="date"
@@ -602,88 +591,246 @@ export function AddRelativeForm({
                         </FormItem>
                       )}
                     />
-                  )}
-                </div>
+                  </div>
+                </fieldset>
+
+                <div className="border-t border-zinc-100 dark:border-zinc-800" />
+
+                {/* ── Section: Timeline ── */}
+                <fieldset className="space-y-3">
+                  <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                    <Calendar className="h-3.5 w-3.5" /> Timeline
+                  </legend>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="isAlive"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-medium">
+                            Status
+                          </FormLabel>
+                          <div className="flex items-center gap-3 h-10 px-3 rounded-xl border border-input bg-background">
+                            <span
+                              className={`text-sm ${field.value ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400"}`}
+                            >
+                              {field.value ? "♥ Alive" : "✝ Deceased"}
+                            </span>
+                            <FormControl>
+                              <Switch
+                                className="ml-auto"
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    {!watchIsAlive && (
+                      <FormField
+                        control={form.control}
+                        name="dateOfDeath"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-medium">
+                              Date of Death
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                className="rounded-xl h-10"
+                                {...field}
+                                value={field.value || ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
                 </fieldset>
 
                 <div className="border-t border-zinc-100 dark:border-zinc-800" />
 
                 {/* ── Section: Details ── */}
                 <fieldset className="space-y-3">
-                <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
-                  <Briefcase className="h-3.5 w-3.5" /> Details
-                </legend>
-                {/* Clan + Profession */}
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="familyClan"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col justify-end relative">
-                        <FormLabel>Family Clan</FormLabel>
-                        <FormControl>
-                          <Input
-                            className="rounded-xl h-10"
-                            placeholder="Type or select clan"
-                            {...field}
-                            value={field.value?.toString()}
-                            onChange={(e) => {
-                              field.onChange(e.target.value);
-                              setOpenClanDropdown(true);
-                            }}
-                            onFocus={() => setOpenClanDropdown(true)}
-                            onBlur={() => {
-                              setTimeout(() => setOpenClanDropdown(false), 200);
-                            }}
-                          />
-                        </FormControl>
-                        {openClanDropdown && (
-                          <div className="absolute top-[68px] z-100 w-full rounded-xl border bg-popover text-popover-foreground shadow-lg outline-none animate-in fade-in-0 zoom-in-95">
-                            <div className="max-h-[200px] overflow-auto p-1">
-                              {clans
-                                .filter((clan) =>
+                  <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                    <Briefcase className="h-3.5 w-3.5" /> Details
+                  </legend>
+                  {/* Clan + Profession */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="familyClan"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col justify-end relative">
+                          <FormLabel>Family Clan</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="rounded-xl h-10"
+                              placeholder="Type or select clan"
+                              {...field}
+                              value={field.value?.toString()}
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
+                                setOpenClanDropdown(true);
+                              }}
+                              onFocus={() => setOpenClanDropdown(true)}
+                              onBlur={() => {
+                                setTimeout(
+                                  () => setOpenClanDropdown(false),
+                                  200
+                                );
+                              }}
+                            />
+                          </FormControl>
+                          {openClanDropdown && (
+                            <div className="absolute top-[68px] z-100 w-full rounded-xl border bg-popover text-popover-foreground shadow-lg outline-none animate-in fade-in-0 zoom-in-95">
+                              <div className="max-h-[200px] overflow-auto p-1">
+                                {clans
+                                  .filter((clan) =>
+                                    clan
+                                      .toLowerCase()
+                                      .includes(
+                                        (field.value || "").toLowerCase()
+                                      )
+                                  )
+                                  .map((clan) => (
+                                    <div
+                                      key={clan}
+                                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                                      onClick={() => {
+                                        field.onChange(clan);
+                                        setOpenClanDropdown(false);
+                                      }}
+                                    >
+                                      {clan}
+                                    </div>
+                                  ))}
+                                {clans.filter((clan) =>
                                   clan
                                     .toLowerCase()
                                     .includes((field.value || "").toLowerCase())
-                                )
-                                .map((clan) => (
-                                  <div
-                                    key={clan}
-                                    className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                                    onClick={() => {
-                                      field.onChange(clan);
-                                      setOpenClanDropdown(false);
-                                    }}
-                                  >
-                                    {clan}
+                                ).length === 0 && (
+                                  <div className="py-2 text-center text-sm text-muted-foreground">
+                                    No matches. Type to use custom.
                                   </div>
-                                ))}
-                              {clans.filter((clan) =>
-                                clan
-                                  .toLowerCase()
-                                  .includes((field.value || "").toLowerCase())
-                              ).length === 0 && (
-                                <div className="py-2 text-center text-sm text-muted-foreground">
-                                  No matches. Type to use custom.
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="profession"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-medium">
+                            Profession
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              className="rounded-xl h-10"
+                              placeholder="e.g. Farmer"
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Marital Status + Blood Group */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="maritalStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-medium flex items-center gap-1.5">
+                            <Heart className="h-3 w-3 text-rose-400" /> Marital
+                            Status
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || "SINGLE"}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="rounded-xl h-10">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="SINGLE">Single</SelectItem>
+                              <SelectItem value="MARRIED">Married</SelectItem>
+                              <SelectItem value="DIVORCED">Divorced</SelectItem>
+                              <SelectItem value="WIDOWED">Widowed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="bloodGroup"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-medium flex items-center gap-1.5">
+                            <Droplets className="h-3 w-3 text-red-400" /> Blood
+                            Group
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value?.toString()}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="rounded-xl h-10">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="A+">A+</SelectItem>
+                              <SelectItem value="A-">A-</SelectItem>
+                              <SelectItem value="B+">B+</SelectItem>
+                              <SelectItem value="B-">B-</SelectItem>
+                              <SelectItem value="AB+">AB+</SelectItem>
+                              <SelectItem value="AB-">AB-</SelectItem>
+                              <SelectItem value="O+">O+</SelectItem>
+                              <SelectItem value="O-">O-</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </fieldset>
+
+                <div className="border-t border-zinc-100 dark:border-zinc-800" />
+
+                {/* ── Section: Bio ── */}
+                <fieldset className="space-y-3">
+                  <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+                    <FileText className="h-3.5 w-3.5" /> Bio
+                  </legend>
                   <FormField
                     control={form.control}
-                    name="profession"
+                    name="bio"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs font-medium">Profession</FormLabel>
                         <FormControl>
-                          <Input
-                            className="rounded-xl h-10"
-                            placeholder="e.g. Farmer"
+                          <Textarea
+                            placeholder="A short note about this person..."
+                            className="resize-none rounded-xl"
+                            rows={2}
                             {...field}
                             value={field.value || ""}
                           />
@@ -692,98 +839,6 @@ export function AddRelativeForm({
                       </FormItem>
                     )}
                   />
-                </div>
-
-                {/* Marital Status + Blood Group */}
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="maritalStatus"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-medium flex items-center gap-1.5">
-                          <Heart className="h-3 w-3 text-rose-400" /> Marital Status
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || "SINGLE"}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="rounded-xl h-10">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="rounded-xl">
-                            <SelectItem value="SINGLE">Single</SelectItem>
-                            <SelectItem value="MARRIED">Married</SelectItem>
-                            <SelectItem value="DIVORCED">Divorced</SelectItem>
-                            <SelectItem value="WIDOWED">Widowed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="bloodGroup"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-xs font-medium flex items-center gap-1.5">
-                          <Droplets className="h-3 w-3 text-red-400" /> Blood Group
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value?.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="rounded-xl h-10">
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="rounded-xl">
-                            <SelectItem value="A+">A+</SelectItem>
-                            <SelectItem value="A-">A-</SelectItem>
-                            <SelectItem value="B+">B+</SelectItem>
-                            <SelectItem value="B-">B-</SelectItem>
-                            <SelectItem value="AB+">AB+</SelectItem>
-                            <SelectItem value="AB-">AB-</SelectItem>
-                            <SelectItem value="O+">O+</SelectItem>
-                            <SelectItem value="O-">O-</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                </fieldset>
-
-                <div className="border-t border-zinc-100 dark:border-zinc-800" />
-
-                {/* ── Section: Bio ── */}
-                <fieldset className="space-y-3">
-                <legend className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
-                  <FileText className="h-3.5 w-3.5" /> Bio
-                </legend>
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Textarea
-                          placeholder="A short note about this person..."
-                          className="resize-none rounded-xl"
-                          rows={2}
-                          {...field}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 </fieldset>
 
                 {/* Second Parent (when adding a CHILD) */}
@@ -968,7 +1023,9 @@ export function AddRelativeForm({
                     name="startDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs font-medium">Marriage Date</FormLabel>
+                        <FormLabel className="text-xs font-medium">
+                          Marriage Date
+                        </FormLabel>
                         <FormControl>
                           <Input
                             type="date"

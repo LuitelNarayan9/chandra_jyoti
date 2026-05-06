@@ -1,8 +1,6 @@
 import { getPendingResidencyRequests } from "@/lib/actions/family-tree.actions";
 import { ResidencyRequestsTable } from "@/components/admin/residency-requests-table";
-import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth/admin";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -11,17 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminResidencyRequestsPage() {
-  const { userId } = await auth();
-  if (!userId) notFound();
-
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-    select: { role: true },
-  });
-
-  if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
-    notFound();
-  }
+  await requireAdmin();
 
   const pendingRequests = await getPendingResidencyRequests();
 

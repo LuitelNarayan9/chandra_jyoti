@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import sanitizeHtmlLib from "sanitize-html";
+import { sanitizeRichTextHtml } from "@/lib/sanitize-html";
 import {
   CreateThreadSchema,
   UpdateThreadSchema,
@@ -21,8 +21,6 @@ import {
   type AddReplyValues,
   type CreatePollValues,
   type VotePollValues,
-  type CreateAdminPollValues,
-  type VoteAdminPollValues,
 } from "@/lib/validations/forum";
 import { AdminPollType } from "@/lib/generated/prisma/client";
 
@@ -50,24 +48,13 @@ async function generateUniqueSlug(title: string): Promise<string> {
   return slug;
 }
 
-// ─── Helper: sanitize HTML to prevent XSS ────────────────────
-
-function sanitizeHtml(html: string): string {
-  return sanitizeHtmlLib(html, {
-    allowedTags: sanitizeHtmlLib.defaults.allowedTags.concat([
-      "img",
-      "h1",
-      "h2",
-      "h3",
-      "u",
-      "s",
-      "span",
-    ]),
-    allowedAttributes: {
-      ...sanitizeHtmlLib.defaults.allowedAttributes,
-      "*": ["class"],
-    },
-  });
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
 }
 
 // ─── Create Thread ────────────────────────────────────────────
@@ -98,7 +85,7 @@ export async function createThread(input: CreateThreadValues) {
       };
     }
 
-    const safeContent = sanitizeHtml(validated.content);
+    const safeContent = sanitizeRichTextHtml(validated.content);
 
     // Retry loop to handle slug collisions (TOCTOU-safe)
     const MAX_SLUG_RETRIES = 3;
@@ -157,9 +144,9 @@ export async function createThread(input: CreateThreadValues) {
         });
 
         break; // Success — exit retry loop
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Retry on slug collision, surface all other errors
-        if (err?.code === "P2002" && attempt < MAX_SLUG_RETRIES) {
+        if (isUniqueConstraintError(err) && attempt < MAX_SLUG_RETRIES) {
           continue;
         }
         throw err;
@@ -230,7 +217,7 @@ export async function updateThread(input: UpdateThreadValues) {
       // Slug is preserved on title updates to avoid breaking existing links
     }
     if (validated.content !== undefined) {
-      updateData.content = sanitizeHtml(validated.content);
+      updateData.content = sanitizeRichTextHtml(validated.content);
     }
     if (validated.categoryId !== undefined) {
       updateData.category = { connect: { id: validated.categoryId } };
@@ -441,7 +428,7 @@ export async function addReply(input: AddReplyValues) {
       }
     }
 
-    const safeContent = sanitizeHtml(validated.content);
+    const safeContent = sanitizeRichTextHtml(validated.content);
 
     const reply = await db.forumReply.create({
       data: {
@@ -703,9 +690,9 @@ export async function createPoll(input: CreatePollValues) {
           },
         },
       });
-    } catch (createError: any) {
+    } catch (createError: unknown) {
       // Handle race condition: unique constraint on threadId prevents duplicates
-      if (createError?.code === "P2002") {
+      if (isUniqueConstraintError(createError)) {
         return { success: false, error: "This thread already has a poll." };
       }
       throw createError;
@@ -851,7 +838,7 @@ export async function createAdminPoll(values: unknown) {
 
 export async function publishAdminPoll(pollId: string) {
   try {
-    const user = await requireRole("ADMIN");
+    await requireRole("ADMIN");
 
     const poll = await db.adminPoll.findUnique({
       where: { id: pollId },
@@ -883,7 +870,7 @@ export async function publishAdminPoll(pollId: string) {
 
 export async function cancelAdminPoll(pollId: string) {
   try {
-    const user = await requireRole("ADMIN");
+    await requireRole("ADMIN");
 
     const poll = await db.adminPoll.findUnique({
       where: { id: pollId },
@@ -997,7 +984,7 @@ export async function voteAdminPoll(values: unknown) {
 
 export async function fetchAdminPollVoters(pollId: string) {
   try {
-    const user = await requireRole("ADMIN");
+    await requireRole("ADMIN");
     const poll = await db.adminPoll.findUnique({
       where: { id: pollId },
       include: {

@@ -45,7 +45,7 @@ interface ProfileMember {
   familyClan: string | null;
   generation: number | null;
   isAlive: boolean;
-  maritalStatus: string;
+  maritalStatus: string | null;
   bloodGroup: string | null;
   profession: string | null;
 }
@@ -84,6 +84,9 @@ interface ProfileData {
   siblings: ProfileRelative[];
   spouseChildGroups: SpouseChildGroup[];
   lifeEvents: ProfileLifeEvent[];
+  permissions?: {
+    canViewSensitive: boolean;
+  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

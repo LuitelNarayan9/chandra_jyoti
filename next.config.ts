@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-
   reactCompiler: true,
   experimental: {
     turbopackFileSystemCacheForDev: true,
@@ -25,7 +24,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  allowedDevOrigins: ['decisive-subneural-serafina.ngrok-free.dev', 'dev.chandrajyotisanstha.online']
+  allowedDevOrigins: [
+    "decisive-subneural-serafina.ngrok-free.dev",
+    "dev.chandrajyotisanstha.online",
+  ],
+  skipTrailingSlashRedirect: true,
 };
 
 export default nextConfig;

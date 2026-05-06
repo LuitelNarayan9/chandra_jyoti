@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import { likePost, bookmarkPost } from "@/lib/actions/blog.actions";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,12 @@ export function BlogPostActions({
         setLiked((prev) => !prev);
         setLikes((prev) => (liked ? prev + 1 : prev - 1));
         toast.error(result.error ?? "Failed to toggle like.");
+      } else {
+        posthog.capture("blog_post_liked", {
+          post_id: postId,
+          post_slug: slug,
+          action: liked ? "unliked" : "liked",
+        });
       }
     });
   };
@@ -61,6 +68,11 @@ export function BlogPostActions({
         toast.success(
           bookmarked ? "Removed from bookmarks" : "Saved to bookmarks"
         );
+        posthog.capture("blog_post_bookmarked", {
+          post_id: postId,
+          post_slug: slug,
+          action: bookmarked ? "removed" : "saved",
+        });
       }
     });
   };
@@ -70,11 +82,21 @@ export function BlogPostActions({
     try {
       if (navigator.share) {
         await navigator.share({ title: document.title, url });
+        posthog.capture("blog_post_shared", {
+          post_id: postId,
+          post_slug: slug,
+          method: "native_share",
+        });
       } else {
         await navigator.clipboard.writeText(url);
         setCopied(true);
         toast.success("Link copied to clipboard!");
         setTimeout(() => setCopied(false), 2000);
+        posthog.capture("blog_post_shared", {
+          post_id: postId,
+          post_slug: slug,
+          method: "clipboard_copy",
+        });
       }
     } catch {}
   };

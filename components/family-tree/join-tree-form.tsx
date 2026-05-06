@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,11 @@ export function JoinTreeForm({ clans }: JoinTreeFormProps) {
       const result = await joinFamilyTree(data);
       if (result.success) {
         toast.success(result.data?.message || "Submitted successfully!");
+        posthog.capture("family_tree_join_submitted", {
+          family_clan: data.familyClan,
+          gender: data.gender,
+          marital_status: data.maritalStatus,
+        });
         setOpen(false);
         form.reset();
       } else {

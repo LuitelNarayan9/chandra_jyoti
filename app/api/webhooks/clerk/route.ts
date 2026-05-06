@@ -5,6 +5,7 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { sendTemplateEmail } from "@/lib/mailer";
 import { WelcomeEmail } from "@/components/emails/WelcomeEmail";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
@@ -92,6 +93,31 @@ export async function POST(req: Request) {
         }
       } catch (e) {
         console.error(`Failed to send Welcome Email to ${email}`, e);
+      }
+
+      // Track new user signup in PostHog
+      try {
+        const posthog = getPostHogClient();
+        posthog.identify({
+          distinctId: id,
+          properties: {
+            email,
+            firstName,
+            lastName: last_name ?? "",
+            createdAt: new Date().toISOString(),
+          },
+        });
+        posthog.capture({
+          distinctId: id,
+          event: "user_signed_up",
+          properties: {
+            email,
+            first_name: firstName,
+          },
+        });
+        await posthog.shutdown();
+      } catch (e) {
+        console.error("Failed to track signup in PostHog", e);
       }
       break;
     }

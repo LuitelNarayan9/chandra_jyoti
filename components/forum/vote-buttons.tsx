@@ -5,6 +5,7 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { voteReply, voteThread } from "@/lib/actions/forum.actions";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 
 interface Vote {
   id: string;
@@ -56,6 +57,13 @@ export function VoteButtons({
 
         if (!result.success) {
           toast.error(result.error ?? "Failed to vote.");
+        } else {
+          posthog.capture("forum_content_voted", {
+            target_id: targetId,
+            target_type: targetType,
+            vote_value: nextVote,
+            action: nextVote === 0 ? "removed" : nextVote === 1 ? "upvoted" : "downvoted",
+          });
         }
       });
     },

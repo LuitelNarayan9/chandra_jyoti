@@ -20,6 +20,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -331,6 +332,15 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
                   ? "Post saved as draft."
                   : (result.message ?? "Post updated!");
               toast.success(msg);
+              posthog.capture("blog_post_published", {
+                post_id: result.data?.id ?? initialData.id,
+                post_slug: result.data?.slug,
+                post_title: values.title,
+                status,
+                is_edit: true,
+                category: values.category?.name,
+                tag_count: values.tags?.length ?? 0,
+              });
               router.push(`/blog/${result.data?.slug ?? initialData.id}`);
               router.refresh();
             } else {
@@ -344,6 +354,15 @@ export function BlogEditor({ categories, tags, initialData }: BlogEditorProps) {
                   ? "Post saved as draft."
                   : (result.message ?? "Post published!");
               toast.success(msg);
+              posthog.capture("blog_post_published", {
+                post_id: result.data?.id,
+                post_slug: result.data?.slug,
+                post_title: values.title,
+                status,
+                is_edit: false,
+                category: values.category?.name,
+                tag_count: values.tags?.length ?? 0,
+              });
               if (result.data?.slug) {
                 router.push(`/blog/${result.data.slug}`);
               } else {

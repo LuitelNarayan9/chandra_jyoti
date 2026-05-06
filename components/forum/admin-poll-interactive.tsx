@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import { voteAdminPoll } from "@/lib/actions/forum.actions";
 import {
   Dialog,
@@ -60,6 +61,7 @@ export function AdminPollInteractive({ poll }: { poll: PollProps }) {
 
       if (result.success) {
         toast.success("Thank you for participating!");
+        posthog.capture("forum_poll_voted", { pollId: poll.id, pollType: "ADMIN", pollDismissible: poll.type === "DISMISSIBLE" });
         setIsVisible(false);
       } else {
         toast.error(result.error || "Failed to submit vote. Please try again.");

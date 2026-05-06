@@ -12,8 +12,7 @@ import {
   type UpdatePostValues,
   type DeletePostValues,
 } from "@/lib/validations/blog";
-
-import sanitizeHtmlLib from "sanitize-html";
+import { sanitizeRichTextHtml } from "@/lib/sanitize-html";
 
 // ─── Helper: slugify ──────────────────────────────────────────
 
@@ -39,29 +38,21 @@ async function generateUniqueSlug(title: string): Promise<string> {
   return slug;
 }
 
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  );
+}
+
 // ─── Helper: estimate reading time ───────────────────────────
 
 function estimateReadingTime(html: string): number {
   const text = html.replace(/<[^>]*>/g, "");
   const wordCount = text.split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(wordCount / 200));
-}
-
-// ─── Helper: sanitize HTML to prevent XSS ────────────────────
-
-function sanitizeHtml(html: string): string {
-  return sanitizeHtmlLib(html, {
-    allowedTags: sanitizeHtmlLib.defaults.allowedTags.concat([
-      "img",
-      "h1",
-      "h2",
-    ]),
-    allowedAttributes: {
-      ...sanitizeHtmlLib.defaults.allowedAttributes,
-      img: ["src", "alt", "title"],
-    },
-    allowedSchemes: ["http", "https", "mailto"],
-  });
 }
 
 // ─── Create Post ──────────────────────────────────────────────
@@ -72,7 +63,7 @@ export async function createPost(input: CreatePostValues) {
     const validated = CreatePostSchema.parse(input);
 
     // Sanitize HTML content to prevent XSS
-    const safeContent = sanitizeHtml(validated.content);
+    const safeContent = sanitizeRichTextHtml(validated.content);
 
     const readingTime = estimateReadingTime(safeContent);
 
@@ -152,9 +143,9 @@ export async function createPost(input: CreatePostValues) {
         });
 
         break; // Success — exit retry loop
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Retry on slug collision, surface all other errors
-        if (err?.code === "P2002" && attempt < MAX_SLUG_RETRIES) {
+        if (isUniqueConstraintError(err) && attempt < MAX_SLUG_RETRIES) {
           continue;
         }
         throw err;
@@ -226,7 +217,7 @@ export async function updatePost(input: UpdatePostValues) {
       // Slug is preserved on title updates to avoid breaking existing links
     }
     if (validated.content !== undefined) {
-      const safeContent = sanitizeHtml(validated.content);
+      const safeContent = sanitizeRichTextHtml(validated.content);
       updateData.content = safeContent;
       updateData.readingTime = estimateReadingTime(safeContent);
     }

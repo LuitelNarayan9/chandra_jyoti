@@ -22,69 +22,15 @@ import Typography from "@tiptap/extension-typography";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import { cn } from "@/lib/utils";
-import sanitizeHtmlLib from "sanitize-html";
+import { sanitizeRichTextHtml } from "@/lib/sanitize-html";
 
 function isValidUrl(url: string) {
   try {
     const parsed = new URL(url);
     return ["http:", "https:", "mailto:"].includes(parsed.protocol);
-  } catch (e) {
+  } catch {
     return false;
   }
-}
-
-function sanitizeHtml(html: string) {
-  return sanitizeHtmlLib(html, {
-    allowedTags: sanitizeHtmlLib.defaults.allowedTags.concat([
-      "img",
-      "h1",
-      "h2",
-      "h3",
-      "s",
-      "u",
-      "span",
-      "table",
-      "thead",
-      "tbody",
-      "tr",
-      "th",
-      "td",
-    ]),
-    allowedAttributes: {
-      ...sanitizeHtmlLib.defaults.allowedAttributes,
-      "*": ["class"],
-      span: ["style"],
-      p: ["style"],
-      h1: ["style"],
-      h2: ["style"],
-      h3: ["style"],
-      img: ["src", "alt", "title"],
-      a: ["href", "target", "rel"],
-      th: ["colspan", "rowspan", "colwidth"],
-      td: ["colspan", "rowspan", "colwidth"],
-      ul: ["data-type"],
-      li: ["data-type", "data-checked"],
-    },
-    allowedStyles: {
-      span: {
-        color: [/^#[0-9a-fA-F]{3,6}$/, /^rgb\(/, /^inherit$/],
-        "background-color": [/^#[0-9a-fA-F]{3,6}$/, /^rgb\(/, /^transparent$/],
-      },
-      p: {
-        "text-align": [/^(left|center|right|justify)$/],
-      },
-      h1: {
-        "text-align": [/^(left|center|right|justify)$/],
-      },
-      h2: {
-        "text-align": [/^(left|center|right|justify)$/],
-      },
-      h3: {
-        "text-align": [/^(left|center|right|justify)$/],
-      },
-    },
-    allowedSchemes: ["http", "https", "mailto"],
-  });
 }
 
 import {
@@ -286,7 +232,7 @@ export function RichTextEditor({
         Subscript,
         Superscript,
       ],
-      content: sanitizeHtml(value || ""),
+      content: sanitizeRichTextHtml(value || ""),
       editorProps: {
         attributes: {
           // ↓ "rte-editor" activates all shared styles from rte-styles.css
@@ -298,7 +244,7 @@ export function RichTextEditor({
         setUpdateCount((c) => c + 1);
       },
       onUpdate({ editor }) {
-        onChange(sanitizeHtml(editor.getHTML()));
+        onChange(sanitizeRichTextHtml(editor.getHTML()));
       },
       immediatelyRender: false,
     },
@@ -309,7 +255,7 @@ export function RichTextEditor({
     if (!editor) return;
     const current = editor.getHTML();
     if (value !== current) {
-      editor.commands.setContent(sanitizeHtml(value || ""), {
+      editor.commands.setContent(sanitizeRichTextHtml(value || ""), {
         emitUpdate: false,
       });
     }

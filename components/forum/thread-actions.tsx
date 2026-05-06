@@ -28,6 +28,7 @@ import {
   deleteThread,
 } from "@/lib/actions/forum.actions";
 import { hasPermission, type Role } from "@/lib/roles";
+import posthog from "posthog-js";
 
 interface ThreadActionsProps {
   threadId: string;
@@ -65,6 +66,10 @@ export function ThreadActions({
       const result = await pinThread(threadId);
       if (result.success) {
         toast.success(result.message);
+        posthog.capture("forum_thread_moderated", {
+          thread_id: threadId,
+          action: isPinned ? "unpinned" : "pinned",
+        });
       } else {
         toast.error(result.error ?? "Failed to toggle pin.");
       }
@@ -76,6 +81,10 @@ export function ThreadActions({
       const result = await lockThread(threadId);
       if (result.success) {
         toast.success(result.message);
+        posthog.capture("forum_thread_moderated", {
+          thread_id: threadId,
+          action: isLocked ? "unlocked" : "locked",
+        });
       } else {
         toast.error(result.error ?? "Failed to toggle lock.");
       }
@@ -93,6 +102,11 @@ export function ThreadActions({
       const result = await deleteThread({ threadId });
       if (result.success) {
         toast.success(result.message);
+        posthog.capture("forum_thread_deleted", {
+          thread_id: threadId,
+          category_slug: categorySlug,
+          deleted_by_owner: isOwner,
+        });
         router.push(`/forum/${categorySlug}`);
         router.refresh();
       } else {

@@ -4,6 +4,7 @@ import { Outfit, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthToast } from "@/components/shared/auth-toast";
+import { PostHogIdentifier } from "@/components/providers/posthog-identifier";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -54,6 +55,7 @@ export default function RootLayout({
             {children}
             <Toaster richColors position="bottom-right" />
             <AuthToast />
+            <PostHogIdentifier />
           </ThemeProvider>
         </ClerkProvider>
       </body>

@@ -17,11 +17,6 @@ import {
 } from "@/lib/validations/comment";
 import { sanitizeRichTextHtml } from "@/lib/sanitize-html";
 
-// Helper for XSS sanitization
-function sanitizeHtml(html: string): string {
-  return sanitizeRichTextHtml(html);
-}
-
 // ─── Add Comment / Reply ──────────────────────────────────────
 
 export async function addComment(input: CreateCommentValues) {
@@ -29,7 +24,7 @@ export async function addComment(input: CreateCommentValues) {
     const user = await requireRole("MEMBER");
     const validated = CreateCommentSchema.parse(input);
 
-    const safeContent = sanitizeHtml(validated.content);
+    const safeContent = sanitizeRichTextHtml(validated.content);
 
     // Verify post exists
     const post = await db.blogPost.findUnique({

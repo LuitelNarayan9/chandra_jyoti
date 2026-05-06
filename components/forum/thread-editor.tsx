@@ -17,6 +17,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -285,6 +286,15 @@ export function ThreadEditor({
             const result = await createThread(values);
             if (result.success && result.data) {
               toast.success(result.message ?? "Thread created!");
+              posthog.capture("forum_thread_created", {
+                thread_id: result.data.id,
+                thread_slug: result.data.slug,
+                thread_title: values.title,
+                category_id: values.categoryId,
+                category_slug: result.data.categorySlug,
+                tag_count: values.tags?.length ?? 0,
+                has_poll: !!values.poll,
+              });
               router.push(
                 `/forum/${result.data.categorySlug}/${result.data.slug}`
               );

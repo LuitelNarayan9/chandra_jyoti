@@ -68,9 +68,14 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const [greeting, setGreeting] = useState("Welcome");
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(
+      hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+    );
+  }, []);
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();

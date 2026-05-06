@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { mailClient } from "@/lib/mailer";
-import { render } from "react-email";
 import { ContactNotificationEmail } from "@/components/emails/ContactNotificationEmail";
 import { ContactConfirmationEmail } from "@/components/emails/ContactConfirmationEmail";
 import { resend } from "@/lib/resend-mailer";
+import { getPostHogClient } from "@/lib/posthog-server";
+import { ContactFormSchema } from "@/lib/validations/contact";
 
 /* ── In-memory rate limiter (per IP, 3 requests / 15 min) ── */
 const RATE_LIMIT = 3;
 const RATE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_BODY_SIZE_BYTES = 8 * 1024; // Contact payloads should be tiny.
 
 const hits = new Map<string, { count: number; resetAt: number }>();
 
@@ -49,26 +50,44 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json();
-    const { name, email, subject, message, phone } = body;
-
-    // Validate fields
-    if (!name || !email || !message) {
+    const contentType = req.headers.get("content-type");
+    if (!contentType?.toLowerCase().includes("application/json")) {
       return NextResponse.json(
-        { error: "Name, email, and message are required." },
+        { error: "Content-Type must be application/json." },
+        { status: 415 }
+      );
+    }
+
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: "Contact form payload is too large." },
+        { status: 413 }
+      );
+    }
+
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON payload." },
         { status: 400 }
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const parsed = ContactFormSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Please provide a valid email address." },
+        {
+          error:
+            parsed.error.issues[0]?.message || "Invalid contact form data.",
+        },
         { status: 400 }
       );
     }
 
+    const { name, email, subject, message, phone } = parsed.data;
     const emailSubject = subject || "No Subject";
     const fromAddress = process.env.ZEPTOMAIL_FROM_EMAIL!;
     const fromName = process.env.ZEPTOMAIL_FROM_NAME!;
@@ -91,47 +110,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // 2. Render React Email templates to HTML
-    const ownerHtml = await render(
-      ContactNotificationEmail({
-        name,
-        email,
-        subject: emailSubject,
-        message,
-        phone,
-        submittedAt,
-      })
-    );
-
-    const userHtml = await render(
-      ContactConfirmationEmail({
-        name,
-        message,
-      })
-    );
-
-    // ─── ZEPTO MAIL IMPLEMENTATION (Dormant) ───
-    /*
-    await Promise.all([
-      // Email 1: Notification to site owner
-      mailClient.sendMail({
-        from: { address: fromAddress, name: fromName },
-        to: [{ email_address: { address: ownerEmail, name: "Owner" } }],
-        subject: `New Contact Form Submission from ${name}`,
-        htmlbody: ownerHtml,
-      }),
-
-      // Email 2: Auto-reply confirmation to user
-      mailClient.sendMail({
-        from: { address: fromAddress, name: fromName },
-        to: [{ email_address: { address: email, name: name } }],
-        subject: `Thank you for contacting us, ${name}!`,
-        htmlbody: userHtml,
-      }),
-    ]);
-    */
-
-    // ─── ALTERNATIVE: RESEND IMPLEMENTATION (Active) ───
     await Promise.all([
       // Email 1: Notification to site owner
       resend.emails.send({
@@ -160,11 +138,22 @@ export async function POST(req: Request) {
       }),
     ]);
 
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: email,
+      event: "contact_form_submitted",
+      properties: {
+        has_phone: !!phone,
+        has_subject: !!subject,
+      },
+    });
+    await posthog.shutdown();
+
     return NextResponse.json({
       success: true,
       message: "Email sent successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Contact form error:", error);
     return NextResponse.json(
       { error: "Failed to send email. Please try again." },

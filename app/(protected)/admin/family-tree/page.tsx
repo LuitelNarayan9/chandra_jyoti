@@ -1,8 +1,6 @@
 import { getPendingFamilyApprovals } from "@/lib/actions/admin-family.actions";
 import { AdminFamilyApprovals } from "@/components/admin/family-approvals";
-import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const metadata = {
   title: "Family Tree Approvals — Admin",
@@ -10,17 +8,7 @@ export const metadata = {
 };
 
 export default async function AdminFamilyTreePage() {
-  const { userId } = await auth();
-  if (!userId) notFound();
-
-  const user = await db.user.findUnique({
-    where: { clerkId: userId },
-    select: { role: true },
-  });
-
-  if (!user || (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")) {
-    notFound();
-  }
+  await requireAdmin();
 
   const result = await getPendingFamilyApprovals();
 

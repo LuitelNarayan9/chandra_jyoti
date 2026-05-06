@@ -50,6 +50,7 @@ import {
   deleteFamilyMember,
 } from "@/lib/actions/family-tree.actions";
 import type { TreeNode } from "@/types/family-tree";
+import posthog from "posthog-js";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -120,6 +121,7 @@ export function EditMemberForm({
       const result = await updateFamilyMember(data);
       if (result.success) {
         toast.success(result.message || "Updated successfully!");
+        posthog.capture("family_tree_member_edited", { memberId: member.id });
         onOpenChange(false);
       } else {
         toast.error(result.error || "Something went wrong.");

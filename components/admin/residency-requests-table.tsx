@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 import {
   CheckCircle2,
   XCircle,
@@ -132,6 +133,9 @@ function RequestRow({
       const result = await approveResidencyRequest(request.id);
       if (result.success) {
         toast.success(`${fullName} has been approved as a resident.`);
+        posthog.capture("residency_request_approved", {
+          request_id: request.id,
+        });
         onRemove(request.id);
       } else {
         toast.error(result.error || "Failed to approve.");
@@ -144,6 +148,9 @@ function RequestRow({
       const result = await rejectResidencyRequest(request.id);
       if (result.success) {
         toast.success(`${fullName}'s request has been rejected.`);
+        posthog.capture("residency_request_rejected", {
+          request_id: request.id,
+        });
         onRemove(request.id);
       } else {
         toast.error(result.error || "Failed to reject.");

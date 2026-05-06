@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Loader2, Send, Lock, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import posthog from "posthog-js";
 
 import { Button } from "@/components/ui/button";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
@@ -49,6 +50,10 @@ export function ReplyForm({
         const result = await addReply({ content, threadId, parentId });
         if (result.success) {
           toast.success(result.message ?? "Reply posted!");
+          posthog.capture("forum_reply_posted", {
+            thread_id: threadId,
+            is_nested_reply: !!parentId,
+          });
           setContent("");
           onSuccess?.();
         } else {
