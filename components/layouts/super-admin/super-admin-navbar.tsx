@@ -166,7 +166,7 @@ export function SuperAdminNavbar({
       {/* ── Search overlay ─────────────────────────────── */}
       <div
         className={cn(
-          "fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-3 sm:pt-[15vh] sm:px-4",
+          "fixed inset-0 z-60 flex items-start justify-center pt-[12vh] px-3 sm:pt-[15vh] sm:px-4",
           "bg-black/50 backdrop-blur-md transition-all duration-300",
           searchOpen
             ? "opacity-100 pointer-events-auto"
@@ -206,7 +206,7 @@ export function SuperAdminNavbar({
             {QUICK_SEARCH.map((item) => (
               <button
                 key={item}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-teal-500/[0.08] hover:text-foreground transition-colors group"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-teal-500/8 hover:text-foreground transition-colors group"
               >
                 <ChevronRight className="h-3.5 w-3.5 shrink-0 text-teal-400/50 group-hover:text-teal-400 transition-colors" />
                 {item}
@@ -216,9 +216,9 @@ export function SuperAdminNavbar({
         </div>
       </div>
       {/* ── Navbar ─────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex h-[60px] sm:h-[68px] items-center border-b border-teal-500/[0.08] bg-background/90 backdrop-blur-2xl px-3 sm:px-5 md:px-8">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-teal-500/[0.04] via-transparent to-emerald-500/[0.025]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-500/40 to-transparent" />
+      <header className="fixed top-0 left-0 right-0 z-50 flex h-[60px] sm:h-[68px] items-center border-b border-teal-500/8 bg-background/90 backdrop-blur-2xl px-3 sm:px-5 md:px-8">
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-teal-500/4 via-transparent to-emerald-500/25" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-teal-500/40 to-transparent" />
 
         {/* Mobile sidebar */}
         <div className="lg:hidden mr-2 sm:mr-3 shrink-0">{mobileSidebar}</div>
@@ -236,7 +236,7 @@ export function SuperAdminNavbar({
           <div className="hidden sm:flex items-center gap-2">
             <Badge
               variant="outline"
-              className="h-6 items-center gap-1.5 border-teal-500/30 bg-teal-500/[0.08] text-teal-600 dark:text-teal-400 text-[10px] font-bold uppercase tracking-[0.1em] px-2.5"
+              className="h-6 items-center gap-1.5 border-teal-500/30 bg-teal-500/8 text-teal-600 dark:text-teal-400 text-[10px] font-bold uppercase tracking-widest px-2.5"
             >
               <Shield className="h-3 w-3" />
               Super Admin
@@ -277,7 +277,7 @@ export function SuperAdminNavbar({
               variant="ghost"
               size="icon"
               onClick={() => setSearchOpen(true)}
-              className="sm:hidden h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-teal-500/[0.08] transition-all duration-200"
+              className="sm:hidden h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-teal-500/8 transition-all duration-200"
             >
               <Search className="h-[17px] w-[17px]" />
             </Button>
@@ -293,8 +293,8 @@ export function SuperAdminNavbar({
                 aria-haspopup="true"
                 className={cn(
                   "relative h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground",
-                  "hover:bg-teal-500/[0.08] transition-all duration-200",
-                  notifOpen && "bg-teal-500/[0.10] text-foreground"
+                  "hover:bg-teal-500/8 transition-all duration-200",
+                  notifOpen && "bg-teal-500/10 text-foreground"
                 )}
               >
                 <Bell className="h-[17px] w-[17px]" />
@@ -333,7 +333,7 @@ export function SuperAdminNavbar({
                 {/* Accent line — red if urgent, teal otherwise */}
                 <div
                   className={cn(
-                    "absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent to-transparent",
+                    "absolute inset-x-0 top-0 h-[2px] bg-linear-to-r from-transparent to-transparent",
                     urgentCount > 0 ? "via-red-500/70" : "via-teal-500/70"
                   )}
                 />
@@ -383,9 +383,9 @@ export function SuperAdminNavbar({
                         className={cn(
                           "flex items-start gap-3.5 px-4 sm:px-5 py-3.5 cursor-pointer border-b border-border/50 last:border-0 transition-colors",
                           isUrgent
-                            ? "bg-red-500/[0.05] hover:bg-red-500/[0.09]"
+                            ? "bg-red-500/5 hover:bg-red-500/9"
                             : n.unread
-                              ? "bg-teal-500/[0.04] hover:bg-teal-500/[0.08]"
+                              ? "bg-teal-500/4 hover:bg-teal-500/8"
                               : "bg-card hover:bg-muted/60"
                         )}
                       >
@@ -466,14 +466,15 @@ export function SuperAdminNavbar({
 
             {/* User avatar */}
             <div className="relative group flex items-center pl-3">
-              <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-teal-500/20 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
+              <div className="absolute -inset-1.5 rounded-full bg-linear-to-br from-teal-500/20 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
               <UserButton
                 appearance={{
                   elements: {
                     avatarBox:
                       "h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-border hover:ring-teal-500/40 transition-all duration-200",
                   },
-                }} />
+                }}
+              />
             </div>
           </div>
         </TooltipProvider>

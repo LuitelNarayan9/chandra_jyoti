@@ -198,24 +198,24 @@
 
 **Step 7.1: News Page**
 
-- [ ] Build news page with category tabs
-- [ ] Build NewsCard component
-- [ ] Build news detail page
-- [ ] Build news bookmark toggle
-- [ ] Create news bookmark actions
+- [x] Build news page with category tabs
+- [x] Build NewsCard component
+- [x] Build news detail page
+- [x] Build news bookmark toggle
+- [x] Create news bookmark actions
 
 **Step 7.2: Local News (Admin)**
 
-- [ ] Build admin news editor
-- [ ] Create CRUD actions for local news
-- [ ] Build admin news management page
+- [x] Build admin news editor
+- [x] Create CRUD actions for local news
+- [x] Build admin news management page
 
 **Step 7.3: External News**
 
-- [ ] Integrate NewsAPI
-- [ ] Build external news fetcher
-- [ ] Create cron route for auto-refresh
-- [ ] Configure Vercel cron job
+- [x] Integrate NewsAPI
+- [x] Build external news fetcher
+- [x] Create cron route for auto-refresh
+- [x] Configure Vercel cron job
 
 ### Phase 8: Payment System (Week 9-11)
 

@@ -3,6 +3,7 @@
 import { memo, useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -239,34 +240,40 @@ export const WelcomeBanner = memo(function WelcomeBanner({
       initial="hidden"
       animate="visible"
       aria-label={`Welcome banner for ${firstName} ${lastName}`}
-      className="relative overflow-hidden rounded-2xl sm:rounded-3xl
-        border border-white/20 dark:border-white/[0.08]
-        bg-linear-to-br
-        from-indigo-500/[0.11] via-violet-500/[0.07] to-emerald-500/[0.11]
-        dark:from-indigo-500/[0.20] dark:via-violet-500/[0.11] dark:to-emerald-500/[0.20]
-        backdrop-blur-2xl
-        shadow-[0_8px_32px_rgba(0,0,0,0.06)]
-        dark:shadow-[0_8px_40px_rgba(0,0,0,0.28)]
-        hover:shadow-[0_12px_40px_rgba(0,0,0,0.10)]
-        dark:hover:shadow-[0_12px_48px_rgba(0,0,0,0.38)]
-        transition-shadow duration-500
-        p-5 sm:p-7 lg:p-8"
+      className={cn(
+        "relative overflow-hidden rounded-2xl sm:rounded-3xl",
+        "border border-white/20 dark:border-white/8",
+        "bg-linear-to-br",
+        "from-indigo-500/11 via-violet-500/7 to-emerald-500/11",
+        "dark:from-indigo-500/20 dark:via-violet-500/11 dark:to-emerald-500/20",
+        "backdrop-blur-2xl",
+        "shadow-[0_8px_32px_rgba(0,0,0,0.06)]",
+        "dark:shadow-[0_8px_40px_rgba(0,0,0,0.28)]",
+        "hover:shadow-[0_12px_40px_rgba(0,0,0,0.10)]",
+        "dark:hover:shadow-[0_12px_48px_rgba(0,0,0,0.38)]",
+        "transition-shadow duration-500",
+        "p-5 sm:p-7 lg:p-8"
+      )}
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-24 -right-24
-          h-72 w-72 rounded-full
-          bg-indigo-500/[0.18] dark:bg-indigo-400/[0.22]
-          blur-[96px]
-          animate-[orb-breathe_9s_ease-in-out_infinite]"
+        className={cn(
+          "pointer-events-none absolute -top-24 -right-24",
+          "h-72 w-72 rounded-full",
+          "bg-indigo-500/18 dark:bg-indigo-400/22",
+          "blur-[96px]",
+          "animate-[orb-breathe_9s_ease-in-out_infinite]"
+        )}
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-24 -left-24
-          h-64 w-64 rounded-full
-          bg-emerald-500/[0.18] dark:bg-emerald-400/[0.22]
-          blur-[96px]
-          animate-[orb-breathe_11s_ease-in-out_infinite_1.5s]"
+        className={cn(
+          "pointer-events-none absolute -bottom-24 -left-24",
+          "h-64 w-64 rounded-full",
+          "bg-emerald-500/18 dark:bg-emerald-400/22",
+          "blur-[96px]",
+          "animate-[orb-breathe_11s_ease-in-out_infinite_1.5s]"
+        )}
       />
 
       {/* ── Main content ── */}
@@ -276,9 +283,11 @@ export const WelcomeBanner = memo(function WelcomeBanner({
           {/* Avatar */}
           <div className="relative shrink-0">
             <Avatar
-              className="h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem]
-                ring-[3px] ring-white/60 dark:ring-white/[0.12]
-                shadow-lg"
+              className={cn(
+                "h-16 w-16 sm:h-18 sm:w-18",
+                "ring-[3px] ring-white/60 dark:ring-white/12",
+                "shadow-lg"
+              )}
             >
               {safeSrc ? (
                 <Image
@@ -291,8 +300,10 @@ export const WelcomeBanner = memo(function WelcomeBanner({
                 />
               ) : (
                 <AvatarFallback
-                  className="bg-gradient-to-br from-indigo-500 to-violet-600
-                    text-white font-semibold text-lg sm:text-xl select-none"
+                  className={cn(
+                    "bg-linear-to-br from-indigo-500 to-violet-600",
+                    "text-white font-semibold text-lg sm:text-xl select-none"
+                  )}
                 >
                   {initials}
                 </AvatarFallback>
@@ -302,11 +313,13 @@ export const WelcomeBanner = memo(function WelcomeBanner({
             {/* Online / active presence indicator */}
             <span
               aria-hidden="true"
-              className="absolute bottom-0.5 right-0.5
-                h-3 w-3 rounded-full
-                bg-emerald-500
-                ring-2 ring-white dark:ring-background
-                shadow-sm"
+              className={cn(
+                "absolute bottom-0.5 right-0.5",
+                "h-3 w-3 rounded-full",
+                "bg-emerald-500",
+                "ring-2 ring-white dark:ring-background",
+                "shadow-sm"
+              )}
             />
           </div>
 
@@ -314,16 +327,20 @@ export const WelcomeBanner = memo(function WelcomeBanner({
           <div className="flex flex-col justify-center min-w-0">
             <motion.h1
               variants={headingVariants}
-              className="text-2xl sm:text-3xl md:text-[2rem]
-                font-bold font-[family-name:--font-outfit]
-                tracking-tight leading-tight truncate"
+              className={cn(
+                "text-2xl sm:text-3xl md:text-[2rem]",
+                "font-bold font-[--font-outfit]",
+                "tracking-tight leading-tight truncate"
+              )}
             >
               {greeting},{" "}
               <span
-                className="bg-gradient-to-r
-                  from-indigo-600 to-emerald-600
-                  dark:from-indigo-400 dark:to-emerald-400
-                  bg-clip-text text-transparent"
+                className={cn(
+                  "bg-linear-to-r",
+                  "from-indigo-600 to-emerald-600",
+                  "dark:from-indigo-400 dark:to-emerald-400",
+                  "bg-clip-text text-transparent"
+                )}
               >
                 {firstName}!
               </span>
@@ -337,12 +354,14 @@ export const WelcomeBanner = memo(function WelcomeBanner({
                   SSR mismatch; empty string is falsy so nothing flashes. */}
               {formattedDate && (
                 <span
-                  className="inline-flex items-center gap-1.5
-                    bg-background/60 dark:bg-background/25
-                    border border-black/[0.06] dark:border-white/[0.08]
-                    px-2.5 py-1 rounded-full
-                    text-xs font-medium text-foreground/75
-                    shadow-sm backdrop-blur-sm"
+                  className={cn(
+                    "inline-flex items-center gap-1.5",
+                    "bg-background/60 dark:bg-background/25",
+                    "border border-black/6 dark:border-white/8",
+                    "px-2.5 py-1 rounded-full",
+                    "text-xs font-medium text-foreground/75",
+                    "shadow-sm backdrop-blur-sm"
+                  )}
                 >
                   <CalendarDays
                     className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400 shrink-0"
@@ -355,11 +374,13 @@ export const WelcomeBanner = memo(function WelcomeBanner({
               {/* Role badge */}
               <Badge
                 variant="outline"
-                className="text-[10px] uppercase tracking-widest font-semibold
-                  bg-background/60 dark:bg-background/25
-                  backdrop-blur-sm
-                  border-indigo-400/25 dark:border-indigo-400/20
-                  shadow-sm px-2.5 py-1"
+                className={cn(
+                  "text-[10px] uppercase tracking-widest font-semibold",
+                  "bg-background/60 dark:bg-background/25",
+                  "backdrop-blur-sm",
+                  "border-indigo-400/25 dark:border-indigo-400/20",
+                  "shadow-sm px-2.5 py-1"
+                )}
               >
                 <ShieldCheck
                   className="h-3.5 w-3.5 mr-1.5 text-emerald-500 dark:text-emerald-400 shrink-0"
@@ -376,9 +397,11 @@ export const WelcomeBanner = memo(function WelcomeBanner({
           {/* Community quote — hidden on mobile to keep layout clean */}
           {quote && (
             <p
-              className="hidden md:block
-                text-sm text-muted-foreground/75
-                italic max-w-[18rem] text-right leading-relaxed"
+              className={cn(
+                "hidden md:block",
+                "text-sm text-muted-foreground/75",
+                "italic max-w-[18rem] text-right leading-relaxed"
+              )}
             >
               <q>{quote}</q>
             </p>

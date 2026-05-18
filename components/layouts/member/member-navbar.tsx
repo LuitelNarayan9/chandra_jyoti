@@ -121,7 +121,7 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
       {/* ── Search overlay ─────────────────────────────── */}
       <div
         className={cn(
-          "fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-3 sm:pt-[15vh] sm:px-4",
+          "fixed inset-0 z-60 flex items-start justify-center pt-[12vh] px-3 sm:pt-[15vh] sm:px-4",
           "bg-black/50 backdrop-blur-md transition-all duration-300",
           searchOpen
             ? "opacity-100 pointer-events-auto"
@@ -171,7 +171,7 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
             {QUICK_LINKS.map(({ label, icon: Icon }) => (
               <button
                 key={label}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-indigo-500/[0.08] hover:text-foreground transition-colors group"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-indigo-500/8 hover:text-foreground transition-colors group"
               >
                 <Icon className="h-4 w-4 shrink-0 text-indigo-400/50 group-hover:text-indigo-400 transition-colors" />
                 {label}
@@ -190,11 +190,11 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
             : "border-transparent"
         )}
       >
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/[0.025] via-transparent to-violet-500/[0.02]" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-indigo-500/25 via-transparent to-violet-500/2" />
         <div
           className={cn(
             "pointer-events-none absolute inset-x-0 bottom-0 h-px transition-opacity duration-300",
-            "bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent",
+            "bg-linear-to-r from-transparent via-indigo-500/30 to-transparent",
             scrolled ? "opacity-100" : "opacity-0"
           )}
         />
@@ -250,7 +250,7 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
             variant="ghost"
             size="icon"
             onClick={() => setSearchOpen(true)}
-            className="sm:hidden h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-indigo-500/[0.08] transition-all duration-200"
+            className="sm:hidden h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-indigo-500/8 transition-all duration-200"
           >
             <Search className="h-[17px] w-[17px]" />
           </Button>
@@ -263,8 +263,8 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
               onClick={() => setNotifOpen((v) => !v)}
               className={cn(
                 "relative h-10 w-10 rounded-xl text-muted-foreground/60 hover:text-foreground",
-                "hover:bg-indigo-500/[0.08] transition-all duration-200",
-                notifOpen && "bg-indigo-500/[0.10] text-foreground"
+                "hover:bg-indigo-500/8 transition-all duration-200",
+                notifOpen && "bg-indigo-500/10 text-foreground"
               )}
             >
               <Bell className="h-[17px] w-[17px]" />
@@ -293,7 +293,7 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
                   : "opacity-0 scale-95 pointer-events-none"
               )}
             >
-              <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/70 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-[2px] bg-linear-to-r from-transparent via-indigo-500/70 to-transparent" />
 
               {/* Header */}
               <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border bg-muted/50">
@@ -329,7 +329,7 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
                       className={cn(
                         "flex items-start gap-3.5 px-4 sm:px-5 py-3.5 cursor-pointer border-b border-border/50 last:border-0 transition-colors",
                         n.unread
-                          ? "bg-indigo-500/[0.05] hover:bg-indigo-500/[0.09]"
+                          ? "bg-indigo-500/5 hover:bg-indigo-500/9"
                           : "bg-card hover:bg-muted/60"
                       )}
                     >
@@ -386,20 +386,21 @@ export function MemberNavbar({ firstName, mobileSidebar }: MemberNavbarProps) {
           </div>
 
           {/* Divider */}
-          <div className="hidden sm:block h-6 w-0.5 bg-border/100 " />
+          <div className="hidden sm:block h-6 w-0.5 bg-border " />
 
           <ThemeToggle />
 
           {/* User avatar */}
           <div className="relative group pl-3 flex items-center">
-            <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
-            <UserButton
-              appearance={{
-                elements: {
-                  avatarBox:
-                    "h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-border hover:ring-indigo-500/40 transition-all duration-200",
-                },
-              }} />
+            <div className="absolute -inset-1.5 rounded-full bg-linear-to-br from-indigo-500/20 to-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox:
+                      "h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-border hover:ring-indigo-500/40 transition-all duration-200",
+                  },
+                }}
+              />
           </div>
         </div>
       </header>

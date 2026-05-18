@@ -145,28 +145,32 @@ const ActionCard = memo(function ActionCard({
     <motion.div variants={cardVariants} className="h-full">
       <Link
         href={action.href}
-        className="block h-full group rounded-2xl
-          focus-visible:outline-none focus-visible:ring-2
-          focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+        className={cn(
+          "block h-full group rounded-2xl",
+          "focus-visible:outline-none focus-visible:ring-2",
+          "focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+        )}
         aria-label={`${action.label}: ${action.description}`}
       >
         <Card
-          className="relative overflow-hidden h-full
-            p-4 sm:p-5
-            border border-zinc-200/80 dark:border-zinc-700/50
-            bg-white/80 dark:bg-zinc-900/70
-            backdrop-blur-md
-            shadow-sm
-            hover:shadow-xl active:shadow-xl
-            transition-all duration-300
-            cursor-pointer rounded-2xl
-            group-hover:-translate-y-1 active:-translate-y-1"
+          className={cn(
+            "relative overflow-hidden h-full",
+            "p-4 sm:p-5",
+            "border border-zinc-200/80 dark:border-zinc-700/50",
+            "bg-white/80 dark:bg-zinc-900/70",
+            "backdrop-blur-md",
+            "shadow-sm",
+            "hover:shadow-xl active:shadow-xl",
+            "transition-all duration-300",
+            "cursor-pointer rounded-2xl",
+            "group-hover:-translate-y-1 active:-translate-y-1"
+          )}
         >
           {/* Gradient wash on hover */}
           <div
             aria-hidden="true"
             className={cn(
-              "absolute inset-0 bg-gradient-to-br opacity-0",
+              "absolute inset-0 bg-linear-to-br opacity-0",
               "group-hover:opacity-[0.08] group-active:opacity-[0.08] transition-opacity duration-300",
               action.gradient
             )}
@@ -191,16 +195,18 @@ const ActionCard = memo(function ActionCard({
                 "group-hover:scale-110 group-hover:shadow-lg",
                 "group-active:scale-110 group-active:shadow-lg",
                 "transition-all duration-300",
-                "bg-gradient-to-br",
+                "bg-linear-to-br",
                 action.gradient
               )}
             >
               {/* Inner top-edge highlight */}
               <span
                 aria-hidden="true"
-                className="absolute inset-0 rounded-xl
-                  bg-gradient-to-b from-white/20 to-transparent
-                  pointer-events-none"
+                className={cn(
+                  "absolute inset-0 rounded-xl",
+                  "bg-linear-to-b from-white/20 to-transparent",
+                  "pointer-events-none"
+                )}
               />
               <Icon
                 className="h-5 w-5 sm:h-6 sm:w-6 relative z-10 drop-shadow-sm"
@@ -211,17 +217,21 @@ const ActionCard = memo(function ActionCard({
             {/* Label + description */}
             <div>
               <p
-                className="text-xs sm:text-sm font-bold leading-tight
-                  text-zinc-900 dark:text-zinc-50
-                  group-hover:text-indigo-600 dark:group-hover:text-indigo-400
-                  group-active:text-indigo-600 dark:group-active:text-indigo-400
-                  transition-colors duration-200"
+                className={cn(
+                  "text-xs sm:text-sm font-bold leading-tight",
+                  "text-zinc-900 dark:text-zinc-50",
+                  "group-hover:text-indigo-600 dark:group-hover:text-indigo-400",
+                  "group-active:text-indigo-600 dark:group-active:text-indigo-400",
+                  "transition-colors duration-200"
+                )}
               >
                 {action.label}
               </p>
               <p
-                className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500
-                mt-1 hidden sm:block leading-snug"
+                className={cn(
+                  "text-[11px] font-medium text-zinc-400 dark:text-zinc-500",
+                  "mt-1 hidden sm:block leading-snug"
+                )}
               >
                 {action.description}
               </p>
@@ -258,8 +268,10 @@ export const QuickActions = memo(function QuickActions({
     <section aria-labelledby="quick-actions-heading">
       <h2
         id="quick-actions-heading"
-        className="text-lg font-bold font-[family-name:--font-outfit]
-          tracking-tight text-zinc-900 dark:text-zinc-50 mb-4"
+        className={cn(
+          "text-lg font-bold font-[--font-outfit]",
+          "tracking-tight text-zinc-900 dark:text-zinc-50 mb-4"
+        )}
       >
         Quick Actions
       </h2>

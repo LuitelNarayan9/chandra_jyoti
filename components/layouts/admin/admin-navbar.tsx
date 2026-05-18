@@ -107,7 +107,7 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
       {/* ── Search overlay ─────────────────────────────── */}
       <div
         className={cn(
-          "fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-3 sm:pt-[15vh] sm:px-4",
+          "fixed inset-0 z-60 flex items-start justify-center pt-[12vh] px-3 sm:pt-[15vh] sm:px-4",
           "bg-black/50 backdrop-blur-md transition-all duration-300",
           searchOpen
             ? "opacity-100 pointer-events-auto"
@@ -161,9 +161,9 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
         </div>
       </div>
       {/* ── Navbar ─────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex h-[60px] sm:h-[68px] items-center border-b border-amber-500/[0.08] bg-background/90 backdrop-blur-2xl px-3 sm:px-5 md:px-8">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/[0.04] via-transparent to-orange-500/[0.025]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+      <header className="fixed top-0 left-0 right-0 z-50 flex h-[60px] sm:h-[68px] items-center border-b border-amber-500/8 bg-background/90 backdrop-blur-2xl px-3 sm:px-5 md:px-8">
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-amber-500/4 via-transparent to-orange-500/25" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-amber-500/40 to-transparent" />
 
         {/* Mobile sidebar trigger */}
         <div className="lg:hidden mr-2 sm:mr-3 shrink-0">{mobileSidebar}</div>
@@ -180,7 +180,7 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
           </div>
           <Badge
             variant="outline"
-            className="hidden sm:flex h-6 shrink-0 items-center gap-1 border-amber-500/30 bg-amber-500/[0.08] text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-[0.1em] px-2.5"
+            className="hidden sm:flex h-6 shrink-0 items-center gap-1 border-amber-500/30 bg-amber-500/8 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-widest px-2.5"
           >
             Admin
           </Badge>
@@ -225,7 +225,7 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
               variant="ghost"
               size="icon"
               onClick={() => setSearchOpen(true)}
-              className="sm:hidden h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-amber-500/[0.08] transition-all duration-200"
+              className="sm:hidden h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground hover:bg-amber-500/8 transition-all duration-200"
             >
               <Search className="h-[17px] w-[17px]" />
             </Button>
@@ -241,8 +241,8 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
                 aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
                 className={cn(
                   "relative h-9 w-9 rounded-xl text-muted-foreground/60 hover:text-foreground",
-                  "hover:bg-amber-500/[0.08] transition-all duration-200",
-                  notifOpen && "bg-amber-500/[0.10] text-foreground"
+                  "hover:bg-amber-500/8 transition-all duration-200",
+                  notifOpen && "bg-amber-500/10 text-foreground"
                 )}
               >
                 <Bell className="h-[17px] w-[17px]" />
@@ -275,7 +275,7 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
                 )}
               >
                 {/* Accent line */}
-                <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/70 to-transparent" />
+                <div className="absolute inset-x-0 top-0 h-[2px] bg-linear-to-r from-transparent via-amber-500/70 to-transparent" />
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border bg-muted/50">
@@ -309,7 +309,7 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
                       className={cn(
                         "flex items-start gap-3.5 px-4 sm:px-5 py-3.5 cursor-pointer border-b border-border/50 last:border-0 transition-colors",
                         n.unread
-                          ? "bg-amber-500/[0.06] hover:bg-amber-500/[0.10]"
+                          ? "bg-amber-500/6 hover:bg-amber-500/10"
                           : "bg-card hover:bg-muted/60"
                       )}
                     >
@@ -358,14 +358,15 @@ export function AdminNavbar({ firstName, mobileSidebar }: AdminNavbarProps) {
 
             {/* User avatar */}
             <div className="relative group flex items-center pl-3">
-              <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-amber-400/20 to-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
+              <div className="absolute -inset-1.5 rounded-full bg-linear-to-br from-amber-400/20 to-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
               <UserButton
                 appearance={{
                   elements: {
                     avatarBox:
                       "h-8 w-8 sm:h-9 sm:w-9 ring-2 ring-border hover:ring-amber-500/40 transition-all duration-200",
                   },
-                }} />
+                }}
+              />
             </div>
           </div>
         </TooltipProvider>

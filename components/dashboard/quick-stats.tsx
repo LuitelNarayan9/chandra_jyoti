@@ -107,8 +107,8 @@ const StatCard = memo(function StatCard({ card }: { card: StatCardData }) {
       <Card
         aria-label={card.ariaLabel}
         className={`group relative h-full overflow-hidden
-          bg-gradient-to-br ${card.gradient}
-          border border-white/10 dark:border-white/[0.06]
+          bg-linear-to-br ${card.gradient}
+          border border-white/10 dark:border-white/6
           shadow-sm
           hover:shadow-xl hover:-translate-y-1 active:shadow-xl active:-translate-y-1
           transition-all duration-300
@@ -130,7 +130,7 @@ const StatCard = memo(function StatCard({ card }: { card: StatCardData }) {
         </CardHeader>
 
         <CardContent>
-          <p className="text-2xl sm:text-3xl font-bold font-[family-name:--font-outfit] tracking-tight tabular-nums">
+          <p className="text-2xl sm:text-3xl font-bold font-[--font-outfit] tracking-tight tabular-nums">
             {card.value}
           </p>
 

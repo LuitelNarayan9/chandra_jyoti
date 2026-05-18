@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { Show, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -83,23 +83,21 @@ export function PublicNavbar() {
           <div className="h-5 w-px bg-stone-200 dark:bg-stone-700" />
 
           <Show when="signed-out">
-            <SignInButton>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 rounded-full px-5 text-sm font-semibold bg-violet-500 hover:bg-violet-600 dark:bg-black dark:hover:bg-stone-500 hover:text-white dark:text-white text-white border-0 shadow-none transition-all duration-200 hover:scale-[1.02]"
-              >
-                Log in
-              </Button>
-            </SignInButton>
-            <SignUpButton>
-              <Button
-                size="sm"
-                className="h-9 rounded-full px-5 text-sm font-semibold bg-stone-900 hover:bg-stone-700 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-stone-950 text-white border-0 shadow-none transition-all duration-200 hover:scale-[1.02]"
-              >
-                Register
-              </Button>
-            </SignUpButton>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 rounded-full px-5 text-sm font-semibold bg-violet-500 hover:bg-violet-600 dark:bg-black dark:hover:bg-stone-500 hover:text-white dark:text-white text-white border-0 shadow-none transition-all duration-200 hover:scale-[1.02]"
+              asChild
+            >
+              <Link href="/sign-in">Log in</Link>
+            </Button>
+            <Button
+              size="sm"
+              className="h-9 rounded-full px-5 text-sm font-semibold bg-stone-900 hover:bg-stone-700 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-stone-950 text-white border-0 shadow-none transition-all duration-200 hover:scale-[1.02]"
+              asChild
+            >
+              <Link href="/sign-up">Register</Link>
+            </Button>
           </Show>
 
           <Show when="signed-in">
@@ -166,23 +164,23 @@ export function PublicNavbar() {
               {/* Auth buttons pinned to bottom */}
               <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-stone-100 dark:border-stone-900 flex flex-col gap-2 bg-stone-50 dark:bg-stone-950">
                 <Show when="signed-out">
-                  <SignInButton>
-                    <Button
-                      variant="outline"
-                      className="w-full rounded-full border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 font-medium"
-                      onClick={() => setOpen(false)}
-                    >
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-full border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 font-medium"
+                    asChild
+                  >
+                    <Link href="/sign-in" onClick={() => setOpen(false)}>
                       Log in
-                    </Button>
-                  </SignInButton>
-                  <SignUpButton>
-                    <Button
-                      className="w-full rounded-full bg-stone-900 dark:bg-amber-400 dark:text-stone-950 text-white font-semibold border-0"
-                      onClick={() => setOpen(false)}
-                    >
+                    </Link>
+                  </Button>
+                  <Button
+                    className="w-full rounded-full bg-stone-900 dark:bg-amber-400 dark:text-stone-950 text-white font-semibold border-0"
+                    asChild
+                  >
+                    <Link href="/sign-up" onClick={() => setOpen(false)}>
                       Register
-                    </Button>
-                  </SignUpButton>
+                    </Link>
+                  </Button>
                 </Show>
 
                 <Show when="signed-in">

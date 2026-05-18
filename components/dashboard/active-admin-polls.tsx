@@ -123,8 +123,10 @@ const OptionBar = memo(function OptionBar({
 
   return (
     <div
-      className="relative w-full h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/60
-        overflow-hidden flex items-center px-3"
+      className={cn(
+        "relative w-full h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800/60",
+        "overflow-hidden flex items-center px-3"
+      )}
       role="meter"
       aria-valuenow={rounded}
       aria-valuemin={0}
@@ -132,8 +134,10 @@ const OptionBar = memo(function OptionBar({
       aria-label={`${option.text}: ${rounded}%`}
     >
       <motion.div
-        className="absolute left-0 top-0 bottom-0 rounded-xl
-          bg-emerald-500/20 dark:bg-emerald-500/25"
+        className={cn(
+          "absolute left-0 top-0 bottom-0 rounded-xl",
+          "bg-emerald-500/20 dark:bg-emerald-500/25"
+        )}
         initial={{ width: 0 }}
         animate={{ width: `${percentage}%` }}
         transition={barTransition}
@@ -165,7 +169,7 @@ const OptionVoted = memo(function OptionVoted({
       className={cn(
         "flex items-center gap-2 p-2.5 rounded-xl border text-sm transition-all duration-200",
         isSelected
-          ? "border-emerald-500/40 bg-emerald-500/[0.06] text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm"
+          ? "border-emerald-500/40 bg-emerald-500/6 text-emerald-700 dark:text-emerald-400 font-semibold shadow-sm"
           : "border-zinc-200 dark:border-zinc-700/60 bg-white/40 dark:bg-zinc-800/30 text-zinc-600 dark:text-zinc-400 font-medium opacity-70"
       )}
       aria-selected={isSelected}
@@ -197,10 +201,12 @@ const OptionUnvoted = memo(function OptionUnvoted({
 }) {
   return (
     <div
-      className="flex items-center gap-2 p-2.5 rounded-xl
-        border border-zinc-200 dark:border-zinc-700/50
-        bg-white/50 dark:bg-zinc-800/40
-        text-sm font-medium text-zinc-700 dark:text-zinc-300"
+      className={cn(
+        "flex items-center gap-2 p-2.5 rounded-xl",
+        "border border-zinc-200 dark:border-zinc-700/50",
+        "bg-white/50 dark:bg-zinc-800/40",
+        "text-sm font-medium text-zinc-700 dark:text-zinc-300"
+      )}
     >
       <div
         className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 shrink-0"
@@ -251,22 +257,26 @@ const PollCard = memo(function PollCard({
           <div className="flex flex-wrap items-center gap-2 mb-2">
             {userHasVoted || isCreator ? (
               <span
-                className="inline-flex items-center gap-1.5
-                  px-2.5 py-0.5 rounded-full
-                  bg-emerald-500/10 text-emerald-600 dark:text-emerald-400
-                  text-[10px] uppercase font-bold tracking-wider
-                  border border-emerald-500/20 shadow-sm"
+                className={cn(
+                  "inline-flex items-center gap-1.5",
+                  "px-2.5 py-0.5 rounded-full",
+                  "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                  "text-[10px] uppercase font-bold tracking-wider",
+                  "border border-emerald-500/20 shadow-sm"
+                )}
               >
                 <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
                 {isCreator ? "Your poll" : "Voted"}
               </span>
             ) : (
               <span
-                className="inline-flex items-center gap-1.5
-                  px-2.5 py-0.5 rounded-full
-                  bg-amber-500/10 text-amber-600 dark:text-amber-400
-                  text-[10px] uppercase font-bold tracking-wider
-                  border border-amber-500/20 shadow-sm"
+                className={cn(
+                  "inline-flex items-center gap-1.5",
+                  "px-2.5 py-0.5 rounded-full",
+                  "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                  "text-[10px] uppercase font-bold tracking-wider",
+                  "border border-amber-500/20 shadow-sm"
+                )}
               >
                 <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
                 Please Vote
@@ -274,12 +284,14 @@ const PollCard = memo(function PollCard({
             )}
 
             <span
-              className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400
-                uppercase tracking-wider
-                bg-zinc-100 dark:bg-zinc-800
-                px-2 py-0.5 rounded-full
-                border border-zinc-200 dark:border-zinc-700/60
-                shadow-sm"
+              className={cn(
+                "text-[10px] font-bold text-zinc-500 dark:text-zinc-400",
+                "uppercase tracking-wider",
+                "bg-zinc-100 dark:bg-zinc-800",
+                "px-2 py-0.5 rounded-full",
+                "border border-zinc-200 dark:border-zinc-700/60",
+                "shadow-sm"
+              )}
             >
               {poll.type === "DISMISSIBLE" ? "Soft" : "Mandatory"}
             </span>
@@ -348,8 +360,10 @@ const PollCard = memo(function PollCard({
             exit="exit"
           >
             <div
-              className="px-4 sm:px-5 pb-5 space-y-4
-                border-t border-zinc-100 dark:border-zinc-800 pt-4"
+              className={cn(
+                "px-4 sm:px-5 pb-5 space-y-4",
+                "border-t border-zinc-100 dark:border-zinc-800 pt-4"
+              )}
             >
               {/* Optional description */}
               {poll.description && (
@@ -361,8 +375,10 @@ const PollCard = memo(function PollCard({
               {/* Options section */}
               <div className="space-y-2.5">
                 <p
-                  className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500
-                  uppercase tracking-widest"
+                  className={cn(
+                    "text-[11px] font-bold text-zinc-400 dark:text-zinc-500",
+                    "uppercase tracking-widest"
+                  )}
                 >
                   Options
                 </p>
@@ -411,10 +427,12 @@ const PollCard = memo(function PollCard({
               {!userHasVoted && !isCreator && (
                 <div
                   role="alert"
-                  className="flex items-start gap-2.5 p-3 rounded-xl
-                    bg-amber-50 dark:bg-amber-500/[0.08]
-                    border border-amber-200 dark:border-amber-500/20
-                    text-xs text-amber-800 dark:text-amber-200"
+                  className={cn(
+                    "flex items-start gap-2.5 p-3 rounded-xl",
+                    "bg-amber-50 dark:bg-amber-500/8",
+                    "border border-amber-200 dark:border-amber-500/20",
+                    "text-xs text-amber-800 dark:text-amber-200"
+                  )}
                 >
                   <AlertCircle
                     className="h-4 w-4 shrink-0 mt-0.5"
@@ -457,9 +475,11 @@ export const ActiveAdminPolls = memo(function ActiveAdminPolls({
       <div className="flex items-center justify-between mb-4">
         <h3
           id="polls-heading"
-          className="text-lg font-bold flex items-center gap-2.5
-            text-zinc-900 dark:text-zinc-50
-            font-[family-name:--font-outfit]"
+          className={cn(
+            "text-lg font-bold flex items-center gap-2.5",
+            "text-zinc-900 dark:text-zinc-50",
+            "font-[--font-outfit]"
+          )}
         >
           <span
             className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500"

@@ -13,6 +13,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { TimeAgo } from "@/components/shared/time-ago";
+import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,29 +106,35 @@ const BlogPostCard = memo(function BlogPostCard({
     <motion.article variants={cardVariants} className="h-full">
       <Link
         href={`/blog/${post.slug}`}
-        className="group block h-full rounded-2xl
-          focus-visible:outline-none focus-visible:ring-2
-          focus-visible:ring-offset-2 focus-visible:ring-blue-500"
+        className={cn(
+          "group block h-full rounded-2xl",
+          "focus-visible:outline-none focus-visible:ring-2",
+          "focus-visible:ring-offset-2 focus-visible:ring-blue-500"
+        )}
         aria-label={`Read: ${post.title}`}
       >
         {/* ── Card shell ───────────────────────────────────────────────── */}
         <div
-          className="relative h-full flex flex-col
-            rounded-2xl overflow-hidden
-            bg-white dark:bg-zinc-900
-            border border-zinc-200 dark:border-zinc-700/60
-            shadow-[0_2px_12px_rgba(0,0,0,0.06)]
-            transition-all duration-[380ms] ease-out
-            group-hover:-translate-y-1.5 group-active:-translate-y-1.5
-            group-hover:shadow-[0_20px_48px_rgba(0,0,0,0.12)] group-active:shadow-[0_20px_48px_rgba(0,0,0,0.12)]"
+          className={cn(
+            "relative h-full flex flex-col",
+            "rounded-2xl overflow-hidden",
+            "bg-white dark:bg-zinc-900",
+            "border border-zinc-200 dark:border-zinc-700/60",
+            "shadow-[0_2px_12px_rgba(0,0,0,0.06)]",
+            "transition-all duration-380ms ease-out",
+            "group-hover:-translate-y-1.5 group-active:-translate-y-1.5",
+            "group-hover:shadow-[0_20px_48px_rgba(0,0,0,0.12)] group-active:shadow-[0_20px_48px_rgba(0,0,0,0.12)]"
+          )}
           style={{ "--accent": accent } as React.CSSProperties}
         >
           {/* Ambient glow behind card — category coloured */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -inset-3 -z-10 rounded-3xl
-              opacity-0 group-hover:opacity-100 group-active:opacity-100 blur-2xl
-              transition-opacity duration-[380ms]"
+            className={cn(
+              "pointer-events-none absolute -inset-3 -z-10 rounded-3xl",
+              "opacity-0 group-hover:opacity-100 group-active:opacity-100 blur-2xl",
+              "transition-opacity duration-380ms"
+            )}
             style={{ background: `${accent}22` }}
           />
 
@@ -146,9 +153,11 @@ const BlogPostCard = memo(function BlogPostCard({
                 alt={post.title}
                 fill
                 sizes="(max-width: 640px) 100vw, 50vw"
-                className="object-cover
-                  transition-transform duration-700 ease-out
-                  group-hover:scale-[1.05] group-active:scale-[1.05]"
+                className={cn(
+                  "object-cover",
+                  "transition-transform duration-700 ease-out",
+                  "group-hover:scale-[1.05] group-active:scale-[1.05]"
+                )}
                 priority={priority}
               />
             ) : (
@@ -170,19 +179,23 @@ const BlogPostCard = memo(function BlogPostCard({
             {/* Light scrim at bottom of image for text legibility */}
             <div
               aria-hidden="true"
-              className="absolute inset-0
-                bg-[linear-gradient(to_top,rgba(0,0,0,0.18)_0%,transparent_50%)]"
+              className={cn(
+                "absolute inset-0",
+                "bg-[linear-gradient(to_top,rgba(0,0,0,0.18)_0%,transparent_50%)]"
+              )}
             />
 
             {/* Category badge — top-right */}
             {post.category && (
               <span
-                className="absolute top-3 right-3 z-10
-                  inline-flex items-center
-                  px-3.5 py-1.5 rounded-full
-                  text-[11px] font-bold tracking-wide text-white
-                  shadow-[0_2px_10px_rgba(0,0,0,0.25)]
-                  border border-white/20 backdrop-blur-sm"
+                className={cn(
+                  "absolute top-3 right-3 z-10",
+                  "inline-flex items-center",
+                  "px-3.5 py-1.5 rounded-full",
+                  "text-[11px] font-bold tracking-wide text-white",
+                  "shadow-[0_2px_10px_rgba(0,0,0,0.25)]",
+                  "border border-white/20 backdrop-blur-sm"
+                )}
                 style={{ backgroundColor: accent }}
               >
                 {post.category.name}
@@ -192,11 +205,13 @@ const BlogPostCard = memo(function BlogPostCard({
             {/* Reading-time chip — bottom-left */}
             {post.readingTime != null && (
               <span
-                className="absolute bottom-3 left-3 z-10
-                  inline-flex items-center gap-1.5
-                  bg-black/55 backdrop-blur-md border border-white/15
-                  text-white/90 text-[10px] font-semibold tracking-wide
-                  px-2.5 py-1 rounded-full"
+                className={cn(
+                  "absolute bottom-3 left-3 z-10",
+                  "inline-flex items-center gap-1.5",
+                  "bg-black/55 backdrop-blur-md border border-white/15",
+                  "text-white/90 text-[10px] font-semibold tracking-wide",
+                  "px-2.5 py-1 rounded-full"
+                )}
                 aria-label={`${post.readingTime} minute read`}
               >
                 <Clock className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
@@ -209,11 +224,13 @@ const BlogPostCard = memo(function BlogPostCard({
           <div className="flex flex-col flex-1 px-5 pt-4 pb-5 gap-3">
             {/* Title */}
             <h3
-              className="font-extrabold text-[0.975rem] leading-snug line-clamp-2
-                text-zinc-900 dark:text-zinc-50
-                font-[family-name:--font-outfit]
-                transition-colors duration-200
-                group-hover:text-[var(--accent)] group-active:text-[var(--accent)]"
+              className={cn(
+                "font-extrabold text-[0.975rem] leading-snug line-clamp-2",
+                "text-zinc-900 dark:text-zinc-50",
+                "font-[--font-outfit]",
+                "transition-colors duration-200",
+                "group-hover:text-accent group-active:text-accent"
+              )}
             >
               {post.title}
             </h3>
@@ -221,8 +238,10 @@ const BlogPostCard = memo(function BlogPostCard({
             {/* Excerpt */}
             {post.excerpt && (
               <p
-                className="text-sm text-zinc-500 dark:text-zinc-400
-                line-clamp-2 leading-relaxed flex-1"
+                className={cn(
+                  "text-sm text-zinc-500 dark:text-zinc-400",
+                  "line-clamp-2 leading-relaxed flex-1"
+                )}
               >
                 {post.excerpt}
               </p>
@@ -234,16 +253,20 @@ const BlogPostCard = memo(function BlogPostCard({
               aria-label="Engagement stats"
             >
               <span
-                className="flex items-center gap-1 text-[11px] font-medium
-                  text-zinc-400 group-hover:text-rose-500 group-active:text-rose-500 transition-colors duration-200"
+                className={cn(
+                  "flex items-center gap-1 text-[11px] font-medium",
+                  "text-zinc-400 group-hover:text-rose-500 group-active:text-rose-500 transition-colors duration-200"
+                )}
                 aria-label={`${post._count.likes} likes`}
               >
                 <Heart className="h-3 w-3 shrink-0" aria-hidden="true" />
                 {post._count.likes}
               </span>
               <span
-                className="flex items-center gap-1 text-[11px] font-medium
-                  text-zinc-400 group-hover:text-sky-500 group-active:text-sky-500 transition-colors duration-200"
+                className={cn(
+                  "flex items-center gap-1 text-[11px] font-medium",
+                  "text-zinc-400 group-hover:text-sky-500 group-active:text-sky-500 transition-colors duration-200"
+                )}
                 aria-label={`${post._count.comments} comments`}
               >
                 <MessageCircle
@@ -256,13 +279,17 @@ const BlogPostCard = memo(function BlogPostCard({
 
             {/* Animated hairline divider */}
             <div
-              className="relative h-px w-full overflow-hidden rounded-full
-              bg-zinc-100 dark:bg-zinc-800"
+              className={cn(
+                "relative h-px w-full overflow-hidden rounded-full",
+                "bg-zinc-100 dark:bg-zinc-800"
+              )}
             >
               <span
                 aria-hidden="true"
-                className="absolute inset-y-0 left-0 w-0 rounded-full
-                  group-hover:w-full group-active:w-full transition-[width] duration-500 ease-out"
+                className={cn(
+                  "absolute inset-y-0 left-0 w-0 rounded-full",
+                  "group-hover:w-full group-active:w-full transition-[width] duration-500 ease-out"
+                )}
                 style={{ background: accent }}
               />
             </div>
@@ -272,8 +299,10 @@ const BlogPostCard = memo(function BlogPostCard({
               {/* Author */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar
-                  className="h-10 w-10 shrink-0
-                  ring-2 ring-white dark:ring-zinc-800 shadow-sm"
+                  className={cn(
+                    "h-10 w-10 shrink-0",
+                    "ring-2 ring-white dark:ring-zinc-800 shadow-sm"
+                  )}
                 >
                   {safeAvatar && (
                     <AvatarImage
@@ -291,15 +320,19 @@ const BlogPostCard = memo(function BlogPostCard({
 
                 <div className="flex flex-col min-w-0">
                   <span
-                    className="text-[12px] font-bold leading-tight
-                    text-zinc-800 dark:text-zinc-100 truncate"
+                    className={cn(
+                      "text-[12px] font-bold leading-tight",
+                      "text-zinc-800 dark:text-zinc-100 truncate"
+                    )}
                   >
                     By {post.author.firstName} {post.author.lastName}
                   </span>
                   {post.author.subtitle && (
                     <span
-                      className="text-[11px] leading-tight
-                      text-zinc-400 dark:text-zinc-500 truncate"
+                      className={cn(
+                        "text-[11px] leading-tight",
+                        "text-zinc-400 dark:text-zinc-500 truncate"
+                      )}
                     >
                       {post.author.subtitle}
                     </span>
@@ -312,22 +345,28 @@ const BlogPostCard = memo(function BlogPostCard({
                 <>
                   <div
                     aria-hidden="true"
-                    className="w-px self-stretch mx-4
-                      bg-zinc-200 dark:bg-zinc-700 rounded-full shrink-0"
+                    className={cn(
+                      "w-px self-stretch mx-4",
+                      "bg-zinc-200 dark:bg-zinc-700 rounded-full shrink-0"
+                    )}
                   />
 
                   {/* Date */}
                   <div className="flex flex-col items-start justify-center shrink-0">
                     <span
-                      className="text-[11px] font-bold leading-tight
-                      text-zinc-700 dark:text-zinc-200"
+                      className={cn(
+                        "text-[11px] font-bold leading-tight",
+                        "text-zinc-700 dark:text-zinc-200"
+                      )}
                     >
                       Date
                     </span>
                     <time
                       dateTime={isoDate}
-                      className="text-[11px] leading-tight
-                        text-zinc-500 dark:text-zinc-400"
+                      className={cn(
+                        "text-[11px] leading-tight",
+                        "text-zinc-500 dark:text-zinc-400"
+                      )}
                     >
                       <TimeAgo date={post.publishedAt} />
                     </time>
@@ -340,8 +379,10 @@ const BlogPostCard = memo(function BlogPostCard({
           {/* Bottom accent line — grows left-to-right on hover */}
           <div
             aria-hidden="true"
-            className="h-[3px] w-0 group-hover:w-full group-active:w-full
-              transition-[width] duration-500 ease-out shrink-0"
+            className={cn(
+              "h-[3px] w-0 group-hover:w-full group-active:w-full",
+              "transition-[width] duration-500 ease-out shrink-0"
+            )}
             style={{
               background: `linear-gradient(90deg, ${accent}, ${accent}88)`,
             }}
@@ -357,16 +398,20 @@ const BlogPostCard = memo(function BlogPostCard({
 const EmptyState = memo(function EmptyState(): React.JSX.Element {
   return (
     <div
-      className="rounded-2xl border border-dashed border-zinc-200
-      dark:border-zinc-700/60 p-10 text-center bg-white dark:bg-zinc-900"
+      className={cn(
+        "rounded-2xl border border-dashed border-zinc-200",
+        "dark:border-zinc-700/60 p-10 text-center bg-white dark:bg-zinc-900"
+      )}
     >
       <BookOpen
         className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-600 mb-3"
         aria-hidden="true"
       />
       <h2
-        className="text-base font-semibold font-[family-name:--font-outfit]
-        text-zinc-700 dark:text-zinc-300 mb-1"
+        className={cn(
+          "text-base font-semibold font-[--font-outfit]",
+          "text-zinc-700 dark:text-zinc-300 mb-1"
+        )}
       >
         Recent Blog Posts
       </h2>
@@ -390,19 +435,23 @@ export const RecentBlogPosts = memo(function RecentBlogPosts({
       <div className="flex items-center justify-between mb-5">
         <h2
           id="recent-posts-heading"
-          className="text-lg font-bold font-[family-name:--font-outfit]
-            tracking-tight text-zinc-900 dark:text-zinc-50"
+          className={cn(
+            "text-lg font-bold font-[--font-outfit]",
+            "tracking-tight text-zinc-900 dark:text-zinc-50"
+          )}
         >
           Recent Blog Posts
         </h2>
         <Link
           href="/blog"
-          className="group inline-flex items-center gap-1.5
-            text-xs font-bold tracking-widest uppercase
-            text-blue-600 dark:text-blue-400
-            hover:text-blue-700 transition-colors duration-200
-            focus-visible:outline-none focus-visible:ring-2
-            focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+          className={cn(
+            "group inline-flex items-center gap-1.5",
+            "text-xs font-bold tracking-widest uppercase",
+            "text-blue-600 dark:text-blue-400",
+            "hover:text-blue-700 transition-colors duration-200",
+            "focus-visible:outline-none focus-visible:ring-2",
+            "focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded"
+          )}
           aria-label="View all blog posts"
         >
           View All

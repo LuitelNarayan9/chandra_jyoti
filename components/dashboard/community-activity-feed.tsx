@@ -13,6 +13,7 @@ import {
 import type { ActivityItem } from "@/lib/queries/dashboard.queries";
 import { TimeAgo } from "@/components/shared/time-ago";
 import type React from "react";
+import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -143,9 +144,11 @@ const ActivityRow = memo(function ActivityRow({
       {!isLast && (
         <span
           aria-hidden="true"
-          className="absolute left-[1.35rem] top-9 bottom-0 w-px
-            bg-gradient-to-b from-zinc-200 via-zinc-200/50 to-transparent
-            dark:from-zinc-700 dark:via-zinc-700/50"
+          className={cn(
+            "absolute left-[1.35rem] top-9 bottom-0 w-px",
+            "bg-linear-to-b from-zinc-200 via-zinc-200/50 to-transparent",
+            "dark:from-zinc-700 dark:via-zinc-700/50"
+          )}
         />
       )}
 
@@ -175,13 +178,15 @@ const ActivityRow = memo(function ActivityRow({
 
       {/* Content card */}
       <div
-        className="flex-1 min-w-0 mb-1
-          bg-zinc-50 dark:bg-zinc-800/40
-          hover:bg-zinc-100 dark:hover:bg-zinc-800/70
-          active:bg-zinc-100 dark:active:bg-zinc-800/70
-          border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700/60
-          active:border-zinc-200 dark:active:border-zinc-700/60
-          transition-colors duration-200 rounded-xl p-3"
+        className={cn(
+          "flex-1 min-w-0 mb-1",
+          "bg-zinc-50 dark:bg-zinc-800/40",
+          "hover:bg-zinc-100 dark:hover:bg-zinc-800/70",
+          "active:bg-zinc-100 dark:active:bg-zinc-800/70",
+          "border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700/60",
+          "active:border-zinc-200 dark:active:border-zinc-700/60",
+          "transition-colors duration-200 rounded-xl p-3"
+        )}
       >
         <div className="flex items-start gap-3">
           <Avatar className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 ring-2 ring-white dark:ring-zinc-800 shadow-sm">
@@ -222,7 +227,7 @@ const EmptyState = memo(function EmptyState(): React.JSX.Element {
         className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-600 mb-3"
         aria-hidden="true"
       />
-      <h2 className="text-base font-semibold font-[family-name:--font-outfit] text-zinc-700 dark:text-zinc-300 mb-1">
+      <h2 className="text-base font-semibold font-[--font-outfit] text-zinc-700 dark:text-zinc-300 mb-1">
         Community Activity
       </h2>
       <p className="text-sm text-zinc-400">
@@ -243,17 +248,21 @@ export const CommunityActivityFeed = memo(function CommunityActivityFeed({
     <section aria-labelledby="activity-feed-heading">
       <h2
         id="activity-feed-heading"
-        className="text-lg font-bold font-[family-name:--font-outfit]
-          tracking-tight text-zinc-900 dark:text-zinc-50 mb-4"
+        className={cn(
+          "text-lg font-bold font-[--font-outfit]",
+          "tracking-tight text-zinc-900 dark:text-zinc-50 mb-4"
+        )}
       >
         Community Activity
       </h2>
 
       <div
-        className="rounded-2xl border border-zinc-200/80 dark:border-zinc-700/50
-          bg-white dark:bg-zinc-900
-          shadow-[0_2px_12px_rgba(0,0,0,0.05)]
-          p-5 sm:p-6"
+        className={cn(
+          "rounded-2xl border border-zinc-200/80 dark:border-zinc-700/50",
+          "bg-white dark:bg-zinc-900",
+          "shadow-[0_2px_12px_rgba(0,0,0,0.05)]",
+          "p-5 sm:p-6"
+        )}
       >
         <motion.div
           variants={listVariants}

@@ -103,37 +103,45 @@ const NewsArticleRow = memo(function NewsArticleRow({
     <motion.div variants={rowVariants} role="listitem">
       <Link
         href={`/news/${article.slug}`}
-        className="group relative flex items-start gap-3.5 p-3 sm:p-4
-          rounded-xl
-          hover:bg-zinc-50 dark:hover:bg-white/[0.03]
-          active:bg-zinc-50 dark:active:bg-white/3
-          transition-colors duration-200
-          focus-visible:outline-none focus-visible:ring-2
-          focus-visible:ring-inset focus-visible:ring-indigo-500"
+        className={cn(
+          "group relative flex items-start gap-3.5 p-3 sm:p-4",
+          "rounded-xl",
+          "hover:bg-zinc-50 dark:hover:bg-white/3",
+          "active:bg-zinc-50 dark:active:bg-white/3",
+          "transition-colors duration-200",
+          "focus-visible:outline-none focus-visible:ring-2",
+          "focus-visible:ring-inset focus-visible:ring-indigo-500"
+        )}
         aria-label={`Read: ${article.title}`}
       >
         {/* Left accent bar — real element, not a pseudo-class string */}
         <span
           aria-hidden="true"
-          className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full
-            bg-indigo-500 origin-center scale-y-0 group-hover:scale-y-100 group-active:scale-y-100
-            transition-transform duration-300
-            ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          className={cn(
+            "absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full",
+            "bg-indigo-500 origin-center scale-y-0 group-hover:scale-y-100 group-active:scale-y-100",
+            "transition-transform duration-300",
+            "ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          )}
         />
 
         {/* Source icon */}
         <div
-          className="shrink-0 mt-0.5 rounded-xl p-2.5
-            bg-zinc-100 dark:bg-zinc-800/60
-            shadow-sm group-hover:shadow-md group-active:shadow-md transition-shadow duration-200"
+          className={cn(
+            "shrink-0 mt-0.5 rounded-xl p-2.5",
+            "bg-zinc-100 dark:bg-zinc-800/60",
+            "shadow-sm group-hover:shadow-md group-active:shadow-md transition-shadow duration-200"
+          )}
           aria-label={`Source: ${article.source.toLowerCase()}`}
         >
           <SourceIcon
-            className="h-4 w-4 sm:h-5 sm:w-5
-              text-zinc-400 dark:text-zinc-500
-              group-hover:text-indigo-600 dark:group-hover:text-indigo-400
-              group-active:text-indigo-600 dark:group-active:text-indigo-400
-              transition-colors duration-200"
+            className={cn(
+              "h-4 w-4 sm:h-5 sm:w-5",
+              "text-zinc-400 dark:text-zinc-500",
+              "group-hover:text-indigo-600 dark:group-hover:text-indigo-400",
+              "group-active:text-indigo-600 dark:group-active:text-indigo-400",
+              "transition-colors duration-200"
+            )}
             aria-hidden="true"
           />
         </div>
@@ -141,11 +149,13 @@ const NewsArticleRow = memo(function NewsArticleRow({
         {/* Content */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <p
-            className="text-sm font-bold leading-snug line-clamp-2
-              text-zinc-900 dark:text-zinc-50
-              group-hover:text-indigo-600 dark:group-hover:text-indigo-400
-              group-active:text-indigo-600 dark:group-active:text-indigo-400
-              transition-colors duration-200"
+            className={cn(
+              "text-sm font-bold leading-snug line-clamp-2",
+              "text-zinc-900 dark:text-zinc-50",
+              "group-hover:text-indigo-600 dark:group-hover:text-indigo-400",
+              "group-active:text-indigo-600 dark:group-active:text-indigo-400",
+              "transition-colors duration-200"
+            )}
           >
             {article.title}
           </p>
@@ -196,7 +206,7 @@ const EmptyState = memo(function EmptyState(): React.JSX.Element {
         className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-600 mb-3"
         aria-hidden="true"
       />
-      <h2 className="text-base font-semibold font-[family-name:--font-outfit] text-zinc-700 dark:text-zinc-300 mb-1">
+      <h2 className="text-base font-semibold font-[--font-outfit] text-zinc-700 dark:text-zinc-300 mb-1">
         News Highlights
       </h2>
       <p className="text-sm text-zinc-400">No news articles available yet.</p>
@@ -217,8 +227,10 @@ export const NewsHighlights = memo(function NewsHighlights({
       <div className="flex items-center justify-between mb-4">
         <h2
           id="news-highlights-heading"
-          className="text-lg font-bold font-[family-name:--font-outfit]
-            tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2.5"
+          className={cn(
+            "text-lg font-bold font-[--font-outfit]",
+            "tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-2.5"
+          )}
         >
           <span
             className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500"
@@ -231,12 +243,14 @@ export const NewsHighlights = memo(function NewsHighlights({
 
         <Link
           href="/news"
-          className="group inline-flex items-center gap-1.5
-            text-xs font-bold tracking-widest uppercase
-            text-indigo-600 dark:text-indigo-400
-            hover:text-indigo-700 transition-colors duration-200
-            focus-visible:outline-none focus-visible:ring-2
-            focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded"
+          className={cn(
+            "group inline-flex items-center gap-1.5",
+            "text-xs font-bold tracking-widest uppercase",
+            "text-indigo-600 dark:text-indigo-400",
+            "hover:text-indigo-700 transition-colors duration-200",
+            "focus-visible:outline-none focus-visible:ring-2",
+            "focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded"
+          )}
           aria-label="View all news articles"
         >
           View All
@@ -254,12 +268,14 @@ export const NewsHighlights = memo(function NewsHighlights({
         animate="visible"
         role="list"
         aria-label="News highlights"
-        className="rounded-2xl overflow-hidden
-          border border-zinc-200/80 dark:border-zinc-700/50
-          bg-white dark:bg-zinc-900
-          shadow-[0_2px_12px_rgba(0,0,0,0.05)]
-          divide-y divide-zinc-100 dark:divide-zinc-800
-          p-1"
+        className={cn(
+          "rounded-2xl overflow-hidden",
+          "border border-zinc-200/80 dark:border-zinc-700/50",
+          "bg-white dark:bg-zinc-900",
+          "shadow-[0_2px_12px_rgba(0,0,0,0.05)]",
+          "divide-y divide-zinc-100 dark:divide-zinc-800",
+          "p-1"
+        )}
       >
         {articles.map((article) => (
           <NewsArticleRow key={article.id} article={article} />

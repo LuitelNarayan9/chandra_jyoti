@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, ArrowRight, Eye, MessagesSquare } from "lucide-react";
 import { TimeAgo } from "@/components/shared/time-ago";
+import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,22 +113,26 @@ const ForumThreadRow = memo(function ForumThreadRow({
     <motion.div variants={rowVariants}>
       <Link
         href={`/forum/${thread.category.slug}/${thread.slug}`}
-        className="group relative flex flex-col sm:flex-row sm:items-center
-          gap-3 px-4 py-4 sm:px-5
-          hover:bg-zinc-50 dark:hover:bg-white/[0.03]
-          active:bg-zinc-50 dark:active:bg-white/3
-          transition-colors duration-200
-          focus-visible:outline-none focus-visible:ring-2
-          focus-visible:ring-inset focus-visible:ring-indigo-500"
+        className={cn(
+          "group relative flex flex-col sm:flex-row sm:items-center",
+          "gap-3 px-4 py-4 sm:px-5",
+          "hover:bg-zinc-50 dark:hover:bg-white/3",
+          "active:bg-zinc-50 dark:active:bg-white/3",
+          "transition-colors duration-200",
+          "focus-visible:outline-none focus-visible:ring-2",
+          "focus-visible:ring-inset focus-visible:ring-indigo-500"
+        )}
         aria-label={`Forum thread: ${thread.title}`}
       >
         {/* Left accent bar — real element, not CSS pseudo (more reliable) */}
         <span
           aria-hidden="true"
-          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-sm
-            origin-center scale-y-0 group-hover:scale-y-100 group-active:scale-y-100
-            transition-transform duration-300
-            ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          className={cn(
+            "absolute left-0 top-0 bottom-0 w-[3px] rounded-r-sm",
+            "origin-center scale-y-0 group-hover:scale-y-100 group-active:scale-y-100",
+            "transition-transform duration-300",
+            "ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          )}
           style={{ background: accent }}
         />
 
@@ -150,11 +155,12 @@ const ForumThreadRow = memo(function ForumThreadRow({
 
           <div className="flex-1 min-w-0">
             <p
-              className="text-sm font-semibold leading-snug truncate
-                text-zinc-900 dark:text-zinc-50
-                transition-colors duration-150
-                group-hover:text-[var(--accent)] group-active:text-[var(--accent)]"
-              style={{ "--accent": accent } as React.CSSProperties}
+              className={cn(
+                "text-sm font-semibold leading-snug truncate",
+                "text-zinc-900 dark:text-zinc-50",
+                "transition-colors duration-150",
+                "group-hover:text-accent group-active:text-accent"
+              )}
             >
               {thread.title}
             </p>
@@ -162,8 +168,10 @@ const ForumThreadRow = memo(function ForumThreadRow({
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
               <Badge
                 variant="outline"
-                className="text-[10px] font-semibold px-2 py-0
-                  bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm shadow-sm"
+                className={cn(
+                  "text-[10px] font-semibold px-2 py-0",
+                  "bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm shadow-sm"
+                )}
                 style={{ borderColor: `${accent}55`, color: accent }}
               >
                 {thread.category.name}
@@ -177,13 +185,17 @@ const ForumThreadRow = memo(function ForumThreadRow({
 
         {/* ── Stats + time chip ── */}
         <div
-          className="flex items-center justify-between sm:justify-end
-          gap-4 shrink-0 pl-[52px] sm:pl-0"
+          className={cn(
+            "flex items-center justify-between sm:justify-end",
+            "gap-4 shrink-0 pl-[52px] sm:pl-0"
+          )}
         >
           <div className="flex items-center gap-3" aria-label="Thread stats">
             <span
-              className="flex items-center gap-1.5 text-[12px] font-medium
-                text-zinc-400 group-hover:text-blue-500 group-active:text-blue-500 transition-colors duration-150"
+              className={cn(
+                "flex items-center gap-1.5 text-[12px] font-medium",
+                "text-zinc-400 group-hover:text-blue-500 group-active:text-blue-500 transition-colors duration-150"
+              )}
               aria-label={`${thread._count.replies} replies`}
             >
               <MessageCircle
@@ -193,8 +205,10 @@ const ForumThreadRow = memo(function ForumThreadRow({
               {thread._count.replies}
             </span>
             <span
-              className="flex items-center gap-1.5 text-[12px] font-medium
-                text-zinc-400 group-hover:text-emerald-500 group-active:text-emerald-500 transition-colors duration-150"
+              className={cn(
+                "flex items-center gap-1.5 text-[12px] font-medium",
+                "text-zinc-400 group-hover:text-emerald-500 group-active:text-emerald-500 transition-colors duration-150"
+              )}
               aria-label={`${thread.views} views`}
             >
               <Eye className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -204,10 +218,12 @@ const ForumThreadRow = memo(function ForumThreadRow({
 
           <time
             dateTime={isoDate}
-            className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500
-              bg-zinc-100 dark:bg-zinc-800/80
-              border border-zinc-200 dark:border-zinc-700/60
-              px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap"
+            className={cn(
+              "text-[11px] font-medium text-zinc-400 dark:text-zinc-500",
+              "bg-zinc-100 dark:bg-zinc-800/80",
+              "border border-zinc-200 dark:border-zinc-700/60",
+              "px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap"
+            )}
           >
             <TimeAgo date={thread.updatedAt} />
           </time>
@@ -222,16 +238,20 @@ const ForumThreadRow = memo(function ForumThreadRow({
 const EmptyState = memo(function EmptyState(): React.JSX.Element {
   return (
     <div
-      className="rounded-2xl border border-dashed border-zinc-200
-      dark:border-zinc-700/60 p-8 text-center bg-white dark:bg-zinc-900"
+      className={cn(
+        "rounded-2xl border border-dashed border-zinc-200",
+        "dark:border-zinc-700/60 p-8 text-center bg-white dark:bg-zinc-900"
+      )}
     >
       <MessagesSquare
         className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-600 mb-3"
         aria-hidden="true"
       />
       <h2
-        className="text-base font-semibold font-[family-name:--font-outfit]
-        text-zinc-700 dark:text-zinc-300 mb-1"
+        className={cn(
+          "text-base font-semibold font-[--font-outfit]",
+          "text-zinc-700 dark:text-zinc-300 mb-1"
+        )}
       >
         Active Forum Threads
       </h2>
@@ -254,19 +274,23 @@ export const ActiveForumThreads = memo(function ActiveForumThreads({
       <div className="flex items-center justify-between mb-4">
         <h2
           id="forum-threads-heading"
-          className="text-lg font-bold font-[family-name:--font-outfit]
-            tracking-tight text-zinc-900 dark:text-zinc-50"
+          className={cn(
+            "text-lg font-bold font-[--font-outfit]",
+            "tracking-tight text-zinc-900 dark:text-zinc-50"
+          )}
         >
           Active Forum Threads
         </h2>
         <Link
           href="/forum"
-          className="group inline-flex items-center gap-1.5
-            text-xs font-bold tracking-widest uppercase
-            text-indigo-600 dark:text-indigo-400
-            hover:text-indigo-700 transition-colors duration-200
-            focus-visible:outline-none focus-visible:ring-2
-            focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded"
+          className={cn(
+            "group inline-flex items-center gap-1.5",
+            "text-xs font-bold tracking-widest uppercase",
+            "text-indigo-600 dark:text-indigo-400",
+            "hover:text-indigo-700 transition-colors duration-200",
+            "focus-visible:outline-none focus-visible:ring-2",
+            "focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded"
+          )}
           aria-label="View all forum threads"
         >
           View All
@@ -283,11 +307,13 @@ export const ActiveForumThreads = memo(function ActiveForumThreads({
         animate="visible"
         role="list"
         aria-label="Active forum threads"
-        className="rounded-2xl overflow-hidden
-          border border-zinc-200/80 dark:border-zinc-700/50
-          bg-white dark:bg-zinc-900
-          shadow-[0_2px_12px_rgba(0,0,0,0.05)]
-          divide-y divide-zinc-100 dark:divide-zinc-800"
+        className={cn(
+          "rounded-2xl overflow-hidden",
+          "border border-zinc-200/80 dark:border-zinc-700/50",
+          "bg-white dark:bg-zinc-900",
+          "shadow-[0_2px_12px_rgba(0,0,0,0.05)]",
+          "divide-y divide-zinc-100 dark:divide-zinc-800"
+        )}
       >
         {threads.map((thread) => (
           <div key={thread.id} role="listitem">
